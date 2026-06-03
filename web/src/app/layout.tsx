@@ -1,12 +1,12 @@
 "use client";
 
 import "./globals.css";
-import "@copilotkit/react-core/v2/styles.css";
+// import "@copilotkit/react-core/v2/styles.css";
 
-import { CopilotKit } from "@copilotkit/react-core/v2";
+// import { CopilotKit } from "@copilotkit/react-core/v2";
 import { ThemeProvider } from "@/hooks/use-theme";
-// A2UI catalog: definitions + renderers in ./declarative-generative-ui/
-import { demonstrationCatalog } from "./declarative-generative-ui/renderers";
+// // A2UI catalog: definitions + renderers in ./declarative-generative-ui/
+// import { demonstrationCatalog } from "./declarative-generative-ui/renderers";
 
 export default function RootLayout({
   children,
@@ -22,7 +22,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`antialiased`}>
-        <ThemeProvider>
+        {/* <ThemeProvider>
           <CopilotKit
             runtimeUrl="/api/copilotkit"
             inspectorDefaultAnchor={{ horizontal: "right", vertical: "top" }}
@@ -32,7 +32,8 @@ export default function RootLayout({
           >
             {children}
           </CopilotKit>
-        </ThemeProvider>
+        </ThemeProvider> */}
+        {children}
       </body>
     </html>
   );

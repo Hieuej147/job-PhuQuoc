@@ -8,13 +8,33 @@ interface BlogCardProps {
     excerpt: string;
     thumbnail?: string;
     date: string;
-    views: string;
+    views: string | number;
     categoryName: string;
     categorySlug: string;
     authorName: string;
     uiIconName: string;
     uiCatBg: string; // e.g. "bg-[#0e7490]" hoặc "bg-[#ea580c]"
 }
+
+const getCategoryEmoji = (name: string): string => {
+    const lower = name.toLowerCase();
+    if (lower.includes("kinh nghiệm") || lower.includes("ứng tuyển") || lower.includes("phỏng vấn")) return "💼";
+    if (lower.includes("cv") || lower.includes("cẩm nang")) return "📝";
+    if (lower.includes("đời sống") || lower.includes("phú quốc")) return "🏖️";
+    if (lower.includes("du lịch") || lower.includes("resort") || lower.includes("khách sạn")) return "🏨";
+    if (lower.includes("lương") || lower.includes("phúc lợi")) return "💰";
+    if (lower.includes("phát triển") || lower.includes("bản thân")) return "🎓";
+    if (lower.includes("xu hướng") || lower.includes("thị trường")) return "📈";
+    return "📁";
+};
+
+const getAuthorInitials = (name: string): string => {
+    const words = name.trim().split(/\s+/);
+    if (words.length >= 2) {
+        return (words[words.length - 2][0] + words[words.length - 1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+};
 
 export default function BlogCard({
     title,
@@ -24,78 +44,77 @@ export default function BlogCard({
     date,
     views,
     categoryName,
+    authorName,
     uiCatBg,
 }: BlogCardProps) {
-    // Lấy 2 ký tự đầu tên tác giả làm avatar
-    const initials = "AN"; // tạm dùng fixed, bạn có thể truyền authorInitials vào
+    const initials = getAuthorInitials(authorName);
+    const emoji = getCategoryEmoji(categoryName);
+
+    // Format views: e.g. 12480 -> 12.4k
+    const formatViews = (val: string | number): string => {
+        const num = typeof val === "number" ? val : parseFloat(val) || 0;
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1) + "k";
+        }
+        return String(num);
+    };
 
     return (
-        <Link href={`/blog/${slug}`}>
-            <div className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 cursor-pointer flex flex-col h-full border border-gray-100">
-
-                {/* ── THUMBNAIL ── */}
-                <div className="relative overflow-hidden aspect-[16/10] bg-gray-200 shrink-0">
-                    <img
-                        src={thumbnail}
-                        alt={title}
-                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                    />
-                    {/* Category badge */}
-                    <div className={`absolute top-3 left-3 ${uiCatBg} text-white text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1.5`}>
-                        <span className="text-[11px]">📌</span>
-                        {categoryName}
-                    </div>
-                </div>
-
-                {/* ── CONTENT ── */}
-                <div className="flex flex-col flex-1 p-4 gap-2">
-
-                    {/* Tiêu đề */}
-                    <h3 className="text-[15px] font-semibold text-gray-900 leading-snug line-clamp-2 group-hover:text-teal-700 transition-colors">
-                        {title}
-                    </h3>
-
-                    {/* Excerpt */}
-                    <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 flex-1">
+        <article className="blog-card group bg-white dark:bg-[#0F3347] rounded-2xl border border-[#E0F5FB] dark:border-[#1E5F74] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full">
+            <Link href={`/blog/${slug}`} className="block relative overflow-hidden h-48">
+                <img
+                    src={thumbnail}
+                    alt={title}
+                    className="thumb-img w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-500"
+                />
+                <div className="thumb-overlay absolute inset-0 bg-gradient-to-t from-black/40 to-transparent dark:from-[#0c2231]/70"></div>
+                <span className={`cat-badge absolute top-3 left-3 ${uiCatBg || "bg-[#0D9488]/90"} text-white text-[11px] font-bold px-2.5 py-1 rounded-full backdrop-blur-sm`}>
+                    {emoji} {categoryName}
+                </span>
+            </Link>
+            <div className="p-5 flex flex-col flex-grow justify-between">
+                <div>
+                    <Link href={`/blog/${slug}`}>
+                        <h2 className="blog-title font-bold text-[#0C4A6E] dark:text-[#E0F2FE] text-base mb-2 line-clamp-2 group-hover:text-[#005a71] dark:group-hover:text-[#67E8F9] transition-colors">
+                            {title}
+                        </h2>
+                    </Link>
+                    <p className="blog-excerpt text-sm text-slate-500 dark:text-[#94A3B8] line-clamp-2 mb-4">
                         {excerpt}
                     </p>
-
-                    {/* ── FOOTER ── */}
-                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2 mt-auto">
-
-                        {/* Author + date */}
-                        <div className="flex items-center gap-2 min-w-0">
-                            {/* Avatar placeholder */}
-                            <div className="w-7 h-7 rounded-full bg-teal-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                </div>
+                <div>
+                    <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center gap-2">
+                            <div className="author-avatar w-7 h-7 rounded-full bg-[#0E7490] dark:bg-[#1E5F74] flex items-center justify-center text-white text-[11px] font-bold">
                                 {initials}
                             </div>
-                            <div className="flex flex-col min-w-0">
-                                <span className="text-[11px] font-medium text-gray-800 truncate">
-                                    Anh Nguyễn
-                                </span>
-                                <span className="text-[10px] text-gray-400">{date}</span>
+                            <div>
+                                <p className="blog-meta text-[11px] text-slate-600 dark:text-[#94A3B8] font-semibold leading-tight">
+                                    {authorName}
+                                </p>
+                                <p className="blog-meta text-[10px] text-slate-400 dark:text-[#94A3B8]">
+                                    {date}
+                                </p>
                             </div>
                         </div>
-
-                        {/* Views + Đọc thêm */}
-                        <div className="flex items-center gap-3 shrink-0">
-                            <span className="flex items-center gap-1 text-[11px] text-gray-400">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                {views}
+                        <div className="flex items-center gap-3 blog-meta text-[11px] text-slate-400 dark:text-[#94A3B8]">
+                            <span className="flex items-center gap-0.5">
+                                <span className="material-symbols-outlined text-[13px]">visibility</span> {formatViews(views)}
                             </span>
-                            <span className="text-xs font-semibold text-teal-600 flex items-center gap-0.5 hover:gap-1.5 transition-all">
-                                Đọc thêm
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                                </svg>
+                            <span className="flex items-center gap-0.5">
+                                <span className="material-symbols-outlined text-[13px]">schedule</span> 8 phút
                             </span>
                         </div>
                     </div>
+                    <Link
+                        href={`/blog/${slug}`}
+                        className="read-more mt-4 flex items-center gap-1 text-[#005a71] dark:text-[#67E8F9] text-sm font-semibold hover:opacity-70 transition-opacity"
+                    >
+                        Đọc thêm <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    </Link>
                 </div>
             </div>
-        </Link>
+        </article>
     );
 }
