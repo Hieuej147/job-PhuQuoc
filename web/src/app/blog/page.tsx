@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { mockHomeBlogs, mockBlogCategories } from '@/mocks/mockData';
-import BlogPageClient from './_components/BlogPageClient';
+import BlogPageClient from '@/components/blog/BlogPageClient';
 
 // ── SEO META ĐỘNG CHO TRANG DANH SÁCH BLOG ──────────────────────────────────
 export const metadata: Metadata = {
