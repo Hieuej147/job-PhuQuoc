@@ -108,6 +108,29 @@ export default function BlogPageClient() {
         setCurrentPage(1);
     }, [activeTab, sortBy, search]);
 
+    // Intersection Observer for scroll animation
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries, obs) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("visible");
+                        obs.unobserve(entry.target);
+                    }
+                });
+            },
+            { threshold: 0.05 }
+        );
+
+        document.querySelectorAll(".fade-up").forEach((el) => {
+            observer.observe(el);
+        });
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [paginatedBlogs, activeTab]);
+
     const formatViews = (val: string | number): string => {
         const num = typeof val === "number" ? val : parseFloat(val) || 0;
         if (num >= 1000) {
@@ -127,11 +150,11 @@ export default function BlogPageClient() {
                         <img
                             src={featured.thumbnail || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1400&q=80"}
                             alt={featured.title}
-                            className="absolute inset-0 w-full h-full object-cover"
+                            className="absolute inset-0 w-full h-full object-cover animate-in fade-in zoom-in-95 duration-500"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#001e30]/90 via-[#001e30]/40 to-transparent dark:from-[#091a27]/95 dark:via-[#091a27]/50" />
 
-                        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 w-full pb-12 pt-32">
+                        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 w-full pb-12 pt-32 fade-up">
                             <span className="inline-block bg-[#F59E0B] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
                                 📌 Nổi bật
                             </span>
@@ -175,7 +198,7 @@ export default function BlogPageClient() {
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-10">
 
                 {/* Category tabs */}
-                <div className="overflow-x-auto pb-2 mb-6">
+                <div className="overflow-x-auto pb-2 mb-6 fade-up stagger-1">
                     <div className="flex gap-2 min-w-max">
                         <button
                             onClick={() => setActiveTab("all")}
@@ -205,7 +228,7 @@ export default function BlogPageClient() {
                 </div>
 
                 {/* Sort bar */}
-                <div className="sort-bar bg-white dark:bg-[#0F3347] rounded-2xl border border-[#E0F5FB] dark:border-[#1E5F74] px-5 py-3 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="sort-bar bg-white dark:bg-[#0F3347] rounded-2xl border border-[#E0F5FB] dark:border-[#1E5F74] px-5 py-3 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 fade-up stagger-2">
                     <span className="text-sm text-slate-600 dark:text-[#94A3B8]">
                         Hiển thị <strong className="text-[#005a71] dark:text-[#67E8F9]">{filtered.length}</strong> bài viết
                     </span>
@@ -229,22 +252,21 @@ export default function BlogPageClient() {
                     <div className="flex-1 min-w-0 w-full">
                         {paginatedBlogs.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                                {paginatedBlogs.map((blog) => (
-                                    <BlogCard
-                                        key={blog.id}
-                                        {...blog}
-                                    />
+                                {paginatedBlogs.map((blog, idx) => (
+                                    <div key={blog.id} className={`fade-up stagger-${(idx % 3) + 1}`}>
+                                        <BlogCard {...blog} />
+                                    </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-20 bg-white dark:bg-[#0F3347] rounded-3xl border border-dashed border-slate-300 dark:border-[#1E5F74] text-slate-400">
+                            <div className="text-center py-20 bg-white dark:bg-[#0F3347] rounded-3xl border border-dashed border-slate-300 dark:border-[#1E5F74] text-slate-400 fade-up">
                                 Không tìm thấy bài viết nào phù hợp 😔
                             </div>
                         )}
 
                         {/* Pagination */}
                         {totalPages > 1 && (
-                            <div className="flex justify-center items-center gap-2 mt-10">
+                            <div className="flex justify-center items-center gap-2 mt-10 fade-up">
                                 <button
                                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                                     disabled={currentPage === 1}
@@ -281,7 +303,7 @@ export default function BlogPageClient() {
                     <aside className="w-full lg:w-72 shrink-0 space-y-6 lg:sticky lg:top-20">
 
                         {/* 1. Hộp tìm kiếm bài viết */}
-                        <div className="sidebar-box bg-white dark:bg-[#0F3347] rounded-2xl border border-[#E0F5FB] dark:border-[#1E5F74] p-5">
+                        <div className="sidebar-box bg-white dark:bg-[#0F3347] rounded-2xl border border-[#E0F5FB] dark:border-[#1E5F74] p-5 fade-up stagger-1">
                             <h3 className="font-bold text-[#005a71] dark:text-[#67E8F9] mb-3 flex items-center gap-2 text-sm">
                                 <span className="material-symbols-outlined text-[18px]">search</span> Tìm bài viết
                             </h3>
@@ -298,7 +320,7 @@ export default function BlogPageClient() {
                         </div>
 
                         {/* 2. Bài viết phổ biến */}
-                        <div className="sidebar-box bg-white dark:bg-[#0F3347] rounded-2xl border border-[#E0F5FB] dark:border-[#1E5F74] p-5">
+                        <div className="sidebar-box bg-white dark:bg-[#0F3347] rounded-2xl border border-[#E0F5FB] dark:border-[#1E5F74] p-5 fade-up stagger-2">
                             <h3 className="font-bold text-[#005a71] dark:text-[#67E8F9] mb-4 flex items-center gap-2 text-sm">
                                 <span className="material-symbols-outlined text-[18px]">trending_up</span> Bài viết phổ biến
                             </h3>
@@ -327,7 +349,7 @@ export default function BlogPageClient() {
                         </div>
 
                         {/* 3. Danh mục */}
-                        <div className="sidebar-box bg-white dark:bg-[#0F3347] rounded-2xl border border-[#E0F5FB] dark:border-[#1E5F74] p-5">
+                        <div className="sidebar-box bg-white dark:bg-[#0F3347] rounded-2xl border border-[#E0F5FB] dark:border-[#1E5F74] p-5 fade-up stagger-3">
                             <h3 className="font-bold text-[#005a71] dark:text-[#67E8F9] mb-4 flex items-center gap-2 text-sm">
                                 <span className="material-symbols-outlined text-[18px]">folder_open</span> Danh mục
                             </h3>
@@ -369,7 +391,7 @@ export default function BlogPageClient() {
                         </div>
 
                         {/* 4. Bản tin đăng ký */}
-                        <div className="bg-gradient-to-br from-[#005a71] to-[#0E7490] dark:bg-gradient-to-br dark:from-[#0F3347] dark:to-[#091A27] rounded-2xl p-5 text-white shadow-md shadow-[#005a71]/10 dark:shadow-none border border-transparent dark:border-[#1E5F74]">
+                        <div className="bg-gradient-to-br from-[#005a71] to-[#0E7490] dark:bg-gradient-to-br dark:from-[#0F3347] dark:to-[#091A27] rounded-2xl p-5 text-white shadow-md shadow-[#005a71]/10 dark:shadow-none border border-transparent dark:border-[#1E5F74] fade-up stagger-4">
                             <h3 className="text-sm font-bold mb-1 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[18px] text-amber-300 animate-bounce">notifications</span> Nhận bài viết mới
                             </h3>

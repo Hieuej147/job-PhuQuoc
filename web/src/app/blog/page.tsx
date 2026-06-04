@@ -68,7 +68,7 @@ export default function BlogPage() {
                         '@type': 'ListItem',
                         'position': 1,
                         'name': 'Trang chủ',
-                        'item': 'https://pqjobs.vn/Candidate',
+                        'item': 'https://pqjobs.vn',
                     },
                     {
                         '@type': 'ListItem',

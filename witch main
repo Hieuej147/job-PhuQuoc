@@ -1,0 +1,17 @@
+[33m6a39ab3[m[33m ([m[1;32mmain[m[33m)[m up sửa lỗi compoment trong app và check lại giao diện
+[33m909dee4[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Merge pull request #2 from Hieuej147/ngoan/upcode
+[33mf63cf42[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mngoan/upcode[m[33m, [m[1;31morigin/ngoan/upcode[m[33m)[m up trang chủ và blogs
+[33mcbb6ac4[m fix: deleted .env
+[33m018797a[m update: add folder mocks
+[33m45064c0[m chore: setup pnpm workspace, turbo root config, and gitignore
+[33mdd3bf5c[m update: update some few in root
+[33mde0f739[m fix: resolve conflict README
+[33med22a86[m test protection
+[33m846bf8d[m test protection
+[33m7c3c8b4[m test push main
+[33m6e33f44[m Merge pull request #1 from Hieuej147/test/thu-pull-request
+[33m66897e1[m test: thu tao pull request
+[33m6b246ba[m add empty backend folder
+[33m5b21892[m first commit
+[33mc38ee9b[m first commit
+[33m218d91c[m first commit
