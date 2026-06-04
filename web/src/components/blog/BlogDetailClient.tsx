@@ -40,11 +40,11 @@ export default function BlogDetailClient({
     // Extract headings for TOC
     const headingsList = useMemo(() => {
         if (!blog.content) return [];
-        const matches = Array.from(blog.content.matchAll(/<h2>(.*?)<\/h2>/g));
+        const matches = Array.from(blog.content.matchAll(/<h2[^>]*>(.*?)<\/h2>/g));
         return matches.map(match => match[1].replace(/^\d+\.\s*/, ''));
     }, [blog.content]);
 
-    // Handle scroll for TOC active states and reading progress
+    // Handle scroll for TOC active states, reading progress and scroll animations
     useEffect(() => {
         const handleScroll = () => {
             // Reading progress
@@ -72,6 +72,29 @@ export default function BlogDetailClient({
 
         window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
+    }, [blog.content]);
+
+    // Intersection Observer for scroll animation
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries, obs) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("visible");
+                        obs.unobserve(entry.target);
+                    }
+                });
+            },
+            { threshold: 0.05 }
+        );
+
+        document.querySelectorAll(".fade-up").forEach((el) => {
+            observer.observe(el);
+        });
+
+        return () => {
+            observer.disconnect();
+        };
     }, []);
 
     const scrollToHeading = (index: number) => {
@@ -124,12 +147,12 @@ export default function BlogDetailClient({
             {/* HERO */}
             <div className="pt-0">
                 <div className="bg-gradient-to-br from-[#004d62] via-[#0e7490] to-[#0d9488] dark:from-[#001522] dark:via-[#00293a] dark:to-[#002e2a] py-12">
-                    <div className="max-w-7xl mx-auto px-4 md:px-8">
+                    <div className="max-w-7xl mx-auto px-4 md:px-8 fade-up">
                         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
                             <div className="lg:col-span-3">
                                 {/* Breadcrumb */}
                                 <nav className="flex items-center gap-2 text-xs text-white/65 mb-6">
-                                    <Link href="/Candidate" className="hover:text-white transition-colors">Trang chủ</Link>
+                                    <Link href="/" className="hover:text-white transition-colors">Trang chủ</Link>
                                     <span className="material-symbols-outlined text-[14px]">chevron_right</span>
                                     <Link href="/blog" className="hover:text-white transition-colors">Blog</Link>
                                     <span className="material-symbols-outlined text-[14px]">chevron_right</span>
@@ -181,25 +204,9 @@ export default function BlogDetailClient({
 
                     {/* LEFT COLUMN: ARTICLE BODY */}
                     <div className="lg:col-span-3">
-                        <article id="article-content" className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#e0f5fb] dark:border-[#1a3d5c] p-6 md:p-10 shadow-sm">
-                            {blog.thumbnail && (
-                                <img
-                                    src={blog.thumbnail}
-                                    alt={blog.title}
-                                    className="w-full h-64 md:h-[400px] object-cover rounded-xl mb-8"
-                                />
-                            )}
-
+                        <article id="article-content" className="fade-up stagger-1">
                             <div
-                                className="article-body prose prose-slate dark:prose-invert max-w-none 
-                                prose-headings:text-[#005a71] dark:prose-headings:text-[#67e8f9]
-                                prose-h2:border-l-3 prose-h2:border-[#0e7490] prose-h2:pl-3 prose-h2:font-bold prose-h2:text-[1.2rem]
-                                prose-h3:font-bold prose-h3:text-[1rem]
-                                prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-p:leading-[1.85] prose-p:text-[0.9375rem]
-                                prose-strong:text-[#005a71] dark:prose-strong:text-[#67e8f9] prose-strong:font-bold
-                                prose-ul:list-none prose-ul:pl-0
-                                prose-li:relative prose-li:pl-6 prose-li:py-1.5
-                                prose-li:before:content-['→'] prose-li:before:absolute prose-li:before:left-0 prose-li:before:text-[#0e7490] dark:prose-li:before:text-[#67e8f9] prose-li:before:font-bold"
+                                className="article-body max-w-none"
                                 dangerouslySetInnerHTML={{ __html: blog.content || "" }}
                             />
 
@@ -207,11 +214,12 @@ export default function BlogDetailClient({
                             <div className="mt-8 pt-6 border-t border-[#e0f5fb] dark:border-[#1a3d5c]">
                                 <p className="text-xs font-semibold text-slate-500 dark:text-[#94a3b8] mb-3">Thẻ liên quan:</p>
                                 <div className="flex flex-wrap gap-2">
-                                    <span className="text-xs bg-slate-100 dark:bg-[#1a3d5c] text-[#0d9488] dark:text-[#67e8f9] font-bold px-3 py-1 rounded-md">Resort 5 sao</span>
-                                    <span className="text-xs bg-slate-100 dark:bg-[#1a3d5c] text-[#0d9488] dark:text-[#67e8f9] font-bold px-3 py-1 rounded-md">Kỹ năng khách sạn</span>
-                                    <span className="text-xs bg-slate-100 dark:bg-[#1a3d5c] text-[#0d9488] dark:text-[#67e8f9] font-bold px-3 py-1 rounded-md">Phú Quốc</span>
-                                    <span className="text-xs bg-slate-100 dark:bg-[#1a3d5c] text-[#0d9488] dark:text-[#67e8f9] font-bold px-3 py-1 rounded-md">Tiếng Anh</span>
-                                    <span className="text-xs bg-slate-100 dark:bg-[#1a3d5c] text-[#0d9488] dark:text-[#67e8f9] font-bold px-3 py-1 rounded-md">Tuyển dụng</span>
+                                    <span className="text-[0.72rem] bg-teal-500/10 dark:bg-cyan-500/12 text-[#0d9488] dark:text-[#67e8f9] font-semibold px-2.5 py-1 rounded-[6px]">Resort 5 sao</span>
+                                    <span className="text-[0.72rem] bg-teal-500/10 dark:bg-cyan-500/12 text-[#0d9488] dark:text-[#67e8f9] font-semibold px-2.5 py-1 rounded-[6px]">Kỹ năng khách sạn</span>
+                                    <span className="text-[0.72rem] bg-teal-500/10 dark:bg-cyan-500/12 text-[#0d9488] dark:text-[#67e8f9] font-semibold px-2.5 py-1 rounded-[6px]">Phú Quốc</span>
+                                    <span className="text-[0.72rem] bg-teal-500/10 dark:bg-cyan-500/12 text-[#0d9488] dark:text-[#67e8f9] font-semibold px-2.5 py-1 rounded-[6px]">Tiếng Anh</span>
+                                    <span className="text-[0.72rem] bg-teal-500/10 dark:bg-cyan-500/12 text-[#0d9488] dark:text-[#67e8f9] font-semibold px-2.5 py-1 rounded-[6px]">Tuyển dụng</span>
+                                    <span className="text-[0.72rem] bg-teal-500/10 dark:bg-cyan-500/12 text-[#0d9488] dark:text-[#67e8f9] font-semibold px-2.5 py-1 rounded-[6px]">Nghề khách sạn</span>
                                 </div>
                             </div>
 
@@ -236,7 +244,7 @@ export default function BlogDetailClient({
                             </div>
 
                             {/* Author Card */}
-                            <div className="mt-8 border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-2xl p-5 flex items-start gap-4 bg-slate-50/50 dark:bg-[#0a1e30]/30">
+                            <div className="mt-8 bg-white dark:bg-[#0d2137] border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-2xl p-5 flex items-start gap-4 shadow-sm">
                                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0e7490] to-[#0d9488] flex items-center justify-center text-white font-bold text-lg shrink-0">
                                     {authorInitials}
                                 </div>
@@ -250,35 +258,37 @@ export default function BlogDetailClient({
 
                         {/* Related Blogs */}
                         <div className="mt-12">
-                            <h2 className="text-lg font-bold text-[#005a71] dark:text-[#67e8f9] mb-6 flex items-center gap-2">
+                            <h2 className="text-lg font-bold text-[#005a71] dark:text-[#67e8f9] mb-6 flex items-center gap-2 fade-up">
                                 <span className="material-symbols-outlined">auto_stories</span> Bài viết liên quan
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                {relatedBlogs.map((b) => (
-                                    <Link key={b.id} href={`/blog/${b.slug}`} className="related-blog group bg-white dark:bg-[#0d2137] border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 block">
-                                        <div className="h-36 bg-gradient-to-br from-[#0EA5E9] to-[#006a61] relative flex items-center justify-center overflow-hidden">
-                                            {b.thumbnail ? (
-                                                <img src={b.thumbnail} alt={b.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                            ) : (
-                                                <span className="material-symbols-outlined text-white/25" style={{ fontSize: "60px" }}>restaurant</span>
-                                            )}
-                                            <span className="absolute top-3 left-3 bg-black/40 text-white text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
-                                                {categoryName}
-                                            </span>
-                                        </div>
-                                        <div className="p-4">
-                                            <p className="font-bold text-sm text-[#001e30] dark:text-[#e0f2fe] group-hover:text-[#005a71] dark:group-hover:text-[#67e8f9] transition-colors line-clamp-2">
-                                                {b.title}
-                                            </p>
-                                            <div className="flex items-center gap-3 mt-2 text-xs text-slate-400 dark:text-[#94a3b8]">
-                                                <span>{new Date(b.createdAt).toLocaleDateString("vi-VN")}</span>
-                                                <span>•</span>
-                                                <span>6 phút đọc</span>
-                                                <span>•</span>
-                                                <span>{formatViews(b.views)} lượt xem</span>
+                                {relatedBlogs.map((b, idx) => (
+                                    <div key={b.id} className={`fade-up stagger-${(idx % 2) + 1}`}>
+                                        <Link href={`/blog/${b.slug}`} className="related-blog group bg-white dark:bg-[#0d2137] border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 block">
+                                            <div className="h-36 bg-gradient-to-br from-[#0EA5E9] to-[#006a61] relative flex items-center justify-center overflow-hidden">
+                                                {b.thumbnail ? (
+                                                    <img src={b.thumbnail} alt={b.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                ) : (
+                                                    <span className="material-symbols-outlined text-white/25" style={{ fontSize: "60px" }}>restaurant</span>
+                                                )}
+                                                <span className="absolute top-3 left-3 bg-black/40 text-white text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                                    {categoryName}
+                                                </span>
                                             </div>
-                                        </div>
-                                    </Link>
+                                            <div className="p-4">
+                                                <p className="font-bold text-sm text-[#001e30] dark:text-[#e0f2fe] group-hover:text-[#005a71] dark:group-hover:text-[#67e8f9] transition-colors line-clamp-2">
+                                                    {b.title}
+                                                </p>
+                                                <div className="flex items-center gap-3 mt-2 text-xs text-slate-400 dark:text-[#94a3b8]">
+                                                    <span>{new Date(b.createdAt).toLocaleDateString("vi-VN")}</span>
+                                                    <span>•</span>
+                                                    <span>6 phút đọc</span>
+                                                    <span>•</span>
+                                                    <span>{formatViews(b.views)} lượt xem</span>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    </div>
                                 ))}
                             </div>
                         </div>
@@ -289,7 +299,7 @@ export default function BlogDetailClient({
 
                         {/* 1. Dynamic Table of Contents (TOC) */}
                         {headingsList.length > 0 && (
-                            <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#e0f5fb] dark:border-[#1a3d5c] p-5 lg:sticky lg:top-20 shadow-sm">
+                            <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#e0f5fb] dark:border-[#1a3d5c] p-5 lg:sticky lg:top-20 shadow-sm fade-up stagger-1">
                                 <h3 className="font-bold text-sm text-[#005a71] dark:text-[#67e8f9] mb-3 flex items-center gap-2">
                                     <span className="material-symbols-outlined text-[18px]">toc</span> Mục lục
                                 </h3>
@@ -318,12 +328,12 @@ export default function BlogDetailClient({
                         )}
 
                         {/* 2. CTA: Find jobs */}
-                        <div className="bg-gradient-to-br from-[#004d62] to-[#0d9488] dark:from-[#001522] dark:to-[#002e2a] rounded-2xl p-5 text-center shadow-sm">
+                        <div className="bg-gradient-to-br from-[#004d62] to-[#0d9488] dark:from-[#001522] dark:to-[#002e2a] rounded-2xl p-5 text-center shadow-sm fade-up stagger-2">
                             <span className="material-symbols-outlined text-[#67e8f9] text-4xl mb-3 block">work_history</span>
                             <p className="font-bold text-white text-sm mb-1">Tìm việc tại resort ngay!</p>
                             <p className="text-white/70 text-xs mb-4">350+ vị trí đang tuyển dụng tại Phú Quốc</p>
                             <Link
-                                href="/Candidate"
+                                href="/"
                                 className="block w-full bg-[#F59E0B] hover:bg-[#D97706] text-white font-bold py-2.5 rounded-xl text-sm transition-colors text-center"
                             >
                                 Xem việc làm →
@@ -331,7 +341,7 @@ export default function BlogDetailClient({
                         </div>
 
                         {/* 3. Newsletter */}
-                        <div className="bg-white dark:bg-[#0d2137] border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-2xl p-5 shadow-sm">
+                        <div className="bg-white dark:bg-[#0d2137] border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-2xl p-5 shadow-sm fade-up stagger-3">
                             <h3 className="font-bold text-sm text-[#005a71] dark:text-[#67e8f9] mb-1">Nhận bài viết mới</h3>
                             <p className="text-xs text-slate-500 dark:text-[#94a3b8] mb-3">Cẩm nang nghề nghiệp ngay trong hộp thư</p>
                             <input
@@ -347,7 +357,7 @@ export default function BlogDetailClient({
                         </div>
 
                         {/* 4. Popular posts */}
-                        <div className="bg-white dark:bg-[#0d2137] border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-2xl p-5 shadow-sm">
+                        <div className="bg-white dark:bg-[#0d2137] border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-2xl p-5 shadow-sm fade-up stagger-4">
                             <h3 className="font-bold text-sm text-[#005a71] dark:text-[#67e8f9] mb-4 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[18px]">trending_up</span> Bài đọc nhiều
                             </h3>

@@ -20,7 +20,7 @@ export default function Header() {
     }, []);
 
     const navItems = [
-        { label: "Trang chủ", href: "/Candidate" },
+        { label: "Trang chủ", href: "/" },
         { label: "Việc làm", href: "/jobs" },
         { label: "Công ty", href: "/companies" },
         { label: "Blog", href: "/blog" },
@@ -46,19 +46,8 @@ export default function Header() {
                 return <ShieldAlert className="w-4 h-4 text-indigo-600" />;
         }
     };
-
     return (
         <>
-            {/* Font Be Vietnam Pro */}
-            <link
-                href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
-                rel="stylesheet"
-            />
-            <link
-                href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
-                rel="stylesheet"
-            />
-
             <nav
                 id="navbar"
                 className={`fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md transition-all duration-300
@@ -68,7 +57,7 @@ export default function Header() {
                 <div className="flex justify-between items-center h-16 px-4 md:px-8 max-w-7xl mx-auto">
 
                     {/* LOGO */}
-                    <Link href="/Candidate" className="flex items-center gap-0.5 text-[22px] font-bold tracking-tight select-none">
+                    <Link href="/" className="flex items-center gap-0.5 text-[22px] font-bold tracking-tight select-none">
                         <span className="text-[#F59E0B]">PQ</span>
                         <span className="text-[#005a71]">Jobs</span>
                     </Link>
@@ -77,14 +66,14 @@ export default function Header() {
                     <div className="hidden md:flex items-center gap-8 h-full">
                         {navItems.map((item) => {
                             const isActive =
-                                item.href === "/Candidate"
-                                    ? pathname === "/Candidate"
+                                item.href === "/"
+                                    ? pathname === "/"
                                     : pathname.startsWith(item.href);
                             return (
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`h-16 flex items-center border-b-2 text-[14px] font-semibold transition-all duration-150
+                                    className={`h-8 flex items-center border-b-1 text-[14px] font-semibold transition-all duration-150
                                         ${isActive
                                             ? "text-[#005a71] border-[#005a71] font-bold"
                                             : "text-slate-600 border-transparent hover:text-[#005a71]"
@@ -217,8 +206,8 @@ export default function Header() {
                         <nav className="flex flex-col gap-1">
                             {navItems.map((item) => {
                                 const isActive =
-                                    item.href === "/Candidate"
-                                        ? pathname === "/Candidate"
+                                    item.href === "/"
+                                        ? pathname === "/"
                                         : pathname.startsWith(item.href);
                                 return (
                                     <Link

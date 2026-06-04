@@ -123,7 +123,7 @@ export default async function BlogDetailPage({ params }: RouteProps) {
         .slice(0, 3);
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
+        <div className={`min-h-screen flex flex-col font-sans text-slate-800 ${blog.type === 'NORMAL' ? 'bg-[#f7f9ff] dark:bg-[#071a2b]' : 'bg-white'}`}>
             {/* NHÚNG SCHEMA MARKUP (JSON-LD) CHO GOOGLE SEO */}
             <script
                 type="application/ld+json"
@@ -141,38 +141,58 @@ export default async function BlogDetailPage({ params }: RouteProps) {
                 />
             ) : (
                 /* ── LANDING PAGE ── */
-                <>
-                    <Header />
-                    <main className="flex-grow max-w-7xl w-full mx-auto px-4 py-8">
-                        <Link href="/blog" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-cyan-600 transition-colors mb-6">
-                            <ArrowLeft className="w-4 h-4" /> Quay lại danh sách bài viết
-                        </Link>
-                        <div className="space-y-6">
-                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8">
-                                <span className="inline-block bg-violet-50 text-violet-600 border border-violet-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full mb-3">
-                                    Landing Page
-                                </span>
-                                <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight mb-4">{blog.title}</h1>
-                                <p className="text-slate-500 text-sm">{blog.excerpt}</p>
-                                <div className="flex flex-wrap gap-4 text-xs text-slate-500 mt-4">
-                                    <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" />{authorName}</span>
-                                    <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />{formattedDate}</span>
-                                    <span className="flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" />{viewCount} lượt xem</span>
-                                </div>
-                            </div>
-                            {blog.landing_content ? (
+                (() => {
+                    const isFullHtml = blog.landing_content?.html.trim().startsWith('<!DOCTYPE html>') || blog.landing_content?.html.includes('<html') || blog.landing_content?.html.includes('<HTML');
+                    if (isFullHtml) {
+                        return blog.landing_content ? (
+                            <div className="w-screen h-screen overflow-hidden">
                                 <LandingPageIframe
                                     css={blog.landing_content.css}
                                     html={blog.landing_content.html}
                                     js={blog.landing_content.js}
+                                    fullScreen={true}
                                 />
-                            ) : (
-                                <p className="text-center py-10 text-slate-400 italic">Landing page chưa có nội dung.</p>
-                            )}
-                        </div>
-                    </main>
-                    <Footer />
-                </>
+                            </div>
+                        ) : (
+                            <p className="text-center py-10 text-slate-400 italic">Landing page chưa có nội dung.</p>
+                        );
+                    }
+
+                    return (
+                        <>
+                            <Header />
+                            <main className="flex-grow max-w-7xl w-full mx-auto px-4 py-8">
+                                <Link href="/blog" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-cyan-600 transition-colors mb-6">
+                                    <ArrowLeft className="w-4 h-4" /> Quay lại danh sách bài viết
+                                </Link>
+                                <div className="space-y-6">
+                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8">
+                                        <span className="inline-block bg-violet-50 text-violet-600 border border-violet-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full mb-3">
+                                            Landing Page
+                                        </span>
+                                        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight mb-4">{blog.title}</h1>
+                                        <p className="text-slate-500 text-sm">{blog.excerpt}</p>
+                                        <div className="flex flex-wrap gap-4 text-xs text-slate-500 mt-4">
+                                            <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" />{authorName}</span>
+                                            <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />{formattedDate}</span>
+                                            <span className="flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" />{viewCount} lượt xem</span>
+                                        </div>
+                                    </div>
+                                    {blog.landing_content ? (
+                                        <LandingPageIframe
+                                            css={blog.landing_content.css}
+                                            html={blog.landing_content.html}
+                                            js={blog.landing_content.js}
+                                        />
+                                    ) : (
+                                        <p className="text-center py-10 text-slate-400 italic">Landing page chưa có nội dung.</p>
+                                    )}
+                                </div>
+                            </main>
+                            <Footer />
+                        </>
+                    );
+                })()
             )}
         </div>
     );
