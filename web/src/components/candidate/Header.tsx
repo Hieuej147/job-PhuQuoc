@@ -14,7 +14,7 @@ export default function Header() {
     const navItems = [
         { label: "Trang chủ", href: "/Candidate" },
         { label: "Việc làm", href: "#" },
-        { label: "Công ty", href: "##" },
+        { label: "Công ty", href: "/Company" },
         { label: "Blog", href: "/blog" },
     ];
 
