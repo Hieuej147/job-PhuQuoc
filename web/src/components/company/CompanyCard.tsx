@@ -113,7 +113,7 @@ export default function CompanyCard({ company, index = 0 }: CompanyCardProps) {
               {followed ? "✓ Đang theo" : "+ Theo dõi"}
             </button>
             <Link
-              href={`/Company/${company.slug}`}
+              href={`/companies/${company.slug}`}
               className="text-[11px] font-semibold bg-[#005a71] text-white px-2.5 py-1 rounded-lg hover:bg-[#0e7490] transition-all"
             >
               Xem

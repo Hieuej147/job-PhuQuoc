@@ -15,7 +15,7 @@ export default function NotFound() {
             Có vẻ đường dẫn bạn đang truy cập đã bị thay đổi, xóa bỏ hoặc không có thực trên bản đồ việc làm Phú Quốc (PQJobs).
           </p>
           <div className="flex flex-col sm:flex-row gap-3 w-full">
-            <Link href="/Candidate" className="flex-1 text-center py-2.5 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold text-xs rounded-xl transition-all shadow-sm active:scale-[0.98]">
+            <Link href="/" className="flex-1 text-center py-2.5 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold text-xs rounded-xl transition-all shadow-sm active:scale-[0.98]">
               Trang tuyển dụng
             </Link>
             <Link href="/blog" className="flex-1 text-center py-2.5 bg-[#0891b2] hover:bg-[#025a70] text-white font-bold text-xs rounded-xl transition-all shadow-sm active:scale-[0.98]">

@@ -57,7 +57,7 @@ export default function CompanyDetailClient({ company }: { company: Company }) {
           <div className="absolute top-4 left-4 md:left-8 flex items-center gap-2 text-xs text-white/70">
             <Link href="/" className="hover:text-white">Trang chủ</Link>
             <span>›</span>
-            <Link href="/Company" className="hover:text-white">Công ty</Link>
+            <Link href="/companies" className="hover:text-white">Công ty</Link>
             <span>›</span>
             <span className="text-white">{company.name}</span>
           </div>
@@ -300,7 +300,7 @@ export default function CompanyDetailClient({ company }: { company: Company }) {
               <h3 className="font-bold text-sm text-[#005a71] mb-4">Công ty tương tự</h3>
               <div className="space-y-3">
                 {similarCompanies.map((sc) => (
-                  <Link key={sc.name} href={`/Company/${sc.slug}`}
+                  <Link key={sc.name} href={`/companies/${sc.slug}`}
                     className="flex items-center gap-3 hover:bg-[#e1efff] p-2 rounded-xl transition-colors group"
                   >
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"

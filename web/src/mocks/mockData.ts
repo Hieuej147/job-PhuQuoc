@@ -15,10 +15,14 @@ export const mockDistricts = [
 
 // 3. BẢNG PHƯỜNG XÃ (wards)
 export const mockWards = [
-    { id: "ward-duongdong", name: "Phường Dương Đông", slug: "phuong-duong-dong", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" },
-    { id: "ward-anthoi", name: "Phường An Thới", slug: "phuong-an-thoi", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" },
-    { id: "ward-ganhdau", name: "Xã Gành Dầu", slug: "xa-ganh-dau", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" },
-    { id: "ward-duongto", name: "Xã Dương Tơ", slug: "xa-duong-to", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" }
+    { id: "ward-duongdong", name: "Dương Đông", slug: "duong-dong", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" },
+    { id: "ward-anthoi", name: "An Thới", slug: "an-thoi", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" },
+    { id: "ward-ganhdau", name: "Gành Dầu", slug: "ganh-dau", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" },
+    { id: "ward-bacdao", name: "Bắc Đảo", slug: "bac-dao", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" },
+    { id: "ward-baitruong", name: "Bãi Trường", slug: "bai-truong", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" },
+    { id: "ward-duongto", name: "Dương Tơ", slug: "duong-to", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" },
+    { id: "ward-hamninh", name: "Hàm Ninh", slug: "ham-ninh", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" },
+    { id: "ward-cuacan", name: "Cửa Cạn", slug: "cua-can", districtId: "dist-phuquoc", createdAt: "2026-01-01T00:00:00Z" }
 ];
 
 // 4. BẢNG NGƯỜI DÙNG (users)
@@ -127,10 +131,6 @@ export const mockBlogCategories = [
 ];
 
 // 9. BẢNG BÀI VIẾT (blogs)
-// Thay thế mockBlogs trong file src/mocks/mockData.ts của bạn
-
-// Thay thế mockBlogs trong file src/mocks/mockData.ts của bạn
-
 export const mockBlogs = [
     {
         id: "blog-001",
@@ -138,16 +138,86 @@ export const mockBlogs = [
         slug: "5-ky-nang-bat-buoc-lam-viec-resort-5-sao-phu-quoc",
         type: "NORMAL" as const,
         content: `
-          <h2>1. Tiếng Anh giao tiếp chuyên nghiệp</h2>
-          <p>Tiếng Anh giao tiếp là chìa khóa vàng giúp bạn kết nối và phục vụ khách du lịch quốc tế chu đáo nhất tại các hệ thống resort 5 sao lớn ở Phú Quốc.</p>
-          <h2>2. Tư duy dịch vụ</h2>
-          <p>Luôn đặt sự hài lòng của khách hàng lên hàng đầu, chủ động lắng nghe, thấu cảm và mang lại những trải nghiệm vượt trội ngoài mong đợi của khách.</p>
-          <h2>3. Kỹ năng làm việc nhóm</h2>
-          <p>Sự phối hợp nhịp nhàng giữa các bộ phận như Tiền sảnh, Buồng phòng và F&B sẽ tạo nên một dịch vụ đẳng cấp, liền mạch cho du khách nghỉ dưỡng.</p>
-          <h2>4. Chịu áp lực & ca linh hoạt</h2>
-          <p>Đặc thù ngành dịch vụ du lịch đảo ngọc yêu cầu bạn luôn duy trì năng lượng tích cực, sẵn sàng làm việc vào các khung giờ linh hoạt hay mùa cao điểm.</p>
-          <h2>5. Hình thức & tác phong</h2>
-          <p>Tác phong làm việc chỉn chu, trang phục gọn gàng cùng nụ cười rạng rỡ chính là điểm cộng tuyệt đối gây ấn tượng sâu sắc ngay từ cái nhìn đầu tiên.</p>
+          <p>Phú Quốc đang trở thành một trong những điểm đến resort hot nhất Đông Nam Á, với hàng loạt
+              resort 5 sao liên tục mở cửa. Điều này tạo ra nhu cầu tuyển dụng nhân sự khách sạn khổng lồ
+              — nhưng cũng đặt ra yêu cầu ngày càng cao hơn với ứng viên.</p>
+          <p>Chúng tôi đã khảo sát HR của hơn 20 resort hàng đầu Phú Quốc, từ Vinpearl, InterContinental
+              đến Premier Village. Dưới đây là <strong>5 kỹ năng không thể thiếu</strong> mà bất kỳ ai
+              muốn làm việc tại môi trường resort 5 sao đều phải có.</p>
+
+          <div class="highlight-box">
+              <p>"Chúng tôi không tìm người biết làm — chúng tôi tìm người biết phục vụ với trái tim." —
+                  HR Director, Vinpearl Resort Phú Quốc</p>
+          </div>
+
+          <h2 id="skill-1">1. Tiếng Anh giao tiếp chuyên nghiệp</h2>
+          <p>Đây là yêu cầu số một, không thể thương lượng. Khách hàng tại resort 5 sao Phú Quốc đến từ
+              hơn 50 quốc gia — từ châu Âu, Bắc Mỹ đến Trung Đông và Đông Á.</p>
+          <h3>Mức độ cần thiết theo bộ phận:</h3>
+          <ul>
+              <li><strong>Tiền sảnh & Concierge:</strong> Tiếng Anh lưu loát (IELTS 6.5+), ưu tiên biết
+                  thêm tiếng Nga hoặc tiếng Trung</li>
+              <li><strong>F&B:</strong> Tiếng Anh giao tiếp tốt (IELTS 5.5+) là đủ</li>
+              <li><strong>Buồng phòng:</strong> Tiếng Anh cơ bản, chủ yếu giao tiếp qua hành động</li>
+              <li><strong>Marketing & Sales:</strong> Tiếng Anh viết tốt, đặc biệt kỹ năng email và thuyết
+                  trình</li>
+          </ul>
+
+          <h2 id="skill-2">2. Tư duy dịch vụ — "Service Mindset"</h2>
+          <p>Đây là yếu tố khó dạy nhất nhưng lại được đánh giá cao nhất. Service mindset không phải là
+              cúi đầu hay nói "dạ vâng" mọi lúc — đó là khả năng <strong>đọc vị nhu cầu của khách trước
+                  khi họ nói ra</strong>.</p>
+          <ul>
+              <li>Chủ động chào hỏi và nhận diện khách VIP</li>
+              <li>Ghi nhớ tên khách, sở thích cá nhân, dị ứng thực phẩm</li>
+              <li>Xử lý phàn nàn với thái độ bình tĩnh và giải pháp tức thì</li>
+              <li>Luôn đặt trải nghiệm khách hàng lên trên quy trình</li>
+          </ul>
+
+          <div class="highlight-box">
+              <p>Tại Premier Village, nhân viên được đào tạo theo triết lý: "Say YES before you say NO".
+                  Mọi yêu cầu của khách đều được lắng nghe nghiêm túc, tìm phương án thay thế nếu không
+                  thể đáp ứng trực tiếp.</p>
+          </div>
+
+          <h2 id="skill-3">3. Kỹ năng làm việc nhóm liên bộ phận</h2>
+          <p>Resort 5 sao là một cỗ máy phức tạp với hàng chục bộ phận phối hợp với nhau. Một khách
+              check-in muộn vào lúc 2 giờ sáng cần sự phối hợp của: lễ tân, buồng phòng, bếp (nếu muốn ăn
+              khuya), kỹ thuật (nếu có vấn đề phòng).</p>
+          <ul>
+              <li>Sử dụng thành thạo hệ thống quản lý khách sạn (PMS: Opera, VinHMS...)</li>
+              <li>Kỹ năng giao tiếp nội bộ rõ ràng, ngắn gọn</li>
+              <li>Tôn trọng quy trình bàn giao ca (handover)</li>
+              <li>Không "đá bóng" trách nhiệm giữa các bộ phận trước mặt khách</li>
+          </ul>
+
+          <h2 id="skill-4">4. Khả năng chịu áp lực và làm ca linh hoạt</h2>
+          <p>Resort không có ngày nghỉ — thực ra, <strong>lễ tết và dịp nghỉ hè chính là thời điểm cao
+                  điểm nhất</strong>. Ứng viên cần chuẩn bị tâm lý làm việc ca đêm, ca xoay, và xử lý
+              nhiều tình huống cùng lúc trong giờ rush.</p>
+          <ul>
+              <li>Kỹ năng quản lý thời gian và ưu tiên công việc</li>
+              <li>Giữ phong thái chuyên nghiệp kể cả khi mệt mỏi</li>
+              <li>Thích nghi nhanh với thay đổi (hủy sự kiện, thay đổi menu, sự cố kỹ thuật)</li>
+              <li>Không để cảm xúc cá nhân ảnh hưởng đến chất lượng dịch vụ</li>
+          </ul>
+
+          <h2 id="skill-5">5. Hình thức và tác phong chuyên nghiệp</h2>
+          <p>Bạn là gương mặt của resort. Từ cách ăn mặc theo đồng phục, đến cách đứng, đi lại và cười —
+              tất cả đều được chuẩn hóa và kiểm tra thường xuyên.</p>
+          <ul>
+              <li>Tuân thủ nghiêm ngặt quy định về đồng phục và vệ sinh cá nhân</li>
+              <li>Ngôn ngữ cơ thể mở, thân thiện nhưng vẫn chuyên nghiệp</li>
+              <li>Giọng nói rõ ràng, tốc độ vừa phải, không dùng slang</li>
+              <li>Biểu cảm khuôn mặt tự nhiên, không gượng gạo</li>
+          </ul>
+
+          <h2 id="conclusion">Tổng kết</h2>
+          <p>Resort 5 sao tại Phú Quốc không chỉ tuyển người có kỹ năng — họ tuyển người có <strong>thái
+                  độ đúng đắn</strong>. Kỹ năng có thể được đào tạo, nhưng đam mê phục vụ và sự tận tâm
+              thì phải đến từ bên trong.</p>
+          <p>Nếu bạn có những phẩm chất trên và đang tìm kiếm cơ hội tại đảo ngọc, hãy khám phá ngay các
+              vị trí đang tuyển dụng trên PQJobs!</p>
         `,
         landing_content: null,
         thumbnail: "https://images.unsplash.com/photo-1540206395-68808572332f?q=80&w=1200",

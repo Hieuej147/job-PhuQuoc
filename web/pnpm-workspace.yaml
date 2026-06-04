@@ -1,0 +1,6 @@
+allowBuilds:
+  '@scarf/scarf': false
+  sharp: false
+onlyBuiltDependencies:
+  - sharp
+  - '@scarf/scarf'

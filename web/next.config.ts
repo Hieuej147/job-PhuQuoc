@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
     // Docker route override uses HttpAgent which has a type mismatch with CopilotRuntime
     ignoreBuildErrors: true,
   },
+  turbopack: {
+    root: "../",
+  },
 };
 
 export default nextConfig;
