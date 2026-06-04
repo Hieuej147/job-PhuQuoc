@@ -37,10 +37,13 @@ export default function CompanyCard({ company, index = 0 }: CompanyCardProps) {
   const jobCount = company.jobCount || 0
   const isHot = company.isHot || false
   const isFeatured = company.isFeatured || false
+  const staggerClass = `stagger-${(index % 8) + 1}`
 
   return (
-    <div className="relative bg-white rounded-2xl border border-[#E0F5FB] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-      
+    <Link
+      href={`/companies/${company.slug}`}
+      className={`fade-up ${staggerClass} relative bg-white rounded-2xl border border-[#E0F5FB] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block cursor-pointer`}
+    >
       {/* Featured ribbon */}
       {isFeatured && (
         <div
@@ -101,26 +104,21 @@ export default function CompanyCard({ company, index = 0 }: CompanyCardProps) {
           <div className="flex items-center gap-1 text-xs text-[#3f484c]">
             📍 {location}
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setFollowed(!followed)}
-              className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all border ${
-                followed
-                  ? "bg-[#67E8F9] text-[#0C2231] border-[#67E8F9]"
-                  : "border-[#bec8cd]/40 text-[#3f484c] hover:border-[#005a71] hover:text-[#005a71]"
-              }`}
-            >
-              {followed ? "✓ Đang theo" : "+ Theo dõi"}
-            </button>
-            <Link
-              href={`/companies/${company.slug}`}
-              className="text-[11px] font-semibold bg-[#005a71] text-white px-2.5 py-1 rounded-lg hover:bg-[#0e7490] transition-all"
-            >
-              Xem
-            </Link>
-          </div>
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              setFollowed(!followed)
+            }}
+            className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all border ${
+              followed
+                ? "bg-[#67E8F9] text-[#0C2231] border-[#67E8F9]"
+                : "border-[#bec8cd]/40 text-[#3f484c] hover:border-[#005a71] hover:text-[#005a71]"
+            }`}
+          >
+            {followed ? "✓ Đang theo" : "+ Theo dõi"}
+          </button>
         </div>
       </div>
-    </div>
+    </Link>
   )
 }
