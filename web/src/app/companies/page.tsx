@@ -1,12 +1,14 @@
 // Võ Thành Phú
 "use client"
 
+import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { useState } from "react"
 import Link from "next/link"
 import { mockCompanyList, industryTabs } from "@/mocks/mockCompanyData"
 import CompanyCard from "@/components/company/CompanyCard"
 
 export default function CompanyPage() {
+  useScrollAnimation()
   const [activeTab, setActiveTab] = useState("")
   const [searchText, setSearchText] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
@@ -24,19 +26,20 @@ export default function CompanyPage() {
     <div className="bg-[#f7f9ff] min-h-screen">
 
       {/* HERO */}
-      <section className="pt-16 bg-gradient-to-br from-[#0E7490] via-[#0D9488] to-[#005a71]">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
-          <div className="text-center mb-8">
-            <h1 className="text-white font-bold text-3xl md:text-4xl mb-3">
-              Khám phá nhà tuyển dụng tại Phú Quốc
-            </h1>
-            <p className="text-white/80 text-lg max-w-xl mx-auto">
-              Hơn <span className="font-bold text-[#FCD34D]">300+</span> công ty đang tuyển dụng trên đảo ngọc
-            </p>
-          </div>
+      {/* HERO */}
+<section className="pt-16 bg-gradient-to-br from-[#0E7490] via-[#0D9488] to-[#005a71]">
+  <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
+    <div className="fade-up stagger-1 text-center mb-8">
+      <h1 className="text-white font-bold text-3xl md:text-4xl mb-3">
+        Khám phá nhà tuyển dụng tại Phú Quốc
+      </h1>
+      <p className="text-white/80 text-lg max-w-xl mx-auto">
+        Hơn <span className="font-bold text-[#FCD34D]">300+</span> công ty đang tuyển dụng trên đảo ngọc
+      </p>
+    </div>
 
           {/* Search bar */}
-          <div className="bg-white rounded-2xl shadow-xl flex flex-col md:flex-row items-stretch overflow-hidden max-w-3xl mx-auto">
+          <div className="fade-up stagger-2 bg-white rounded-2xl shadow-xl flex flex-col md:flex-row items-stretch overflow-hidden max-w-3xl mx-auto">
             <div className="flex-1 flex items-center px-5 border-b md:border-b-0 md:border-r border-[#bec8cd]/20">
               <span className="text-[#6f787d] mr-3">🔍</span>
               <input
@@ -62,7 +65,7 @@ export default function CompanyPage() {
           </div>
 
           {/* Stats chips */}
-          <div className="flex flex-wrap justify-center gap-3 mt-6">
+          <div className="fade-up stagger-3 flex flex-wrap justify-center gap-3 mt-6">
             {[
               { icon: "🏢", text: "300+ Công ty" },
               { icon: "💼", text: "1,200+ Việc làm" },
@@ -84,10 +87,10 @@ export default function CompanyPage() {
       </section>
 
       {/* MAIN */}
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <main className="bg-[#f7f9ff] max-w-7xl mx-auto px-4 md:px-8 py-8">
 
         {/* Industry tabs */}
-        <div className="overflow-x-auto pb-2 mb-6">
+        <div className="fade-up stagger-4 overflow-x-auto pb-2 mb-6">
           <div className="flex gap-2 min-w-max">
             {industryTabs.map((tab) => (
               <button
@@ -106,7 +109,7 @@ export default function CompanyPage() {
         </div>
 
         {/* Sort bar */}
-        <div className="bg-white rounded-2xl border border-[#E0F5FB] px-5 py-3 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="fade-up stagger-5 bg-white rounded-2xl border border-[#E0F5FB] px-5 py-3 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <span className="text-sm text-[#3f484c]">
             Tìm thấy <strong className="text-[#005a71]">{filtered.length}</strong> công ty
           </span>
