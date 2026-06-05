@@ -2,9 +2,8 @@
 
 import { useEffect } from "react"
 
-export function useScrollAnimation() {
+export function useScrollAnimation(deps: unknown[] = []) {
   useEffect(() => {
-    // Đặt timeout nhỏ để đảm bảo DOM đã render xong
     const timer = setTimeout(() => {
       const observer = new IntersectionObserver(
         (entries) => {
@@ -15,18 +14,21 @@ export function useScrollAnimation() {
             }
           })
         },
-        { 
+        {
           threshold: 0.05,
           rootMargin: "0px 0px -30px 0px"
         }
       )
 
       const elements = document.querySelectorAll(".fade-up")
-      elements.forEach((el) => observer.observe(el))
+      elements.forEach((el) => {
+        el.classList.remove("visible") // Reset trước
+        observer.observe(el)
+      })
 
       return () => observer.disconnect()
     }, 50)
 
     return () => clearTimeout(timer)
-  }, [])
+  }, deps) // deps thay đổi thì chạy lại
 }

@@ -1,8 +1,10 @@
 // Võ Thành Phú
 "use client"
 
+import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { useState } from "react"
 import Link from "next/link"
+import { Share2 } from "lucide-react"
 import { Company } from "@/mocks/mockCompanyData"
 
 const mockJobs = [
@@ -34,6 +36,7 @@ const galleryItems = [
 ]
 
 export default function CompanyDetailClient({ company }: { company: Company }) {
+  useScrollAnimation()
   const [activeTab, setActiveTab] = useState("overview")
   const [following, setFollowing] = useState(false)
 
@@ -48,7 +51,7 @@ export default function CompanyDetailClient({ company }: { company: Company }) {
     <div className="bg-[#f7f9ff] min-h-screen">
 
       {/* HERO COVER */}
-      <div className="pt-16">
+      <div>
         <div className="h-52 md:h-64 relative overflow-hidden"
           style={{ background: company.coverGradient }}>
           <div className="absolute inset-0 opacity-20"
@@ -65,7 +68,7 @@ export default function CompanyDetailClient({ company }: { company: Company }) {
 
         {/* Company header */}
         <div className="max-w-7xl mx-auto px-4 md:px-8 -mt-12 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div className="fade-up stagger-1 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
             <div className="flex items-end gap-4">
               <div className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-2xl flex items-center justify-center shadow-xl border-2 border-white flex-shrink-0">
                 <span className="text-2xl font-black" style={{ color: company.logoColor }}>
@@ -91,14 +94,14 @@ export default function CompanyDetailClient({ company }: { company: Company }) {
               >
                 {following ? "✓ Đang theo dõi" : "+ Theo dõi"}
               </button>
-              <button className="p-2.5 rounded-full border border-[#bec8cd]/50 text-[#3f484c] hover:bg-[#e1efff] transition-colors">
-                🔗
-              </button>
+                <button className="p-2.5 rounded-full border border-[#bec8cd]/50 text-[#3f484c] hover:bg-[#e1efff] transition-colors">
+                  <Share2 className="w-4 h-4" />
+                </button>
             </div>
           </div>
 
           {/* Stats */}
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="fade-up stagger-2 mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { value: company.jobCount, label: "Việc đang tuyển", color: "text-[#005a71]" },
               { value: company.size, label: "Nhân viên", color: "text-[#0d9488]" },
@@ -113,7 +116,7 @@ export default function CompanyDetailClient({ company }: { company: Company }) {
           </div>
 
           {/* Tabs */}
-          <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
+          <div className="fade-up stagger-3 mt-6 flex gap-2 overflow-x-auto pb-1">
             {tabs.map((tab) => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                 className={`px-5 py-2.5 text-sm font-semibold rounded-full transition-all whitespace-nowrap ${
@@ -130,7 +133,7 @@ export default function CompanyDetailClient({ company }: { company: Company }) {
 
       {/* TAB CONTENT */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 pb-16">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="fade-up stagger-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
 
             {/* OVERVIEW */}

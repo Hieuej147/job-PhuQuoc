@@ -8,7 +8,7 @@ import { mockCompanyList, industryTabs } from "@/mocks/mockCompanyData"
 import CompanyCard from "@/components/company/CompanyCard"
 
 export default function CompanyPage() {
-  useScrollAnimation()
+  
   const [activeTab, setActiveTab] = useState("")
   const [searchText, setSearchText] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
@@ -21,6 +21,8 @@ export default function CompanyPage() {
       c.industry.toLowerCase().includes(searchText.toLowerCase())
     return matchTab && matchSearch
   })
+  
+  useScrollAnimation([activeTab, searchText, filtered.length])
 
   return (
     <div className="bg-[#f7f9ff] min-h-screen">
