@@ -6,30 +6,30 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #010507;
+  --background: #f7f9ff;
+  --foreground: #001e30;
 
-  /* Semantic tokens — CopilotKit brand */
+  /* Semantic tokens — PQ Jobs brand */
   --card: #ffffff;
-  --card-foreground: #010507;
-  --primary: #010507;
+  --card-foreground: #001e30;
+  --primary: #005a71;
   --primary-foreground: #ffffff;
-  --secondary: #ededf5;
-  --secondary-foreground: #010507;
-  --muted: #ededf5;
-  --muted-foreground: #57575b;
-  --accent: #eee6fe;
-  --accent-foreground: #010507;
-  --destructive: #fa5f67;
+  --secondary: #ecf4ff;
+  --secondary-foreground: #005a71;
+  --muted: #e1efff;
+  --muted-foreground: #3f484c;
+  --accent: #F59E0B;
+  --accent-foreground: #ffffff;
+  --destructive: #ba1a1a;
   --destructive-foreground: #ffffff;
-  --border: #dbdbe5;
-  --input: #dbdbe5;
-  --ring: #bec2ff;
+  --border: #bec8cd;
+  --input: #bec8cd;
+  --ring: #0E7490;
 
   /* Chart tokens */
   --chart-tooltip-bg: #ffffff;
-  --chart-tooltip-border: #dbdbe5;
-  --chart-axis: #57575b;
+  --chart-tooltip-border: #bec8cd;
+  --chart-axis: #3f484c;
 
   --radius: 0.75rem;
 
@@ -53,32 +53,49 @@
     #85ecce 45.673%,
     #ffac4d 100%
   );
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
 :root.dark,
 .dark {
-  --background: #010507;
-  --foreground: #ffffff;
+  --background: #0C2231;
+  --foreground: #E0F2FE;
 
-  --card: #191a1e;
-  --card-foreground: #ffffff;
-  --primary: #ffffff;
-  --primary-foreground: #010507;
-  --secondary: #242529;
-  --secondary-foreground: #ffffff;
-  --muted: #242529;
-  --muted-foreground: #adadb2;
-  --accent: #303136;
-  --accent-foreground: #ffffff;
-  --destructive: #fa5f67;
+  --card: #0F3347;
+  --card-foreground: #E0F2FE;
+  --primary: #67E8F9;
+  --primary-foreground: #0C2231;
+  --secondary: #1E5F74;
+  --secondary-foreground: #E0F2FE;
+  --muted: #1E5F74;
+  --muted-foreground: #94A3B8;
+  --accent: #F59E0B;
+  --accent-foreground: #0C2231;
+  --destructive: #ba1a1a;
   --destructive-foreground: #ffffff;
-  --border: #303136;
-  --input: #303136;
-  --ring: #bec2ff;
+  --border: #1E5F74;
+  --input: #1E5F74;
+  --ring: #67E8F9;
 
-  --chart-tooltip-bg: #191a1e;
-  --chart-tooltip-border: #303136;
-  --chart-axis: #adadb2;
+  --chart-tooltip-bg: #0F3347;
+  --chart-tooltip-border: #1E5F74;
+  --chart-axis: #94A3B8;
+
+  --sidebar: hsl(210 30% 8%);
+  --sidebar-foreground: hsl(210 20% 90%);
+  --sidebar-primary: hsl(180 80% 60%);
+  --sidebar-primary-foreground: hsl(210 30% 8%);
+  --sidebar-accent: hsl(210 25% 15%);
+  --sidebar-accent-foreground: hsl(210 20% 90%);
+  --sidebar-border: hsl(210 25% 18%);
+  --sidebar-ring: hsl(180 80% 60%);
 }
 
 body {
@@ -90,6 +107,97 @@ body {
 body,
 html {
   height: 100%;
+  overflow-x: hidden;
+}
+
+/* ── AUTH PAGE ANIMATIONS ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+.fade-in {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+.slide-in-from-bottom-4 {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+
+/* ── JOB & COMPANY PAGE ANIMATIONS ── */
+.fade-up {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.animate-fadeUp {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+.animation-delay-100 { animation-delay: 0.1s; }
+.animation-delay-200 { animation-delay: 0.2s; }
+.animation-delay-300 { animation-delay: 0.3s; }
+.animation-delay-400 { animation-delay: 0.4s; }
+
+/* ── SCROLL ANIMATIONS (IntersectionObserver) ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-up {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(24px);
+  transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0.7s;
+}
+
+.fade-up.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.stagger-1 { transition-delay: 0.1s; }
+.stagger-2 { transition-delay: 0.2s; }
+.stagger-3 { transition-delay: 0.3s; }
+.stagger-4 { transition-delay: 0.4s; }
+.stagger-5 { transition-delay: 0.5s; }
+.stagger-6 { transition-delay: 0.6s; }
+.stagger-7 { transition-delay: 0.7s; }
+.stagger-8 { transition-delay: 0.8s; }
+
+/* ── AUTH INPUT FOCUS ── */
+.auth-input {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: #0E7490;
+  box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.18);
+}
+
+.dark .auth-input:focus {
+  border-color: #67E8F9;
+  box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.18);
 }
 
 /*
@@ -242,4 +350,26 @@ html {
 
 .animate-fadeIn {
   animation: fadeIn 0.4s ease forwards;
+}
+
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }

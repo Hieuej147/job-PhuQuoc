@@ -26,6 +26,7 @@ import {
   Linkedin,
   MessageSquare
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { OverviewItem } from '@/types/job';
 
 // ==========================================
@@ -171,19 +172,21 @@ export function JobOverviewSidebar({ items }: JobOverviewSidebarProps) {
 // ==========================================
 
 interface JobCompanySidebarProps {
-  companyInitials: string; // Tên viết tắt đại diện công ty
-  textColor: string; // Class màu chữ của tên viết tắt
-  companyName: string; // Tên đầy đủ công ty
-  industry: string; // Lĩnh vực hoạt động chính
-  size: string; // Quy mô số lượng nhân viên
-  address: string; // Địa chỉ cụ thể
-  website: string; // Website của công ty
+  companyInitials: string;
+  textColor: string;
+  companyName: string;
+  companySlug?: string;
+  industry: string;
+  size: string;
+  address: string;
+  website: string;
 }
 
 export function JobCompanySidebar({
   companyInitials,
   textColor,
   companyName,
+  companySlug,
   industry,
   size,
   address,
@@ -231,7 +234,7 @@ export function JobCompanySidebar({
 
       {/* Nút xem trang công ty */}
       <a
-        href="#"
+        href={companySlug ? `/companies/${companySlug}` : "#"}
         className="mt-4 w-full block text-center text-xs font-semibold text-[#005a71] dark:text-[#67e8f9] border border-[#005a71]/30 dark:border-[#67e8f9]/30 py-2.5 rounded-xl hover:bg-[#005a71]/5 dark:hover:bg-[#67e8f9]/10 transition-colors"
       >
         Xem trang công ty →
@@ -250,8 +253,14 @@ interface JobShareSidebarProps {
 }
 
 export function JobShareSidebar({ jobUrl, jobTitle }: JobShareSidebarProps) {
-  const shareUrl = jobUrl || (typeof window !== 'undefined' ? window.location.href : '');
+  const [shareUrl, setShareUrl] = useState(jobUrl || '');
   const title = jobTitle || '';
+
+  useEffect(() => {
+    if (!jobUrl) {
+      setShareUrl(window.location.href);
+    }
+  }, [jobUrl]);
 
   // Hàm chia sẻ nhanh qua Facebook
   const handleFacebookShare = () => {

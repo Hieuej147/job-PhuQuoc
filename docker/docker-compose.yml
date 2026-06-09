@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: pq-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pq_user
+      POSTGRES_PASSWORD: pq_pass123
+      POSTGRES_DB: pq_jobs
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pq_user -d pq_jobs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: pq-redis
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:

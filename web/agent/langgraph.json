@@ -4,7 +4,8 @@
   "dependencies": ["."],
   "package_manager": "uv",
   "graphs": {
-    "sample_agent": "./main.py:graph"
+    "candidate_agent": "./graphs.py:candidate_graph",
+    "recruiter_agent": "./graphs.py:recruiter_graph"
   },
   "env": "../.env"
 }

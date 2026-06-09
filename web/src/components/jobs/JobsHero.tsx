@@ -78,7 +78,7 @@ export default function JobsHero({ totalJobs, onSearch }: JobsHeroProps) {
   };
 
   return (
-    <section className="pt-16 bg-gradient-to-b from-[#0E7490] to-[#0D9488] dark:from-[#002d3d] dark:to-[#003d38] transition-colors duration-200">
+    <section className="bg-linear-to-b from-[#0E7490] to-[#0D9488] dark:from-[#002d3d] dark:to-[#003d38] transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-10">
         
         {/* Tiêu đề chính của Banner */}

@@ -63,7 +63,7 @@ export default function BlogCard({
         <article className="blog-card group bg-white dark:bg-[#0F3347] rounded-2xl border border-[#E0F5FB] dark:border-[#1E5F74] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full">
             <Link href={`/blog/${slug}`} className="block relative overflow-hidden h-48">
                 <img
-                    src={thumbnail}
+                    src={thumbnail || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&q=80"}
                     alt={title}
                     className="thumb-img w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-500"
                 />

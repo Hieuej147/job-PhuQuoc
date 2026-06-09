@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Công ty tuyển dụng tại Phú Quốc | PQ Jobs",
     description: "Hơn 300+ công ty đang tuyển dụng trên đảo ngọc Phú Quốc",
-    url: "https://pqjobs.vn/Company",
+    url: "https://pqjobs.vn/companies",
     siteName: "PQ Jobs",
     locale: "vi_VN",
     type: "website",

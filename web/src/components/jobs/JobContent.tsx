@@ -1,16 +1,5 @@
 'use client';
 
-/**
- * @file JobContent.tsx
- * @description Component gộp phẳng chứa toàn bộ nội dung mô tả chi tiết của công việc.
- * 
- * Các component con được định nghĩa và xuất khẩu:
- * 1. JobDescription: Hiển thị chi tiết mô tả công việc (Hỗ trợ hiển thị thẻ HTML an toàn qua dangerouslySetInnerHTML).
- * 2. JobRequirements: Yêu cầu ứng viên (phân loại rõ rệt giữa điều kiện Bắt buộc và Ưu tiên).
- * 3. JobBenefits: Chế độ đãi ngộ & Quyền lợi phúc lợi (chuyển đổi biểu tượng động từ Mock sang SVG Lucide).
- * 4. JobApplySteps: Các bước hướng dẫn nộp hồ sơ xin việc chuẩn hóa của hệ thống.
- */
-
 import { 
   FileText, 
   CheckSquare, 
@@ -21,6 +10,7 @@ import {
   Utensils,
   Shield
 } from 'lucide-react';
+import { RichContent } from '@/components/ui/rich-content';
 import { BenefitItem } from '@/types/job';
 
 // ==========================================
@@ -28,71 +18,65 @@ import { BenefitItem } from '@/types/job';
 // ==========================================
 
 interface JobDescriptionProps {
-  description: string; // Chuỗi nội dung chi tiết công việc dạng HTML
+  description: string;
 }
 
 export function JobDescription({ description }: JobDescriptionProps) {
   return (
     <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] p-6 shadow-sm transition-colors duration-200">
-      {/* Tiêu đề mục mô tả */}
       <h2 className="font-bold text-[#005a71] dark:text-[#67e8f9] text-base mb-3 flex items-center gap-2">
         <FileText className="w-5 h-5 text-[#005a71] dark:text-[#67e8f9]" />
         Mô tả công việc
       </h2>
-      
       <div className="border-t border-[#E0F5FB] dark:border-[#1a3d5c] mb-4" />
-      
-      {/* Hiển thị mã HTML an toàn (rich text editor output) và áp dụng style từ Tailwind Typography (prose) */}
-      <div
-        className="job-desc text-sm text-gray-700 dark:text-[#cbd5e1] leading-relaxed space-y-3 prose dark:prose-invert max-w-none"
-        dangerouslySetInnerHTML={{ __html: description }}
-      />
+      <RichContent html={description} className="text-sm text-gray-700 dark:text-[#cbd5e1] leading-relaxed" />
     </div>
   );
 }
 
 // ==========================================
-// COMPONENT 2: JobRequirements
+// COMPONENT 2: JobRequirements (supports HTML string)
 // ==========================================
 
 interface JobRequirementsProps {
-  required: string[]; // Mảng các điều kiện bắt buộc đối với ứng viên
-  preferred: string[]; // Mảng các điều kiện ưu tiên tuyển dụng
+  required?: string | string[];
+  preferred?: string | string[];
 }
 
 export function JobRequirements({ required, preferred }: JobRequirementsProps) {
+  const hasRequired = Array.isArray(required) ? required.length > 0 : !!required;
+  const hasPreferred = Array.isArray(preferred) ? preferred.length > 0 : !!preferred;
+
   return (
     <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] p-6 shadow-sm transition-colors duration-200">
-      {/* Tiêu đề mục yêu cầu */}
       <h2 className="font-bold text-[#005a71] dark:text-[#67e8f9] text-base mb-3 flex items-center gap-2">
         <CheckSquare className="w-5 h-5 text-[#005a71] dark:text-[#67e8f9]" />
         Yêu cầu ứng viên
       </h2>
-      
       <div className="border-t border-[#E0F5FB] dark:border-[#1a3d5c] mb-4" />
-      
       <div className="text-sm text-gray-700 dark:text-[#cbd5e1] leading-relaxed space-y-3">
-        {/* Phân hệ các điều kiện bắt buộc */}
-        {required.length > 0 && (
+        {hasRequired && (
           <>
             <h4 className="font-bold text-[#005a71] dark:text-[#67e8f9] mt-2">Bắt buộc:</h4>
-            <ul className="list-disc pl-5 space-y-1.5 marker:text-[#005a71] dark:marker:text-[#67e8f9]">
-              {required.map((item, index) => (
-                <li key={`req-${index}`}>{item}</li>
-              ))}
-            </ul>
+            {typeof required === 'string' ? (
+              <RichContent html={required} />
+            ) : (
+              <ul className="list-disc pl-5 space-y-1.5 marker:text-[#005a71] dark:marker:text-[#67e8f9]">
+                {required!.map((item, i) => <li key={`req-${i}`}>{item}</li>)}
+              </ul>
+            )}
           </>
         )}
-
-        {/* Phân hệ các điều kiện ưu tiên */}
-        {preferred.length > 0 && (
+        {hasPreferred && (
           <>
             <h4 className="font-bold text-[#005a71] dark:text-[#67e8f9] mt-4">Ưu tiên:</h4>
-            <ul className="list-disc pl-5 space-y-1.5 marker:text-[#005a71] dark:marker:text-[#67e8f9]">
-              {preferred.map((item, index) => (
-                <li key={`pref-${index}`}>{item}</li>
-              ))}
-            </ul>
+            {typeof preferred === 'string' ? (
+              <RichContent html={preferred} />
+            ) : (
+              <ul className="list-disc pl-5 space-y-1.5 marker:text-[#005a71] dark:marker:text-[#67e8f9]">
+                {preferred!.map((item, i) => <li key={`pref-${i}`}>{item}</li>)}
+              </ul>
+            )}
           </>
         )}
       </div>
@@ -103,10 +87,6 @@ export function JobRequirements({ required, preferred }: JobRequirementsProps) {
 // ==========================================
 // COMPONENT 3: JobBenefits
 // ==========================================
-
-interface JobBenefitsProps {
-  benefits: BenefitItem[]; // Mảng chứa thông tin các quyền lợi/phúc lợi
-}
 
 /**
  * Hàm trợ giúp ánh xạ tên icon string từ mockup dữ liệu sang Component Lucide tương ứng.
@@ -149,37 +129,45 @@ const getIconColorClass = (colorClass: string) => {
   return colorClass;
 };
 
+// ==========================================
+// COMPONENT 3: JobBenefits (supports HTML string or BenefitItem[])
+// ==========================================
+
+interface JobBenefitsProps {
+  benefits?: string | BenefitItem[];
+}
+
 export function JobBenefits({ benefits }: JobBenefitsProps) {
+  if (!benefits) return null;
+
   return (
     <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] p-6 shadow-sm transition-colors duration-200">
-      {/* Tiêu đề mục phúc lợi */}
       <h2 className="font-bold text-[#005a71] dark:text-[#67e8f9] text-base mb-3 flex items-center gap-2">
         <Gift className="w-5 h-5 text-[#005a71] dark:text-[#67e8f9]" />
         Quyền lợi &amp; Phúc lợi
       </h2>
-      
       <div className="border-t border-[#E0F5FB] dark:border-[#1a3d5c] mb-4" />
-      
-      {/* Lưới hiển thị các thẻ phúc lợi con */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {benefits.map((benefit, index) => (
-          <div
-            key={`benefit-${index}`}
-            className={`flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${getBgColorClass(benefit.bgColor)}`}
-          >
-            {/* Render icon tương ứng đã chuyển đổi từ chuỗi */}
-            <span className={`${getIconColorClass(benefit.iconColor)} flex-shrink-0 mt-0.5`}>
-              {getBenefitIcon(benefit.icon)}
-            </span>
-            <div>
-              {/* Tên quyền lợi */}
-              <p className="text-xs font-bold text-gray-800 dark:text-[#f8fafc]">{benefit.title}</p>
-              {/* Mô tả chi tiết quyền lợi */}
-              <p className="text-xs text-gray-500 dark:text-[#94a3b8] mt-0.5">{benefit.description}</p>
+
+      {typeof benefits === 'string' ? (
+        <RichContent html={benefits} className="text-sm text-gray-700 dark:text-[#cbd5e1] leading-relaxed" />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {benefits.map((benefit, index) => (
+            <div
+              key={`benefit-${index}`}
+              className={`flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${getBgColorClass(benefit.bgColor)}`}
+            >
+              <span className={`${getIconColorClass(benefit.iconColor)} flex-shrink-0 mt-0.5`}>
+                {getBenefitIcon(benefit.icon)}
+              </span>
+              <div>
+                <p className="text-xs font-bold text-gray-800 dark:text-[#f8fafc]">{benefit.title}</p>
+                <p className="text-xs text-gray-500 dark:text-[#94a3b8] mt-0.5">{benefit.description}</p>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

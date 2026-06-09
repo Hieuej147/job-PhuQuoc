@@ -1,42 +1,57 @@
-import {
-  CopilotRuntime,
-  createCopilotEndpoint,
-  InMemoryAgentRunner,
-} from "@copilotkit/runtime/v2";
-import { LangGraphAgent } from "@copilotkit/runtime/langgraph";
+import { CopilotRuntime } from "@copilotkit/runtime";
+import { createCopilotHonoHandler } from "@copilotkit/runtime/v2/hono";
+import { LangGraphHttpAgent } from "@copilotkit/runtime/langgraph";
 import { handle } from "hono/vercel";
+import { NextRequest } from "next/server";
 
-const defaultAgent = new LangGraphAgent({
-  deploymentUrl:
-    process.env.AGENT_URL ||
-    process.env.LANGGRAPH_DEPLOYMENT_URL ||
-    "http://localhost:8123",
-  graphId: "sample_agent",
-  langsmithApiKey: process.env.LANGSMITH_API_KEY || "",
-});
+const agentUrl = process.env.AGENT_URL || "http://localhost:8125";
 
 const runtime = new CopilotRuntime({
-  agents: { default: defaultAgent },
-  runner: new InMemoryAgentRunner(),
-  openGenerativeUI: true,
-  a2ui: {
-    injectA2UITool: false,
-  },
-  mcpApps: {
-    servers: [
-      {
-        type: "http",
-        url: process.env.MCP_SERVER_URL || "https://mcp.excalidraw.com",
-        serverId: "example_mcp_app",
-      },
-    ],
+  agents: {
+    default: new LangGraphHttpAgent({ url: agentUrl }),
+    candidate: new LangGraphHttpAgent({ url: `${agentUrl}/candidate` }),
+    recruiter: new LangGraphHttpAgent({ url: `${agentUrl}/recruiter` }),
   },
 });
 
-const app = createCopilotEndpoint({
-  runtime,
+const app = createCopilotHonoHandler({
+  runtime: runtime.instance,
   basePath: "/api/copilotkit",
+  cors: {
+    origin: "*",
+    credentials: true,
+  },
+  hooks: {
+    onRequest: async ({ request }) => {
+      const cookie = request.headers.get("cookie");
+
+      if (!cookie || request.method !== "POST") return request;
+
+      try {
+        const body = await request.clone().json();
+
+        // CopilotKit v2 sends forwardedProps directly in body
+        if (body.forwardedProps !== undefined || body.tools !== undefined) {
+          body.forwardedProps = {
+            ...body.forwardedProps,
+            cookie,
+          };
+
+          return new Request(request.url, {
+            method: request.method,
+            headers: request.headers,
+            body: JSON.stringify(body),
+          });
+        }
+      } catch {
+        // ignore parse errors
+      }
+      return request;
+    },
+  },
 });
 
-export const GET = handle(app);
-export const POST = handle(app);
+const handler = handle(app);
+
+export const POST = async (req: NextRequest) => handler(req);
+export const GET = async (req: NextRequest) => handler(req);
