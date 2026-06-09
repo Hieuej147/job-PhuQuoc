@@ -5,14 +5,15 @@
  * trong cấu trúc giao diện chung bao gồm Thanh điều hướng (Header) và Chân trang (Footer).
  */
 
-import type { Metadata } from 'next';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
+import Footer from "@/components/common/Footer";
+import Header from "@/components/common/Header";
+import type { Metadata } from "next";
 
 // Định nghĩa Metadata phục vụ tối ưu SEO cho toàn bộ các trang việc làm thuộc phân hệ /jobs
 export const metadata: Metadata = {
-  title: 'Việc Làm Phú Quốc - PQ Jobs',
-  description: 'Tìm kiếm việc làm nhanh chóng, uy tín tại Phú Quốc. Nền tảng kết nối ứng viên và nhà tuyển dụng chất lượng cao tại Đảo Ngọc.',
+  title: "Việc Làm Phú Quốc - PQ Jobs",
+  description:
+    "Tìm kiếm việc làm nhanh chóng, uy tín tại Phú Quốc. Nền tảng kết nối ứng viên và nhà tuyển dụng chất lượng cao tại Đảo Ngọc.",
 };
 
 export default function JobsLayout({
@@ -25,12 +26,10 @@ export default function JobsLayout({
     <div className="flex flex-col min-h-screen">
       {/* 1. Header: Thanh menu điều hướng chính của trang web */}
       <Header />
-      
+
       {/* 2. Main Content: Khu vực hiển thị nội dung động của từng trang con */}
-      <main className="flex-grow">
-        {children}
-      </main>
-      
+      <main className="flex-grow">{children}</main>
+
       {/* 3. Footer: Chân trang hiển thị thông tin liên hệ và liên kết bản quyền */}
       <Footer />
     </div>

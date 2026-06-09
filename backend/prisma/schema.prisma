@@ -1,0 +1,529 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Enums
+// ============================================================
+
+enum Role {
+  CANDIDATE
+  EMPLOYER
+  ADMIN
+}
+
+enum CompanySize {
+  SIZE_1_50
+  SIZE_51_200
+  SIZE_201_500
+  SIZE_500_PLUS
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  REMOTE
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+}
+
+enum ExperienceLevel {
+  NO_EXPERIENCE
+  UNDER_1_YEAR
+  ONE_TO_THREE_YEARS
+  THREE_TO_FIVE_YEARS
+  OVER_FIVE_YEARS
+}
+
+enum JobLevel {
+  INTERN
+  FRESHER
+  JUNIOR
+  MID
+  SENIOR
+  LEAD
+  MANAGER
+  DIRECTOR
+}
+
+enum JobStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  CLOSED
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  ACCEPTED
+  REJECTED
+}
+
+enum NotificationType {
+  APPLICATION_RECEIVED
+  APPLICATION_ACCEPTED
+  APPLICATION_REJECTED
+  JOB_APPROVED
+  COMPANY_APPROVED
+  JOB_DEADLINE
+  SYSTEM
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum BlogType {
+  NORMAL
+  LANDING_PAGE
+}
+
+// ============================================================
+// better-auth core tables
+// ============================================================
+
+model user {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          Role?
+  phone         String?
+  isActive      Boolean  @default(true)
+  isLocked      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  accounts             account[]
+  sessions             session[]
+  companies            Company[]
+  applications         JobApplication[]
+  resumes              CandidateResume[]
+  templates            ResumeTemplate[]
+  notifications        Notification[]
+  savedJobs            SavedJob[]
+  savedCompanies       SavedCompany[]
+  blogs                BlogPost[]
+  payments             Payment[]
+}
+
+model account {
+  id                     String    @id @default(cuid())
+  userId                 String
+  accountId              String
+  providerId             String
+  accessToken            String?
+  refreshToken           String?
+  accessTokenExpiresAt   DateTime?
+  refreshTokenExpiresAt  DateTime?
+  scope                  String?
+  idToken                String?
+  password               String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+model jwks {
+  id         String    @id @default(cuid())
+  publicKey  String
+  privateKey String
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime?
+}
+
+// ============================================================
+// Address tables
+// ============================================================
+
+model AddressProvince {
+  id        String           @id @default(cuid())
+  name      String
+  slug      String           @unique
+  districts AddressDistrict[]
+
+  @@map("address_province")
+}
+
+model AddressDistrict {
+  id         String         @id @default(cuid())
+  name       String
+  slug       String
+  provinceId String
+  province   AddressProvince @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  wards      AddressWard[]
+
+  @@index([provinceId])
+  @@map("address_district")
+}
+
+model AddressWard {
+  id         String         @id @default(cuid())
+  name       String
+  slug       String
+  districtId String
+  district   AddressDistrict @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  companies  Company[]
+  jobs       Job[]
+
+  @@index([districtId])
+  @@map("address_ward")
+}
+
+// ============================================================
+// Categories
+// ============================================================
+
+model JobCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  icon      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  jobs      Job[]
+
+  @@map("job_category")
+}
+
+// ============================================================
+// Companies
+// ============================================================
+
+model Company {
+  id            String      @id @default(cuid())
+  name          String
+  slug          String      @unique
+  logo          String?
+  website       String?
+  description   String?
+  wardId        String?
+  addressDetail String?
+  size          CompanySize?
+  industry      String?
+  ownerId       String      @unique
+  isApproved    Boolean     @default(false)
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  owner user?       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ward  AddressWard? @relation(fields: [wardId], references: [id], onDelete: SetNull)
+  jobs  Job[]
+  savedCompanies SavedCompany[]
+
+  @@index([ownerId])
+  @@index([wardId])
+  @@map("company")
+}
+
+// ============================================================
+// Jobs
+// ============================================================
+
+model Job {
+  id             String         @id @default(cuid())
+  title          String
+  slug           String         @unique
+  description    String
+  benefits       String?
+  requirements   String?
+  quantity       Int            @default(1)
+  salaryMin      Int?
+  salaryMax      Int?
+  wardId         String?
+  addressDetail  String?
+  type           JobType        @default(FULL_TIME)
+  experience     ExperienceLevel?
+  level          JobLevel?
+  status         JobStatus      @default(DRAFT)
+  deadline       DateTime?
+  categoryId     String
+  companyId      String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  ward         AddressWard?    @relation(fields: [wardId], references: [id], onDelete: SetNull)
+  category     JobCategory     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  company      Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  applications JobApplication[]
+  savedJobs    SavedJob[]
+  payments     Payment[]
+
+  @@index([categoryId])
+  @@index([companyId])
+  @@index([status])
+  @@index([wardId])
+  @@map("job")
+}
+
+// ============================================================
+// Applications
+// ============================================================
+
+model JobApplication {
+  id          String            @id @default(cuid())
+  userId      String
+  jobId       String
+  cvUrl       String?
+  resumeId    String?
+  coverLetter String?
+  status      ApplicationStatus @default(PENDING)
+  isBookmarked Boolean          @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  user   user?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job    Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  resume CandidateResume? @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, jobId])
+  @@index([userId])
+  @@index([jobId])
+  @@map("job_application")
+}
+
+// ============================================================
+// Resumes
+// ============================================================
+
+model CandidateResume {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String   @default("Hồ sơ của tôi")
+  address     String?
+  summary     String?
+  socialLinks Json?
+  education   Json?
+  experience  Json?
+  projects    Json?
+  skills      String?
+  degree      String?
+  languages   String?
+  isDefault   Boolean  @default(false)
+  templateId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user         user           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template     ResumeTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  applications JobApplication[]
+
+  @@index([userId])
+  @@map("candidate_resume")
+}
+
+model ResumeTemplate {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  previewUrl   String?
+  htmlTemplate String   @db.Text
+  cssTemplate  String   @db.Text
+  isPublic     Boolean  @default(false)
+  userId       String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user     user?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumes  CandidateResume[]
+
+  @@index([isPublic, isActive])
+  @@index([userId])
+  @@map("resume_template")
+}
+
+// ============================================================
+// Notifications
+// ============================================================
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  content   String
+  refId     String?
+  refType   String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refType, refId])
+  @@map("notification")
+}
+
+// ============================================================
+// Saved Jobs & Companies
+// ============================================================
+
+model SavedJob {
+  id        String   @id @default(cuid())
+  userId    String
+  jobId     String
+  createdAt DateTime @default(now())
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@map("saved_job")
+}
+
+model SavedCompany {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  createdAt DateTime @default(now())
+
+  user    user    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@map("saved_company")
+}
+
+// ============================================================
+// Blogs
+// ============================================================
+
+model BlogPost {
+  id             String    @id @default(cuid())
+  title          String
+  slug           String    @unique
+  type           BlogType  @default(NORMAL)
+  content        String?   @db.Text
+  landingContent Json?
+  thumbnail      String?
+  excerpt        String?
+  categoryId     String?
+  authorId       String
+  views          Int       @default(0)
+  isPublished    Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  category BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  author   user          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([categoryId])
+  @@map("blog_post")
+}
+
+model BlogCategory {
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  createdAt DateTime   @default(now())
+  blogs     BlogPost[]
+
+  @@map("blog_category")
+}
+
+// ============================================================
+// Pricing Packages
+// ============================================================
+
+model PricingPackage {
+  id        String   @id @default(cuid())
+  name      String
+  days      Int
+  price     Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  payments  Payment[]
+
+  @@map("pricing_package")
+}
+
+// ============================================================
+// Payments
+// ============================================================
+
+model Payment {
+  id          String        @id @default(cuid())
+  userId      String
+  jobId       String
+  packageId   String
+  amount      Int
+  status      PaymentStatus @default(PENDING)
+  gateway     String        @default("mock")
+  gatewayRef  String?
+  createdAt   DateTime      @default(now())
+  completedAt DateTime?
+
+  user    user           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job     Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  package PricingPackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([jobId])
+  @@index([gatewayRef])
+  @@map("payment")
+}
+
+// ============================================================
+// Audit Logs
+// ============================================================
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String?
+  entityId   String?
+  actorId    String?
+  oldValue   String?
+  newValue   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@map("audit_log")
+}

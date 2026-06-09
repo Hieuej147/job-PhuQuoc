@@ -55,7 +55,7 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
           <div className="flex justify-between items-start gap-2">
             <div className="min-w-0">
               {/* Tiêu đề công việc - Click để chuyển sang trang chi tiết /jobs/[id] */}
-              <Link href={`/jobs/${job.id}`}>
+              <Link href={`/jobs/${job.slug}`}>
                 <h3 className="job-title font-bold text-[#0C4A6E] dark:text-[#e0f2fe] text-base mb-0.5 group-hover:text-[#005a71] dark:group-hover:text-[#67e8f9] transition-colors line-clamp-2 cursor-pointer">
                   {job.title}
                 </h3>
@@ -124,7 +124,7 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
 
             {/* Nút ứng tuyển nhanh - Chỉ hiển thị trên thiết bị máy tính */}
             <Link
-              href={`/jobs/${job.id}`}
+              href={`/jobs/${job.slug}`}
               className="hidden sm:block bg-[#005a71] dark:bg-[#0e7490] hover:bg-[#0E7490] dark:hover:bg-[#0d9488] text-white font-semibold px-4 py-2 rounded-lg text-xs transition-colors"
               id={`apply-${job.id}`}
             >
@@ -136,7 +136,7 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
 
       {/* 6. Nút Ứng tuyển di động - Chỉ hiển thị ở dưới cùng trên thiết bị màn hình nhỏ */}
       <Link
-        href={`/jobs/${job.id}`}
+        href={`/jobs/${job.slug}`}
         className="sm:hidden mt-3 block w-full text-center bg-[#005a71] dark:bg-[#0e7490] text-white font-semibold py-2.5 rounded-xl text-sm transition-colors hover:bg-[#0E7490] dark:hover:bg-[#0d9488]"
       >
         Ứng tuyển ngay

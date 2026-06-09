@@ -39,7 +39,7 @@ export default function RelatedJobs({ jobs }: RelatedJobsProps) {
         {jobs.map((job) => (
           <Link
             key={job.id}
-            href={`/jobs/${job.id}`}
+            href={`/jobs/${job.slug}`}
             className="group bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] p-5 block hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer"
           >
             {/* Hàng trên: Logo, Tiêu đề, Công ty */}
