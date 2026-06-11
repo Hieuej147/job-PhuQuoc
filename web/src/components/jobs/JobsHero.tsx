@@ -14,12 +14,16 @@
  * 3. Thẻ gợi ý tìm nhanh (Quick Tags): Danh sách các từ khóa hot nhất để người dùng click chọn tìm nhanh mà không cần gõ phím.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MapPin, Briefcase } from "lucide-react";
 
 // Định nghĩa kiểu dữ liệu cho props của JobsHero
 interface JobsHeroProps {
   totalJobs: number; // Tổng số việc làm hiển thị trên hệ thống để đưa vào nhãn thống kê
+  categories: { id: string; name: string; slug: string }[];
+  initialKeyword?: string;
+  initialLocation?: string;
+  initialIndustry?: string;
   onSearch: (keyword: string, location: string, industry: string) => void; // Hàm callback kích hoạt khi nhấn Tìm kiếm
 }
 
@@ -34,37 +38,43 @@ const QUICK_TAGS = [
   "Bartender",
 ];
 
-// Danh sách các xã/phường/khu vực tại Phú Quốc để đưa vào ô tuyển chọn địa điểm
-const LOCATIONS = [
-  { value: "", label: "Tất cả khu vực" },
-  { value: "Dương Đông", label: "Dương Đông" },
-  { value: "An Thới", label: "An Thới" },
-  { value: "Gành Dầu", label: "Gành Dầu" },
-  { value: "Bắc Đảo", label: "Bắc Đảo" },
-  { value: "Bãi Trường", label: "Bãi Trường" },
-  { value: "Dương Tơ", label: "Dương Tơ" },
-  { value: "Hàm Ninh", label: "Hàm Ninh" },
-  { value: "Cửa Cạn", label: "Cửa Cạn" },
-  { value: "Bãi Dài", label: "Bãi Dài" },
-];
-
-// Danh sách các ngành nghề phổ biến phục vụ lựa chọn ngành nhanh
-const INDUSTRIES = [
-  { value: "", label: "Tất cả ngành" },
-  { value: "Khách sạn & Resort", label: "Khách sạn & Resort" },
-  { value: "Nhà hàng & F&B", label: "Nhà hàng & F&B" },
-  { value: "Du lịch & Lữ hành", label: "Du lịch & Lữ hành" },
-  { value: "Bán lẻ & Dịch vụ", label: "Bán lẻ & Dịch vụ" },
-  { value: "IT & Công nghệ", label: "IT & Công nghệ" },
-  { value: "Xây dựng", label: "Xây dựng" },
-  { value: "Y tế & Spa", label: "Y tế & Spa" },
-];
-
-export default function JobsHero({ totalJobs, onSearch }: JobsHeroProps) {
+export default function JobsHero({
+  totalJobs,
+  categories = [],
+  initialKeyword = "",
+  initialLocation = "",
+  initialIndustry = "",
+  onSearch,
+}: JobsHeroProps) {
   // Quản lý trạng thái nhập liệu của từ khóa, khu vực và ngành nghề
-  const [keyword, setKeyword] = useState("");
-  const [location, setLocation] = useState("");
-  const [industry, setIndustry] = useState("");
+  const [keyword, setKeyword] = useState(initialKeyword);
+  const [location, setLocation] = useState(initialLocation);
+  const [industry, setIndustry] = useState(initialIndustry);
+  const [wards, setWards] = useState<{ id: string; name: string }[]>([]);
+
+  // Đồng bộ hóa khi props thay đổi
+  useEffect(() => {
+    setKeyword(initialKeyword);
+  }, [initialKeyword]);
+
+  useEffect(() => {
+    setLocation(initialLocation);
+  }, [initialLocation]);
+
+  useEffect(() => {
+    setIndustry(initialIndustry);
+  }, [initialIndustry]);
+
+  // Fetch wards dynamically from API
+  useEffect(() => {
+    fetch("/api/v1/address/wards?limit=50", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        const items = d.data?.items || d.data || [];
+        setWards(items);
+      })
+      .catch(() => { });
+  }, []);
 
   // Kích hoạt hàm tìm kiếm chính và truyền ngược lại cho trang chủ xử lý
   const handleSearch = () => {
@@ -80,7 +90,7 @@ export default function JobsHero({ totalJobs, onSearch }: JobsHeroProps) {
   return (
     <section className="bg-linear-to-b from-[#0E7490] to-[#0D9488] dark:from-[#002d3d] dark:to-[#003d38] transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-10">
-        
+
         {/* Tiêu đề chính của Banner */}
         <h1 className="text-white font-bold text-2xl md:text-3xl mb-2">
           Tìm việc làm tại Phú Quốc
@@ -97,7 +107,7 @@ export default function JobsHero({ totalJobs, onSearch }: JobsHeroProps) {
 
         {/* Khung Thanh Công Cụ Tìm Kiếm */}
         <div className="bg-white dark:bg-[#0d2137] rounded-2xl shadow-xl flex flex-col md:flex-row items-stretch overflow-hidden border border-transparent dark:border-[#1a3d5c] transition-colors duration-200">
-          
+
           {/* Ô nhập từ khóa (Search Keyword) */}
           <div className="flex-1 flex items-center px-4 py-1 border-b md:border-b-0 md:border-r border-gray-100 dark:border-[#1a3d5c]">
             <Search className="text-gray-400 dark:text-gray-500 mr-3 w-5 h-5 flex-shrink-0" />
@@ -125,9 +135,10 @@ export default function JobsHero({ totalJobs, onSearch }: JobsHeroProps) {
               onChange={(e) => setLocation(e.target.value)}
               id="search-location"
             >
-              {LOCATIONS.map((loc) => (
-                <option key={loc.value} value={loc.value} className="dark:bg-[#0d2137]">
-                  {loc.label}
+              <option value="" className="dark:bg-[#0d2137]">Tất cả khu vực</option>
+              {wards.map((loc) => (
+                <option key={loc.id} value={loc.id} className="dark:bg-[#0d2137]">
+                  {loc.name}
                 </option>
               ))}
             </select>
@@ -142,9 +153,10 @@ export default function JobsHero({ totalJobs, onSearch }: JobsHeroProps) {
               onChange={(e) => setIndustry(e.target.value)}
               id="search-industry"
             >
-              {INDUSTRIES.map((ind) => (
-                <option key={ind.value} value={ind.value} className="dark:bg-[#0d2137]">
-                  {ind.label}
+              <option value="" className="dark:bg-[#0d2137]">Tất cả ngành</option>
+              {categories.map((ind) => (
+                <option key={ind.id} value={ind.name} className="dark:bg-[#0d2137]">
+                  {ind.name}
                 </option>
               ))}
             </select>

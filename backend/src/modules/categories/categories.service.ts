@@ -16,16 +16,33 @@ export class CategoriesService {
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
     private readonly jobContract: JobContractService,
-  ) {}
+  ) { }
 
   async findAll() {
     const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, 'all');
     const cached = await this.cache.get(cacheKey);
     if (cached) return cached;
 
-    const categories = await this.prisma.jobCategory.findMany({ orderBy: { name: 'asc' } });
-    await this.cache.set(cacheKey, categories, this.CACHE_TTL);
-    return categories;
+    const categories = await this.prisma.jobCategory.findMany({
+      include: {
+        _count: {
+          select: { jobs: true }
+        }
+      }
+    });
+
+    const sorted = categories.map(c => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      icon: c.icon,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+      jobCount: c._count.jobs
+    })).sort((a, b) => b.jobCount - a.jobCount);
+
+    await this.cache.set(cacheKey, sorted, this.CACHE_TTL);
+    return sorted;
   }
 
   async findById(id: string) {
@@ -35,7 +52,7 @@ export class CategoriesService {
 
     const cat = await this.prisma.jobCategory.findUnique({ where: { id } });
     if (!cat) throw new NotFoundException('Category not found');
-    
+
     await this.cache.set(cacheKey, cat, this.CACHE_TTL);
     return cat;
   }

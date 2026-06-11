@@ -14,7 +14,7 @@ export interface JobType {
   location: string;
   isFeatured: boolean;
   isUrgent: boolean;
-  daysLeft: number;
+  daysLeft: number | null;
   postedDate: string;
   tags: string[];
 }
@@ -66,7 +66,7 @@ export interface RelatedJobType {
 
 export type ContractType = 'Full-time' | 'Part-time' | 'Remote' | 'Thực tập' | 'Hợp đồng';
 
-export type SortOption = 'newest' | 'salary_high' | 'most_relevant' | 'expiring_soon';
+export type SortOption = 'newest' | 'salary_low' | 'salary_high' | 'expiring_soon';
 
 export interface JobFilters {
   keyword: string;

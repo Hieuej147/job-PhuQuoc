@@ -26,7 +26,7 @@ interface JobCardProps {
 
 export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps) {
   // Xác định công việc sắp hết hạn ứng tuyển nếu số ngày còn lại nhỏ hơn hoặc bằng 3 ngày
-  const isExpiring = job.daysLeft <= 3;
+  const isExpiring = job.daysLeft !== null && job.daysLeft <= 3;
 
   return (
     <div
@@ -42,7 +42,7 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
 
       {/* Căn lề padding phía trên nếu có nhãn Nổi bật để tránh bị đè chữ */}
       <div className={`flex gap-4 ${job.isFeatured ? 'pt-3' : ''}`}>
-        
+
         {/* 2. Logo đại diện của công ty tuyển dụng */}
         <div
           className={`w-14 h-14 ${job.logoColor} rounded-xl flex items-center justify-center border border-gray-100 dark:border-[#1a3d5c] flex-shrink-0 shadow-sm`}
@@ -63,15 +63,14 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
               {/* Tên công ty tuyển dụng */}
               <p className="text-sm text-gray-500 dark:text-[#cbd5e1]/70">{job.company}</p>
             </div>
-            
+
             {/* Nút lưu tin tuyển dụng (Bookmark) */}
             <button
               onClick={() => onBookmark(job.id)}
-              className={`flex-shrink-0 p-1.5 rounded-full transition-colors flex items-center justify-center cursor-pointer ${
-                isBookmarked
-                  ? 'text-[#F59E0B] bg-[#F59E0B]/10 dark:bg-[#F59E0B]/20'
-                  : 'text-gray-400 dark:text-gray-500 hover:text-[#F59E0B] hover:bg-[#F59E0B]/10 dark:hover:bg-[#F59E0B]/20'
-              }`}
+              className={`flex-shrink-0 p-1.5 rounded-full transition-colors flex items-center justify-center cursor-pointer ${isBookmarked
+                ? 'text-[#F59E0B] bg-[#F59E0B]/10 dark:bg-[#F59E0B]/20'
+                : 'text-gray-400 dark:text-gray-500 hover:text-[#F59E0B] hover:bg-[#F59E0B]/10 dark:hover:bg-[#F59E0B]/20'
+                }`}
               aria-label={isBookmarked ? 'Bỏ lưu việc làm' : 'Lưu việc làm'}
               id={`bookmark-${job.id}`}
             >
@@ -116,10 +115,17 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
                 {job.location}
               </span>
               {/* Số ngày còn lại (đổi màu đỏ cảnh báo nếu sắp hết hạn) */}
-              <span className={`flex items-center gap-1 ${isExpiring ? 'text-red-500 dark:text-red-400 font-semibold' : ''}`}>
-                <Clock className="w-3.5 h-3.5" />
-                {isExpiring ? `⚠️ Còn ${job.daysLeft} ngày` : `Còn ${job.daysLeft} ngày`}
-              </span>
+              {job.daysLeft !== null ? (
+                <span className={`flex items-center gap-1 ${isExpiring ? 'text-red-500 dark:text-red-400 font-semibold' : ''}`}>
+                  <Clock className="w-3.5 h-3.5" />
+                  {isExpiring ? `⚠️ Còn ${job.daysLeft} ngày` : `Còn ${job.daysLeft} ngày`}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                  <Clock className="w-3.5 h-3.5" />
+                  Luôn tuyển dụng
+                </span>
+              )}
             </div>
 
             {/* Nút ứng tuyển nhanh - Chỉ hiển thị trên thiết bị máy tính */}
