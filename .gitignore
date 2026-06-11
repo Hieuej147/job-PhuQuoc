@@ -39,6 +39,8 @@ backend/prisma/migrations/
 
 # Backup data
 backup/
+backend/prisma/*.sql
+
 
 # IDE
 .vscode/

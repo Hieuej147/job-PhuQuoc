@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import JobsHero from "@/components/jobs/JobsHero";
 import { JobFilterSidebar, JobFilterMobileDrawer } from "@/components/jobs/JobFilter";
 import JobSortBar from "@/components/jobs/JobSortBar";
 import JobList from "@/components/jobs/JobList";
+import { useRouter } from "next/navigation";
 
 interface JobItem {
   id: string;
@@ -36,6 +38,12 @@ interface JobsPageClientProps {
   initialTotal: number;
   initialTotalPages: number;
   categories: Category[];
+  stats?: {
+    type: Record<string, number>;
+    experience: Record<string, number>;
+    level: Record<string, number>;
+    salary: Record<string, number>;
+  } | null;
 }
 
 const TYPE_MAP: Record<string, string> = {
@@ -77,7 +85,7 @@ function formatSalary(min?: number | null, max?: number | null): string {
 function mapJobType(item: JobItem) {
   const daysLeft = item.deadline
     ? Math.max(0, Math.ceil((new Date(item.deadline).getTime() - Date.now()) / 86400000))
-    : 0;
+    : null;
   return {
     id: item.id,
     slug: item.slug,
@@ -100,7 +108,9 @@ function mapJobType(item: JobItem) {
   };
 }
 
-export default function JobsPageClient({ initialJobs, initialTotal, initialTotalPages, categories }: JobsPageClientProps) {
+export default function JobsPageClient({ initialJobs, initialTotal, initialTotalPages, categories, stats }: JobsPageClientProps) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [jobs, setJobs] = useState(initialJobs);
   const [totalJobs, setTotalJobs] = useState(initialTotal);
   const [totalPages, setTotalPages] = useState(initialTotalPages);
@@ -110,14 +120,44 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  const [filters, setFilters] = useState({
-    keyword: "",
-    location: "",
-    industries: [] as string[],
-    contractTypes: [] as string[],
-    salaryRanges: [] as string[],
-    experiences: [] as string[],
-    levels: [] as string[],
+  // Fetch saved job IDs from API on mount
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const meRes = await fetch("/api/v1/auth/me", { credentials: "include" });
+        if (!meRes.ok) return;
+        const res = await fetch("/api/v1/saved/jobs?limit=200", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const items = data.data?.items || data.items || [];
+        const ids = items.map((item: any) => item.jobId);
+        if (active) setBookmarkedIds(new Set(ids));
+      } catch {
+        // not logged in or error, keep empty
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const [filters, setFilters] = useState(() => {
+    const search = searchParams.get("search") || "";
+    const wardId = searchParams.get("wardId") || "";
+    const category = searchParams.get("category") || "";
+    const industries: string[] = [];
+    if (category) {
+      const cat = categories.find(c => c.slug === category);
+      if (cat) industries.push(cat.name);
+    }
+    return {
+      keyword: search,
+      location: wardId,
+      industries,
+      contractTypes: [] as string[],
+      salaryRanges: [] as string[],
+      experiences: [] as string[],
+      levels: [] as string[],
+    };
   });
 
   const fetchJobs = useCallback(async (p: number, f: typeof filters, s: string) => {
@@ -127,23 +167,45 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
       params.set("page", String(p));
       params.set("limit", "12");
       if (f.keyword) params.set("search", f.keyword);
-      if (f.contractTypes.length === 1) {
+
+      if (f.contractTypes.length > 0) {
         const typeMap: Record<string, string> = { "Full-time": "FULL_TIME", "Part-time": "PART_TIME", "Remote": "REMOTE", "Hợp đồng": "CONTRACT", "Thực tập": "INTERNSHIP", "Freelance": "FREELANCE" };
-        params.set("type", typeMap[f.contractTypes[0]] || f.contractTypes[0]);
+        const mapped = f.contractTypes.map(ct => typeMap[ct] || ct).filter(Boolean);
+        if (mapped.length > 0) params.set("type", mapped.join(","));
       }
-      if (f.experiences.length === 1) {
+      if (f.experiences.length > 0) {
         const expMap: Record<string, string> = { "Không yêu cầu": "NO_EXPERIENCE", "Dưới 1 năm": "UNDER_1_YEAR", "1-3 năm": "ONE_TO_THREE_YEARS", "3-5 năm": "THREE_TO_FIVE_YEARS", "Trên 5 năm": "OVER_FIVE_YEARS" };
-        params.set("experience", expMap[f.experiences[0]] || f.experiences[0]);
+        const mapped = f.experiences.map(ex => expMap[ex] || ex).filter(Boolean);
+        if (mapped.length > 0) params.set("experience", mapped.join(","));
       }
-      if (f.levels.length === 1) {
+      if (f.levels.length > 0) {
         const lvlMap: Record<string, string> = { "Thực tập sinh": "INTERN", "Fresher": "FRESHER", "Junior": "JUNIOR", "Middle": "MID", "Senior": "SENIOR", "Lead": "LEAD", "Manager": "MANAGER", "Director": "DIRECTOR" };
-        params.set("level", lvlMap[f.levels[0]] || f.levels[0]);
+        const mapped = f.levels.map(lv => lvlMap[lv] || lv).filter(Boolean);
+        if (mapped.length > 0) params.set("level", mapped.join(","));
       }
-      if (f.industries.length === 1) {
-        const cat = categories.find(c => c.name === f.industries[0]);
-        if (cat) params.set("categoryId", cat.id);
+      if (f.salaryRanges.length > 0) {
+        const salaryMap: Record<string, string> = {
+          "Dưới 5 triệu": "under_5",
+          "5 - 10 triệu": "5_10",
+          "10 - 20 triệu": "10_20",
+          "20 - 30 triệu": "20_30",
+          "Trên 30 triệu": "over_30",
+        };
+        const mapped = f.salaryRanges.map(sr => salaryMap[sr]).filter(Boolean);
+        if (mapped.length > 0) params.set("salaryRange", mapped.join(","));
       }
-      if (s === "salary_high") params.set("sort", "salary");
+      if (f.industries.length > 0) {
+        const mappedIds = f.industries
+          .map(indName => categories.find(c => c.name === indName)?.id)
+          .filter(Boolean);
+        if (mappedIds.length > 0) params.set("categoryId", mappedIds.join(","));
+      }
+      if (f.location) {
+        params.set("wardId", f.location);
+      }
+      if (s === "salary_low") params.set("sort", "salary_asc");
+      if (s === "salary_high") params.set("sort", "salary_desc");
+      if (s === "expiring_soon") params.set("sort", "expiring_soon");
 
       const res = await fetch(`/api/v1/jobs?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
@@ -160,6 +222,36 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
   }, [categories]);
 
   useEffect(() => {
+    const search = searchParams.get("search") || "";
+    const wardId = searchParams.get("wardId") || "";
+    const category = searchParams.get("category") || "";
+
+    const newFilters: any = {
+      keyword: search,
+      location: wardId,
+      industries: [] as string[],
+    };
+    if (category) {
+      const cat = categories.find(c => c.slug === category);
+      if (cat) newFilters.industries = [cat.name];
+    }
+
+    setFilters(prev => {
+      if (
+        prev.keyword === newFilters.keyword &&
+        prev.location === newFilters.location &&
+        JSON.stringify(prev.industries) === JSON.stringify(newFilters.industries)
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        ...newFilters,
+      };
+    });
+  }, [searchParams, categories]);
+
+  useEffect(() => {
     fetchJobs(page, filters, sortBy);
   }, [page, filters, sortBy, fetchJobs]);
 
@@ -173,13 +265,30 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
     setPage(1);
   }, []);
 
-  const toggleBookmark = useCallback((id: string) => {
-    setBookmarkedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  // Toggle bookmark with API call
+  const toggleBookmark = useCallback(async (id: string) => {
+    try {
+      const meRes = await fetch("/api/v1/auth/me", { credentials: "include" });
+      if (!meRes.ok) {
+        router.push("/auth/login?redirect=/jobs");
+        return;
+      }
+
+      const res = await fetch(`/api/v1/saved/jobs/${id}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        setBookmarkedIds(prev => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+      }
+    } catch {
+      // silently fail
+    }
   }, []);
 
   const handleSearch = useCallback((keyword: string, location: string, industry: string) => {
@@ -212,7 +321,14 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
 
   return (
     <div className="min-h-screen bg-[#f7f9ff] dark:bg-[#071a2b] text-slate-800 dark:text-[#cbd5e1] transition-colors duration-200">
-      <JobsHero totalJobs={totalJobs} onSearch={handleSearch} />
+      <JobsHero
+        totalJobs={totalJobs}
+        categories={categories}
+        initialKeyword={filters.keyword}
+        initialLocation={filters.location}
+        initialIndustry={filters.industries[0] || ""}
+        onSearch={handleSearch}
+      />
 
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         <div className="flex gap-6 items-start">
@@ -221,6 +337,8 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
               filters={filters as any}
               onFilterChange={updateFilters as any}
               onClearAll={clearFilters}
+              categories={categories}
+              stats={stats}
             />
           </aside>
 
@@ -258,6 +376,8 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
         filters={filters as any}
         onFilterChange={updateFilters as any}
         onClearAll={clearFilters}
+        categories={categories}
+        stats={stats}
       />
     </div>
   );

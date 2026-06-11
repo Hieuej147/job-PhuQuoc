@@ -33,8 +33,8 @@ interface JobSortBarProps {
 // Cấu hình các lựa chọn sắp xếp hiển thị trong dropdown select
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'newest', label: 'Mới nhất' },
+  { value: 'salary_low', label: 'Lương thấp nhất' },
   { value: 'salary_high', label: 'Lương cao nhất' },
-  { value: 'most_relevant', label: 'Phù hợp nhất' },
   { value: 'expiring_soon', label: 'Sắp hết hạn' },
 ];
 
@@ -48,7 +48,7 @@ export default function JobSortBar({
 }: JobSortBarProps) {
   return (
     <div className="bg-white dark:bg-[#0d2137] border border-[#E0F5FB] dark:border-[#1a3d5c] px-5 py-3 mb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 transition-colors duration-200">
-      
+
       {/* 1. Phần Bên Trái: Số lượng kết quả và danh sách nhãn bộ lọc đang bật */}
       <div className="flex items-center gap-3 flex-wrap">
         {/* Số lượng công việc thống kê */}
@@ -59,7 +59,7 @@ export default function JobSortBar({
           </strong>{' '}
           việc làm
         </span>
-        
+
         {/* Duyệt qua và hiển thị các badge bộ lọc đang được chọn */}
         {activeFilters.map((filter) => (
           <span
@@ -108,7 +108,7 @@ export default function JobSortBar({
           </select>
         </div>
       </div>
-      
+
     </div>
   );
 }

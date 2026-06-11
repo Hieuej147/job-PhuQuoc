@@ -25,6 +25,7 @@ const CONTRACT_TYPES: { label: string; value: ContractType; count: number }[] = 
   { label: 'Remote', value: 'Remote', count: 56 },
   { label: 'Thực tập', value: 'Thực tập', count: 81 },
   { label: 'Hợp đồng', value: 'Hợp đồng', count: 99 },
+  { label: 'Freelance', value: 'Freelance' as any, count: 24 },
 ];
 
 // Danh sách các khoảng mức lương tuyển dụng để người dùng chọn nhanh
@@ -38,30 +39,23 @@ const SALARY_RANGES = [
 
 // Yêu cầu kinh nghiệm làm việc kèm số lượng tin tuyển dụng tương ứng
 const EXPERIENCES = [
-  { label: 'Chưa có KN', count: 145 },
+  { label: 'Không yêu cầu', count: 145 },
   { label: 'Dưới 1 năm', count: 203 },
-  { label: '1 - 3 năm', count: 389 },
-  { label: '3 - 5 năm', count: 210 },
+  { label: '1-3 năm', count: 389 },
+  { label: '3-5 năm', count: 210 },
   { label: 'Trên 5 năm', count: 98 },
 ];
 
 // Danh sách cấp bậc nhân sự trong doanh nghiệp tuyển dụng
 const LEVELS = [
   'Thực tập sinh',
-  'Nhân viên',
-  'Chuyên viên',
-  'Trưởng nhóm',
-  'Quản lý',
-  'Giám đốc',
-];
-
-// Danh sách các ngành nghề kinh doanh nổi bật tại Phú Quốc
-const INDUSTRIES = [
-  { label: 'Khách sạn & Resort', count: 350 },
-  { label: 'Nhà hàng & F&B', count: 280 },
-  { label: 'Du lịch & Lữ hành', count: 150 },
-  { label: 'Bán lẻ & Dịch vụ', count: 120 },
-  { label: 'IT & Công nghệ', count: 87 },
+  'Fresher',
+  'Junior',
+  'Middle',
+  'Senior',
+  'Lead',
+  'Manager',
+  'Director',
 ];
 
 // ==========================================
@@ -130,20 +124,63 @@ interface JobFilterSidebarProps {
   filters: JobFilters; // Trạng thái bộ lọc hiện tại của trang
   onFilterChange: (updated: Partial<JobFilters>) => void; // Hàm callback cập nhật một phần bộ lọc
   onClearAll: () => void; // Hàm callback xóa toàn bộ bộ lọc đang áp dụng
+  categories: { id: string; name: string; slug: string; jobCount?: number }[];
+  stats?: {
+    type: Record<string, number>;
+    experience: Record<string, number>;
+    level: Record<string, number>;
+    salary: Record<string, number>;
+  } | null;
 }
 
 export function JobFilterSidebar({
   filters,
   onFilterChange,
   onClearAll,
+  categories,
+  stats,
 }: JobFilterSidebarProps) {
   // Định nghĩa các biến class dùng chung để giao diện thống nhất và dễ bảo trì
   const dividerClass = 'border-t border-[#E0F5FB] dark:border-[#1a3d5c]';
   const headingClass = 'font-semibold text-[#005a71] dark:text-[#67e8f9] mb-3 uppercase tracking-wide text-xs';
 
+  const getContractTypeCount = (value: string) => {
+    if (!stats?.type) return 0;
+    const typeMap: Record<string, string> = { "Full-time": "FULL_TIME", "Part-time": "PART_TIME", "Remote": "REMOTE", "Hợp đồng": "CONTRACT", "Thực tập": "INTERNSHIP", "Freelance": "FREELANCE" };
+    const dbKey = typeMap[value] || value;
+    return stats.type[dbKey] || 0;
+  };
+
+  const getSalaryRangeCount = (value: string) => {
+    if (!stats?.salary) return 0;
+    const salaryMap: Record<string, string> = {
+      'Dưới 5 triệu': 'under_5',
+      '5 - 10 triệu': '5_10',
+      '10 - 20 triệu': '10_20',
+      '20 - 30 triệu': '20_30',
+      'Trên 30 triệu': 'over_30',
+    };
+    const dbKey = salaryMap[value];
+    return stats.salary[dbKey] || 0;
+  };
+
+  const getExperienceCount = (value: string) => {
+    if (!stats?.experience) return 0;
+    const expMap: Record<string, string> = { "Không yêu cầu": "NO_EXPERIENCE", "Dưới 1 năm": "UNDER_1_YEAR", "1-3 năm": "ONE_TO_THREE_YEARS", "3-5 năm": "THREE_TO_FIVE_YEARS", "Trên 5 năm": "OVER_FIVE_YEARS" };
+    const dbKey = expMap[value];
+    return stats.experience[dbKey] || 0;
+  };
+
+  const getLevelCount = (value: string) => {
+    if (!stats?.level) return 0;
+    const lvlMap: Record<string, string> = { "Thực tập sinh": "INTERN", "Fresher": "FRESHER", "Junior": "JUNIOR", "Middle": "MID", "Senior": "SENIOR", "Lead": "LEAD", "Manager": "MANAGER", "Director": "DIRECTOR" };
+    const dbKey = lvlMap[value];
+    return stats.level[dbKey] || 0;
+  };
+
   return (
     <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] shadow-sm overflow-hidden transition-colors duration-200">
-      
+
       {/* Tiêu đề Header của thanh bộ lọc */}
       <div className="flex justify-between items-center px-5 py-4 border-b border-[#E0F5FB] dark:border-[#1a3d5c]">
         <h2 className="font-bold text-[#005a71] dark:text-[#67e8f9] flex items-center gap-2 text-sm">
@@ -161,7 +198,7 @@ export function JobFilterSidebar({
 
       {/* Nội dung danh mục bộ lọc */}
       <div className="px-5 py-4 space-y-5">
-        
+
         {/* 1. Lọc theo Loại hợp đồng */}
         <div>
           <h3 className={headingClass}>Loại hợp đồng</h3>
@@ -170,7 +207,7 @@ export function JobFilterSidebar({
             selected={filters.contractTypes}
             onChange={(val) => onFilterChange({ contractTypes: val })}
             getLabel={(opt) => CONTRACT_TYPES.find((c) => c.value === opt)?.label ?? opt}
-            getCount={(opt) => CONTRACT_TYPES.find((c) => c.value === opt)?.count}
+            getCount={getContractTypeCount}
           />
         </div>
 
@@ -184,6 +221,7 @@ export function JobFilterSidebar({
             selected={filters.salaryRanges}
             onChange={(val) => onFilterChange({ salaryRanges: val })}
             getLabel={(opt) => opt}
+            getCount={getSalaryRangeCount}
           />
         </div>
 
@@ -197,7 +235,7 @@ export function JobFilterSidebar({
             selected={filters.experiences}
             onChange={(val) => onFilterChange({ experiences: val })}
             getLabel={(opt) => opt}
-            getCount={(opt) => EXPERIENCES.find((e) => e.label === opt)?.count}
+            getCount={getExperienceCount}
           />
         </div>
 
@@ -211,6 +249,7 @@ export function JobFilterSidebar({
             selected={filters.levels}
             onChange={(val) => onFilterChange({ levels: val })}
             getLabel={(opt) => opt}
+            getCount={getLevelCount}
           />
         </div>
 
@@ -220,11 +259,11 @@ export function JobFilterSidebar({
         <div>
           <h3 className={headingClass}>Ngành nghề</h3>
           <CheckboxGroup
-            options={INDUSTRIES.map((i) => i.label)}
+            options={categories.map((c) => c.name)}
             selected={filters.industries}
             onChange={(val) => onFilterChange({ industries: val })}
             getLabel={(opt) => opt}
-            getCount={(opt) => INDUSTRIES.find((i) => i.label === opt)?.count}
+            getCount={(opt) => categories.find((c) => c.name === opt)?.jobCount}
           />
         </div>
 
@@ -252,6 +291,13 @@ interface JobFilterMobileDrawerProps {
   filters: JobFilters; // Trạng thái bộ lọc hiện thời
   onFilterChange: (updated: Partial<JobFilters>) => void; // Callback cập nhật bộ lọc
   onClearAll: () => void; // Callback xóa toàn bộ
+  categories: { id: string; name: string; slug: string }[];
+  stats?: {
+    type: Record<string, number>;
+    experience: Record<string, number>;
+    level: Record<string, number>;
+    salary: Record<string, number>;
+  } | null;
 }
 
 export function JobFilterMobileDrawer({
@@ -260,8 +306,10 @@ export function JobFilterMobileDrawer({
   filters,
   onFilterChange,
   onClearAll,
+  categories,
+  stats,
 }: JobFilterMobileDrawerProps) {
-  
+
   // Khóa thanh cuốn (scroll) của trang chính phía dưới khi đang hiển thị bộ lọc trượt
   useEffect(() => {
     if (isOpen) {
@@ -269,7 +317,7 @@ export function JobFilterMobileDrawer({
     } else {
       document.body.style.overflow = '';
     }
-    
+
     return () => {
       document.body.style.overflow = '';
     };
@@ -320,6 +368,7 @@ export function JobFilterMobileDrawer({
             filters={filters}
             onFilterChange={onFilterChange}
             onClearAll={onClearAll}
+            categories={categories}
           />
         </div>
 

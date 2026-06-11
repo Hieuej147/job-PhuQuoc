@@ -208,7 +208,7 @@ export default function HomePageClient({
           </p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          {categories.map((cat: any, index: number) => (
+          {categories.slice(0, 8).map((cat: any, index: number) => (
             <a
               key={cat.id}
               href={`/jobs?category=${cat.slug}`}

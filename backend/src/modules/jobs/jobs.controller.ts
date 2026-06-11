@@ -10,7 +10,7 @@ import type { UserSession } from '@thallesp/nestjs-better-auth';
 @ApiTags('Jobs')
 @Controller('jobs')
 export class JobsController {
-  constructor(private readonly jobsService: JobsService) {}
+  constructor(private readonly jobsService: JobsService) { }
 
   @Get()
   @Public()
@@ -27,6 +27,7 @@ export class JobsController {
   @ApiQuery({ name: 'companyId', required: false, description: 'ID công ty' })
   @ApiQuery({ name: 'page', required: false, description: 'Trang (default: 1)' })
   @ApiQuery({ name: 'limit', required: false, description: 'Số item/trang (default: 10)' })
+  @ApiQuery({ name: 'sort', required: false, description: 'Sắp xếp: salary_asc (lương thấp nhất), expiring_soon (sắp hết hạn)' })
   @ApiResponse({ status: 200, description: 'Danh sách jobs phân trang' })
   findAll(@Query() query: JobQueryDto) {
     return this.jobsService.findAll(query);
@@ -53,6 +54,14 @@ export class JobsController {
   @ApiResponse({ status: 404, description: 'Không tìm thấy job' })
   findBySlug(@Param('slug') slug: string) {
     return this.jobsService.findBySlug(slug);
+  }
+
+  @Get('stats')
+  @Public()
+  @ApiOperation({ summary: 'Lấy số liệu đếm của các bộ lọc' })
+  @ApiResponse({ status: 200, description: 'Số liệu đếm theo loại hình, kinh nghiệm, cấp bậc, mức lương' })
+  getFilterStats() {
+    return this.jobsService.getFilterStats();
   }
 
   @Get(':id')

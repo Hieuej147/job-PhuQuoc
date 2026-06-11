@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Search, MapPin, ChevronDown, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const ALL_LOCATION = { id: "", name: "Tất cả khu vực" };
 
@@ -13,6 +14,7 @@ interface Ward {
 }
 
 export default function SearchBar() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState(ALL_LOCATION);
   const [keyword, setKeyword] = useState("");
@@ -30,7 +32,7 @@ export default function SearchBar() {
         const items = d.data?.items || d.data || [];
         setWards(items);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const options = [ALL_LOCATION, ...wards.map(w => ({ id: w.id, name: w.name }))];
@@ -73,6 +75,13 @@ export default function SearchBar() {
       window.removeEventListener("scroll", onScroll);
     };
   }, [isOpen]);
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (keyword) params.set("search", keyword);
+    if (selected.id) params.set("wardId", selected.id);
+    router.push(`/jobs?${params.toString()}`);
+  };
 
   const dropdown = isOpen ? (
     <div
@@ -143,7 +152,10 @@ export default function SearchBar() {
       {typeof window !== "undefined" && createPortal(dropdown, document.body)}
 
       {/* Search Button */}
-      <button className="w-full md:w-auto bg-[#F59E0B] hover:bg-[#D97706] text-white px-8 py-3.5 md:py-3 rounded-xl md:rounded-full text-[14px] font-bold transition-colors shadow-md flex items-center justify-center gap-2 shrink-0 border-0 cursor-pointer md:ml-2">
+      <button
+        onClick={handleSearch}
+        className="w-full md:w-auto bg-[#F59E0B] hover:bg-[#D97706] text-white px-8 py-3.5 md:py-3 rounded-xl md:rounded-full text-[14px] font-bold transition-colors shadow-md flex items-center justify-center gap-2 shrink-0 border-0 cursor-pointer md:ml-2"
+      >
         <Search className="w-4 h-4" />
         Tìm kiếm
       </button>

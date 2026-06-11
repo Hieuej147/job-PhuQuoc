@@ -61,7 +61,7 @@ export default function JobList({
   bookmarkedIds,
   onBookmark,
 }: JobListProps) {
-  
+
   // 1. Trường hợp đang tải dữ liệu: Render 4 SkeletonCard chạy hiệu ứng nhấp nháy
   if (isLoading) {
     return (
@@ -103,7 +103,7 @@ export default function JobList({
       {/* 4. Thanh phân trang: Chỉ xuất hiện khi tổng số trang lớn hơn 1 */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-8">
-          
+
           {/* Nút lùi về trang trước */}
           <button
             onClick={() => onPageChange(currentPage - 1)}
@@ -115,25 +115,59 @@ export default function JobList({
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          {/* Duyệt qua mảng số trang để vẽ các nút số tương ứng */}
-          {[...Array(totalPages)].map((_, index) => {
-            const pageNumber = index + 1;
-            const isActive = pageNumber === currentPage;
-            return (
-              <button
-                key={pageNumber}
-                onClick={() => onPageChange(pageNumber)}
-                id={`page-${pageNumber}`}
-                className={`w-9 h-9 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
-                  isActive
+          {/* Duyệt qua mảng số trang để vẽ các nút số tương ứng, rút gọn nếu quá nhiều trang */}
+          {(() => {
+            const getPageNumbers = () => {
+              const pages: (number | string)[] = [];
+              if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) {
+                  pages.push(i);
+                }
+              } else {
+                pages.push(1);
+                if (currentPage > 3) {
+                  pages.push('...');
+                }
+                const start = Math.max(2, currentPage - 1);
+                const end = Math.min(totalPages - 1, currentPage + 1);
+                for (let i = start; i <= end; i++) {
+                  pages.push(i);
+                }
+                if (currentPage < totalPages - 2) {
+                  pages.push('...');
+                }
+                pages.push(totalPages);
+              }
+              return pages;
+            };
+
+            return getPageNumbers().map((pageNumber, idx) => {
+              if (pageNumber === '...') {
+                return (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-600 font-semibold"
+                  >
+                    ...
+                  </span>
+                );
+              }
+              const isActive = pageNumber === currentPage;
+              return (
+                <button
+                  key={pageNumber}
+                  onClick={() => onPageChange(pageNumber as number)}
+                  id={`page-${pageNumber}`}
+                  className={`w-9 h-9 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${isActive
                     ? 'bg-[#0E7490] text-white dark:bg-[#67e8f9] dark:text-[#071a2b] shadow-md'
                     : 'border border-gray-200 dark:border-[#1a3d5c] text-gray-600 dark:text-[#cbd5e1] hover:border-[#0E7490] dark:hover:border-[#67e8f9] hover:text-[#0E7490] dark:hover:text-[#67e8f9]'
-                }`}
-              >
-                {pageNumber}
-              </button>
-            );
-          })}
+                    }`}
+                >
+                  {pageNumber}
+                </button>
+              );
+            });
+          })()}
 
           {/* Nút tiến tới trang tiếp theo */}
           <button

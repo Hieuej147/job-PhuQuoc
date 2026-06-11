@@ -28,21 +28,21 @@ export class JobsService {
     private readonly auditService: AuditService,
     private readonly cache: CacheService,
     private readonly companyContract: CompanyContractService,
-  ) {}
+  ) { }
 
-  async findAll(query: { page?: number; limit?: number; search?: string; categoryId?: string; type?: string; experience?: string; level?: string; status?: string; salaryMin?: number; salaryMax?: number; wardId?: string; companyId?: string }) {
-    const { search, categoryId, type, experience, level, status, salaryMin, salaryMax, wardId, companyId } = query;
+  async findAll(query: { page?: number; limit?: number; search?: string; categoryId?: string; type?: string; experience?: string; level?: string; status?: string; salaryMin?: number; salaryMax?: number; salaryRange?: string; wardId?: string; companyId?: string; sort?: string }) {
+    const { search, categoryId, type, experience, level, status, salaryMin, salaryMax, salaryRange, wardId, companyId, sort } = query;
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
-    
+
     // Generate cache key from query parameters
     const cacheKey = this.cache.generateKey(
       this.CACHE_PREFIX, 'list',
       String(page), String(limit), search || '', categoryId || '',
       type || '', experience || '', level || '', status || 'ACTIVE',
-      String(salaryMin || ''), String(salaryMax || ''), wardId || '', companyId || ''
+      String(salaryMin || ''), String(salaryMax || ''), salaryRange || '', wardId || '', companyId || '', sort || ''
     );
-    
+
     const cached = await this.cache.get(cacheKey);
     if (cached) return cached;
 
@@ -50,29 +50,112 @@ export class JobsService {
     if (companyId) where.companyId = companyId;
     if (status) where.status = status as JobStatus;
     else where.status = JobStatus.ACTIVE; // Default: chỉ trả job ACTIVE cho public queries
-    if (categoryId) where.categoryId = categoryId;
-    if (type) where.type = type as JobType;
-    if (experience) where.experience = experience as ExperienceLevel;
-    if (level) where.level = level as JobLevel;
-    if (wardId) where.wardId = wardId;
+
+    if (categoryId) {
+      const ids = categoryId.split(',');
+      where.categoryId = ids.length > 1 ? { in: ids } : ids[0];
+    }
+    if (type) {
+      const types = type.split(',') as JobType[];
+      where.type = types.length > 1 ? { in: types } : types[0];
+    }
+    if (experience) {
+      const exps = experience.split(',') as ExperienceLevel[];
+      where.experience = exps.length > 1 ? { in: exps } : exps[0];
+    }
+    if (level) {
+      const lvls = level.split(',') as JobLevel[];
+      where.level = lvls.length > 1 ? { in: lvls } : lvls[0];
+    }
+    if (wardId) {
+      const ids = wardId.split(',');
+      where.wardId = ids.length > 1 ? { in: ids } : ids[0];
+    }
     if (salaryMin) where.salaryMin = { gte: Number(salaryMin) };
     if (salaryMax) where.salaryMax = { lte: Number(salaryMax) };
+
+    if (salaryRange) {
+      const ranges = salaryRange.split(',');
+      const rangeQueries = [];
+      for (const range of ranges) {
+        if (range === 'under_5') {
+          rangeQueries.push({
+            OR: [
+              { salaryMin: { lt: 5000000 } },
+              { AND: [{ salaryMin: null }, { salaryMax: { lt: 5000000 } }] }
+            ]
+          });
+        } else if (range === '5_10') {
+          rangeQueries.push({
+            AND: [
+              { OR: [{ salaryMin: null }, { salaryMin: { lt: 10000000 } }] },
+              { OR: [{ salaryMax: null }, { salaryMax: { gte: 5000000 } }] }
+            ]
+          });
+        } else if (range === '10_20') {
+          rangeQueries.push({
+            AND: [
+              { OR: [{ salaryMin: null }, { salaryMin: { lt: 20000000 } }] },
+              { OR: [{ salaryMax: null }, { salaryMax: { gte: 10000000 } }] }
+            ]
+          });
+        } else if (range === '20_30') {
+          rangeQueries.push({
+            AND: [
+              { OR: [{ salaryMin: null }, { salaryMin: { lt: 30000000 } }] },
+              { OR: [{ salaryMax: null }, { salaryMax: { gte: 20000000 } }] }
+            ]
+          });
+        } else if (range === 'over_30') {
+          rangeQueries.push({
+            OR: [
+              { salaryMin: { gte: 30000000 } },
+              { salaryMax: { gte: 30000000 } }
+            ]
+          });
+        }
+      }
+      if (rangeQueries.length > 0) {
+        where.OR = rangeQueries;
+      }
+    }
+    where.AND = [
+      {
+        OR: [
+          { deadline: null },
+          { deadline: { gte: new Date() } }
+        ]
+      }
+    ];
+
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
+      where.AND.push({
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ]
+      });
+    }
+
+    // Xác định orderBy dựa trên sort param
+    let orderBy: Prisma.JobOrderByWithRelationInput = { createdAt: 'desc' };
+    if (sort === 'salary_asc') {
+      orderBy = { salaryMin: 'asc' };
+    } else if (sort === 'salary_desc') {
+      orderBy = { salaryMin: 'desc' };
+    } else if (sort === 'expiring_soon') {
+      orderBy = { deadline: 'asc' };
     }
 
     const [items, total] = await Promise.all([
       this.prisma.job.findMany({
         where, skip: (Number(page) - 1) * Number(limit), take: Number(limit),
         include: { category: true, company: { select: { id: true, name: true, slug: true, logo: true } }, ward: { include: { district: true } } },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
       }),
       this.prisma.job.count({ where }),
     ]);
-    
+
     const result = { items, total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) };
     await this.cache.set(cacheKey, result, this.CACHE_TTL);
     return result;
@@ -88,7 +171,7 @@ export class JobsService {
       include: { category: true, company: true, ward: { include: { district: { include: { province: true } } } }, applications: { select: { id: true, status: true, createdAt: true } } },
     });
     if (!job) throw new NotFoundException('Job not found');
-    
+
     await this.cache.set(cacheKey, job, this.CACHE_TTL);
     return job;
   }
@@ -120,7 +203,7 @@ export class JobsService {
       include: { category: true, company: true, ward: { include: { district: { include: { province: true } } } } },
     });
     if (!job) throw new NotFoundException('Job not found');
-    
+
     await this.cache.set(cacheKey, job, this.CACHE_TTL);
     return job;
   }
@@ -178,6 +261,144 @@ export class JobsService {
     await this.prisma.job.delete({ where: { id } });
     await this.invalidateCache();
     return { message: 'Job deleted' };
+  }
+
+  async getFilterStats() {
+    const activeJobsWhere: Prisma.JobWhereInput = {
+      status: JobStatus.ACTIVE,
+      AND: [
+        {
+          OR: [
+            { deadline: null },
+            { deadline: { gte: new Date() } }
+          ]
+        }
+      ]
+    };
+
+    // Get count by type
+    const typeGroup = await this.prisma.job.groupBy({
+      by: ['type'],
+      where: activeJobsWhere,
+      _count: { id: true },
+    });
+
+    // Get count by experience
+    const experienceGroup = await this.prisma.job.groupBy({
+      by: ['experience'],
+      where: activeJobsWhere,
+      _count: { id: true },
+    });
+
+    // Get count by level
+    const levelGroup = await this.prisma.job.groupBy({
+      by: ['level'],
+      where: activeJobsWhere,
+      _count: { id: true },
+    });
+
+    // Get count by salary ranges
+    // Under 5M: salaryMin < 5000000 or (salaryMin is null/unspecified and salaryMax < 5000000)
+    const salaryUnder5 = await this.prisma.job.count({
+      where: {
+        ...activeJobsWhere,
+        AND: [
+          ...(activeJobsWhere.AND as any),
+          {
+            OR: [
+              { salaryMin: { lt: 5000000 } },
+              { AND: [{ salaryMin: null }, { salaryMax: { lt: 5000000 } }] }
+            ]
+          }
+        ]
+      }
+    });
+
+    // 5 - 10M: salaryMin < 10000000 and (salaryMax is null/unspecified or salaryMax >= 5000000)
+    const salary5to10 = await this.prisma.job.count({
+      where: {
+        ...activeJobsWhere,
+        AND: [
+          ...(activeJobsWhere.AND as any),
+          {
+            AND: [
+              { OR: [{ salaryMin: null }, { salaryMin: { lt: 10000000 } }] },
+              { OR: [{ salaryMax: null }, { salaryMax: { gte: 5000000 } }] }
+            ]
+          }
+        ]
+      }
+    });
+
+    // 10 - 20M: salaryMin < 20000000 and (salaryMax is null/unspecified or salaryMax >= 10000000)
+    const salary10to20 = await this.prisma.job.count({
+      where: {
+        ...activeJobsWhere,
+        AND: [
+          ...(activeJobsWhere.AND as any),
+          {
+            AND: [
+              { OR: [{ salaryMin: null }, { salaryMin: { lt: 20000000 } }] },
+              { OR: [{ salaryMax: null }, { salaryMax: { gte: 10000000 } }] }
+            ]
+          }
+        ]
+      }
+    });
+
+    // 20 - 30M: salaryMin < 30000000 and (salaryMax is null/unspecified or salaryMax >= 20000000)
+    const salary20to30 = await this.prisma.job.count({
+      where: {
+        ...activeJobsWhere,
+        AND: [
+          ...(activeJobsWhere.AND as any),
+          {
+            AND: [
+              { OR: [{ salaryMin: null }, { salaryMin: { lt: 30000000 } }] },
+              { OR: [{ salaryMax: null }, { salaryMax: { gte: 20000000 } }] }
+            ]
+          }
+        ]
+      }
+    });
+
+    // Over 30M: salaryMax >= 30000000 or salaryMin >= 30000000
+    const salaryOver30 = await this.prisma.job.count({
+      where: {
+        ...activeJobsWhere,
+        AND: [
+          ...(activeJobsWhere.AND as any),
+          {
+            OR: [
+              { salaryMin: { gte: 30000000 } },
+              { salaryMax: { gte: 30000000 } }
+            ]
+          }
+        ]
+      }
+    });
+
+    return {
+      type: typeGroup.reduce((acc, curr) => {
+        acc[curr.type] = curr._count.id;
+        return acc;
+      }, {} as Record<string, number>),
+      experience: experienceGroup.reduce((acc, curr) => {
+        if (curr.experience) acc[curr.experience] = curr._count.id;
+        return acc;
+      }, {} as Record<string, number>),
+      level: levelGroup.reduce((acc, curr) => {
+        if (curr.level) acc[curr.level] = curr._count.id;
+        return acc;
+      }, {} as Record<string, number>),
+      salary: {
+        under_5: salaryUnder5,
+        '5_10': salary5to10,
+        '10_20': salary10to20,
+        '20_30': salary20to30,
+        over_30: salaryOver30,
+      }
+    };
   }
 
   private async invalidateCache() {
