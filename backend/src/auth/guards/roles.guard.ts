@@ -29,7 +29,11 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('No user found in request');
     }
 
-    const userRole = user.user.role || 'CANDIDATE';
+    const userRole = user.user.role;
+
+    if (!userRole) {
+      throw new ForbiddenException('Role not selected');
+    }
 
     if (!requiredRoles.includes(userRole)) {
       throw new ForbiddenException(

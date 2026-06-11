@@ -4,16 +4,15 @@ import {
   ExecutionContext,
   UnauthorizedException,
   ForbiddenException,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
-import { AuthService } from '@thallesp/nestjs-better-auth';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { fromNodeHeaders } from 'better-auth/node';
-import { PrismaService } from '../../prisma/prisma.service';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-import type { AuthGuardUser } from '../../common/types/auth.types';
-import type { Request } from 'express';
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { ConfigService } from "@nestjs/config";
+import { AuthService } from "@thallesp/nestjs-better-auth";
+import { createRemoteJWKSet, jwtVerify } from "jose";
+import { fromNodeHeaders } from "better-auth/node";
+import { PrismaService } from "../../prisma/prisma.service";
+import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
+import type { Request } from "express";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -36,20 +35,20 @@ export class AuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<Request>();
-    const authHeader = request.headers['authorization'];
+    const authHeader = request.headers["authorization"];
 
     // Priority 1: Bearer token (for external services / mobile app)
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith("Bearer ")) {
       return this.verifyJwt(authHeader.substring(7), request);
     }
 
     // Priority 2: Session cookie (for web FE)
-    const sessionCookie = request.cookies?.['better-auth.session_token'];
+    const sessionCookie = request.cookies?.["better-auth.session_token"];
     if (sessionCookie) {
       return this.verifySession(request);
     }
 
-    throw new UnauthorizedException('Not authenticated');
+    throw new UnauthorizedException("Not authenticated");
   }
 
   private async verifySession(request: Request): Promise<boolean> {
@@ -59,39 +58,69 @@ export class AuthGuard implements CanActivate {
       });
 
       if (!session || !session.user) {
-        throw new UnauthorizedException('Invalid session');
+        throw new UnauthorizedException("Invalid session");
       }
 
-      const user = session.user as AuthGuardUser['user'];
-      if (user.isActive === false) {
-        throw new ForbiddenException('Account is deactivated');
-      }
-      if (user.isLocked === true) {
-        throw new ForbiddenException('Account is locked');
+      const sessionExpiresAt = session.session?.expiresAt
+        ? new Date(session.session.expiresAt as string | number | Date)
+        : null;
+      if (sessionExpiresAt && sessionExpiresAt.getTime() <= Date.now()) {
+        throw new UnauthorizedException("Session expired");
       }
 
-      (request as unknown as Record<string, unknown>).user = {        user: {
-          id: session.user.id,
-          email: session.user.email,
-          name: session.user.name,
-          role: (session.user as Record<string, unknown>).role || 'CANDIDATE',
+      const dbUser = await this.prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          isActive: true,
+          isLocked: true,
+          emailVerified: true,
+        },
+      });
+
+      if (!dbUser) {
+        throw new UnauthorizedException("User not found");
+      }
+      if (dbUser.isActive === false) {
+        throw new ForbiddenException("Account is deactivated");
+      }
+      if (dbUser.isLocked === true) {
+        throw new ForbiddenException("Account is locked");
+      }
+
+      (request as unknown as Record<string, unknown>).user = {
+        user: {
+          id: dbUser.id,
+          email: dbUser.email,
+          name: dbUser.name,
+          role: dbUser.role ?? null,
+          emailVerified: dbUser.emailVerified,
+          isActive: dbUser.isActive,
+          isLocked: dbUser.isLocked,
         },
         session: session.session,
       };
 
       return true;
     } catch (error) {
-      if (error instanceof UnauthorizedException || error instanceof ForbiddenException) throw error;
-      throw new UnauthorizedException('Invalid session');
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException
+      )
+        throw error;
+      throw new UnauthorizedException("Invalid session");
     }
   }
 
   private async verifyJwt(token: string, request: Request): Promise<boolean> {
     try {
       const jwksUrl = new URL(
-        '/api/auth/jwks',
-        this.configService.get<string>('BETTER_AUTH_URL') ||
-          'http://localhost:3000',
+        "/api/auth/jwks",
+        this.configService.get<string>("BETTER_AUTH_URL") ||
+          "http://localhost:3000",
       );
 
       if (!this.JWKS) {
@@ -99,39 +128,54 @@ export class AuthGuard implements CanActivate {
       }
 
       const { payload } = await jwtVerify(token, this.JWKS, {
-        issuer: this.configService.get<string>('BETTER_AUTH_URL'),
-        audience: this.configService.get<string>('BETTER_AUTH_URL'),
+        issuer: this.configService.get<string>("BETTER_AUTH_URL"),
+        audience: this.configService.get<string>("BETTER_AUTH_URL"),
       });
 
-      // Check user isActive/isLocked in DB (JWT doesn't have these fields)
       const dbUser = await this.prisma.user.findUnique({
         where: { id: payload.id as string },
-        select: { isActive: true, isLocked: true },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          isActive: true,
+          isLocked: true,
+          emailVerified: true,
+        },
       });
 
       if (!dbUser) {
-        throw new UnauthorizedException('User not found');
+        throw new UnauthorizedException("User not found");
       }
       if (dbUser.isActive === false) {
-        throw new ForbiddenException('Account is deactivated');
+        throw new ForbiddenException("Account is deactivated");
       }
       if (dbUser.isLocked === true) {
-        throw new ForbiddenException('Account is locked');
+        throw new ForbiddenException("Account is locked");
       }
 
-      (request as unknown as Record<string, unknown>).user = {        user: {
-          id: payload.id as string,
-          email: payload.email as string,
-          name: payload.name as string,
-          role: (payload.role as string) || 'CANDIDATE',
+      (request as unknown as Record<string, unknown>).user = {
+        user: {
+          id: dbUser.id,
+          email: dbUser.email,
+          name: dbUser.name,
+          role: dbUser.role ?? null,
+          emailVerified: dbUser.emailVerified,
+          isActive: dbUser.isActive,
+          isLocked: dbUser.isLocked,
         },
         session: {},
       };
 
       return true;
     } catch (error) {
-      if (error instanceof UnauthorizedException || error instanceof ForbiddenException) throw error;
-      throw new UnauthorizedException('Invalid or expired token');
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException
+      )
+        throw error;
+      throw new UnauthorizedException("Invalid or expired token");
     }
   }
 }

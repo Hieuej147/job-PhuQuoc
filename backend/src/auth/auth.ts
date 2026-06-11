@@ -4,7 +4,7 @@ import { jwt, emailOTP } from "better-auth/plugins";
 import { redisStorage } from "@better-auth/redis-storage";
 import { Redis } from "ioredis";
 import { PrismaClient } from "@prisma/client";
-import { resendClient } from "../common/email/email.service";
+import { resendClient } from "../common/email/resend.client";
 import { verifyOtpTemplate } from "./templates/verify-otp";
 import { resetPasswordOtpTemplate } from "./templates/reset-password-otp";
 import { inngest } from "../inngest/client";
@@ -27,7 +27,8 @@ export const auth = betterAuth({
 
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: process.env.NODE_ENV === "production",
+    // requireEmailVerification: process.env.NODE_ENV === "production",
+    requireEmailVerification: true,
   },
 
   socialProviders: {
@@ -36,7 +37,7 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       callbackUrl:
         process.env.GOOGLE_CALLBACK_URL ||
-        "http://localhost:3000/api/auth/callback/google",
+        `${process.env.FRONTEND_URL || "http://localhost:3001"}/api/auth/callback/google`,
     },
   },
 
@@ -48,7 +49,7 @@ export const auth = betterAuth({
           email: user.email,
           name: user.name,
           role:
-            ((user as Record<string, unknown>).role as string) || "CANDIDATE",
+            ((user as Record<string, unknown>).role as string) || null,
         }),
         expirationTime: "24h",
       },
@@ -120,18 +121,32 @@ export const auth = betterAuth({
             | Record<string, unknown>
             | undefined;
           const role = ctxBody?.role as string | undefined;
+          const password = ctxBody?.password as string | undefined;
 
-          // Only allow CANDIDATE and EMPLOYER during registration
-          const allowedRoles = ["CANDIDATE", "EMPLOYER"];
-          if (role && allowedRoles.includes(role)) {
-            return {
-              data: {
-                ...user,
-                role,
-              },
-            };
+          // Email/password registration
+          if (password) {
+            // Kiểm tra email trùng
+            const existingUser = await prisma.user.findUnique({
+              where: { email: user.email },
+            });
+            if (existingUser) {
+              // Email đã tồn tại → reject
+              throw new Error("Email already exists");
+            }
+            const allowedRoles = ["CANDIDATE", "EMPLOYER"];
+            if (!role || !allowedRoles.includes(role)) {
+              throw new Error("Role is required");
+            }
+            return { data: { ...user, role } };
           }
-          // Don't set role - will be set by after hook
+
+          // OAuth: link vào user cũ nếu email trùng
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+          });
+          if (existingUser) {
+            return { data: existingUser };
+          }
           return { data: user };
         },
         after: async (user) => {
@@ -149,16 +164,21 @@ export const auth = betterAuth({
             // Ignore if inngest not available
           }
 
-          // Only reset role for OAuth users (no password = social login)
-          // Email sign-ups should keep their selected role
+          // Chỉ reset role cho user MỚI tạo qua OAuth (không phải linked account)
           if (!user.role) {
             try {
-              const account = await prisma.account.findFirst({
-                where: { userId: user.id },
-                select: { password: true },
+              // Kiểm tra xem có phải user mới tạo qua OAuth không
+              // Nếu có credential account → user đã tồn tại trước đó (linked)
+              const credentialAccount = await prisma.account.findFirst({
+                where: {
+                  userId: user.id,
+                  providerId: "credential",
+                },
               });
-              // OAuth users have no password -> must select role later
-              if (!account?.password) {
+
+              // Không có credential account → OAuth user mới → set role = null
+              // Có credential account → user đã tồn tại, giữ nguyên role
+              if (!credentialAccount) {
                 await prisma.user.update({
                   where: { id: user.id },
                   data: { role: null },

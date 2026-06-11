@@ -47,7 +47,7 @@ graph TB
     end
 
     subgraph MW["🛡️ Middleware"]
-        MID["middleware.ts<br/>─────────────────<br/>• /candidate/** → check cookie<br/>• /employer/** → check cookie<br/>• /auth/** → redirect if logged in"]
+        MID["middleware.ts<br/>─────────────────<br/>• /candidate/** → check cookie<br/>• /employer/** → check cookie<br/>• role check in layouts<br/>• /auth/** handled by pages"]
     end
 
     subgraph BE["⚙️ Backend NestJS (Port 3000)"]
@@ -176,6 +176,7 @@ cp docker/.env.example web/.env
 | `EMAIL_FROM` | Optional | `onboarding@resend.dev` | Email sender |
 | `GOOGLE_CLIENT_ID` | Optional | — | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Optional | — | Google OAuth client secret |
+| `GOOGLE_CALLBACK_URL` | Optional | `${FRONTEND_URL}/api/auth/callback/google` | Google OAuth redirect URI qua Next.js BFF |
 | `STRIPE_SECRET_KEY` | Optional | — | Stripe secret key |
 | `STRIPE_PUBLISHABLE_KEY` | Optional | — | Stripe publishable key |
 | `STRIPE_WEBHOOK_SECRET` | Optional | — | Stripe webhook secret |
@@ -267,7 +268,7 @@ sequenceDiagram
     BE->>DB: Verify password
     BE->>DB: Create session
     BE-->>FE: Set-Cookie + {user}
-    FE->>FE: Redirect to dashboard
+    FE->>FE: Redirect theo role
 
     Note over FE,BE: Subsequent requests
     FE->>BE: GET /api/v1/auth/me (cookie auto)
@@ -284,16 +285,26 @@ sequenceDiagram
     participant BE as Backend
 
     U->>FE: Nhập name, email, password, role
-    FE->>BE: POST /api/auth/sign-up/email
-    BE->>BE: Create user + account
-    BE-->>FE: Set-Cookie
-    FE->>BE: POST /api/auth/email-otp/send-verification-otp
+    FE->>BE: POST /api/v1/auth/register-email
+    alt User mới
+        BE->>BE: Create user + account
+    else OAuth user cùng email
+        BE->>BE: Send verification OTP
+    end
     BE-->>FE: OTP sent
     U->>FE: Nhập OTP
-    FE->>BE: POST /api/auth/email-otp/verify-email
-    BE->>BE: emailVerified = true
-    BE-->>FE: OK
+    FE->>BE: POST /api/v1/auth/complete-email-registration
+    BE->>BE: verify OTP + hash password + link credential
+BE->>BE: emailVerified = true
+BE-->>FE: OK
 ```
+
+> `verify-otp` có 2 mode:
+> - `mode=register`: dùng sau đăng ký email/password, cần password tạm để hoàn tất account.
+> - `mode=verify-email`: dùng khi email chưa verify hoặc trước khi reset mật khẩu.
+> - `next=reset-password` nghĩa là verify email xong sẽ chuyển tiếp sang reset password.
+
+> Google OAuth: user mới tạo session với `role = null`, sau callback FE phải gọi `/auth/select-role` một lần rồi mới vào dashboard. FE hiện tại chỉ phục vụ `CANDIDATE` và `EMPLOYER`; admin sẽ có UI riêng sau.
 
 ### Route Protection (Middleware)
 
@@ -313,6 +324,8 @@ sequenceDiagram
         P-->>B: Render page
     end
 ```
+
+> Role protection cho candidate/employer route được chặn thêm ở layout/page bằng `/api/v1/auth/me`, không chỉ dựa vào cookie.
 
 ---
 
@@ -804,13 +817,13 @@ erDiagram
 
 ---
 
-### 5.2 Bảng tổng hợp tất cả Endpoints (82 endpoints)
+### 5.2 Bảng tổng hợp tất cả Endpoints (85 endpoints)
 
 #### Auth — better-auth (10 endpoints, `/api/auth/*`)
 
 | # | Method | Path | Auth | Mô tả |
 |---|--------|------|------|-------|
-| 1 | POST | /api/auth/sign-up/email | Public | Đăng ký (name, email, password, role) |
+| 1 | POST | /api/auth/sign-up/email | Public | Đăng ký (name, email, password, role bắt buộc) |
 | 2 | POST | /api/auth/sign-in/email | Public | Đăng nhập → Set cookie |
 | 3 | POST | /api/auth/sign-out | Session | Đăng xuất |
 | 4 | GET | /api/auth/token | Session | Lấy JWT token |
@@ -821,16 +834,19 @@ erDiagram
 | 9 | POST | /api/auth/email-otp/request-password-reset | Public | Gửi OTP reset password |
 | 10 | POST | /api/auth/email-otp/reset-password | Public | Đặt lại password |
 
-#### Auth — Custom (6 endpoints, `/api/v1/auth/*` + `/api/v1/scalar-auth/*`)
+#### Auth — Custom (9 endpoints, `/api/v1/auth/*` + `/api/v1/scalar-auth/*`)
 
 | # | Method | Path | Auth | Mô tả |
 |---|--------|------|------|-------|
-| 11 | GET | /api/v1/auth/me | AUTH | Lấy profile hiện tại |
-| 12 | PATCH | /api/v1/auth/me | AUTH | Cập nhật profile |
-| 13 | GET | /api/v1/auth/admin-only | ADMIN | Test endpoint admin |
-| 14 | POST | /api/v1/scalar-auth/login | Public | Proxy login cho Scalar docs |
-| 15 | POST | /api/v1/scalar-auth/register | Public | Proxy register cho Scalar docs |
-| 16 | POST | /api/v1/scalar-auth/logout | Public | Proxy logout cho Scalar docs |
+| 11 | POST | /api/v1/auth/register-email | Public | Đăng ký email/password, backend tự phân luồng verify email hoặc gửi OTP cho user OAuth cùng email |
+| 12 | POST | /api/v1/auth/complete-email-registration | Public | Xác nhận OTP và hoàn tất credential account |
+| 13 | POST | /api/v1/auth/request-password-reset | Public | Quên mật khẩu: verify email / reset password / Google-only |
+| 14 | GET | /api/v1/auth/me | AUTH | Lấy profile hiện tại |
+| 15 | PATCH | /api/v1/auth/me | AUTH | Cập nhật profile (name, phone, image) |
+| 16 | PATCH | /api/v1/auth/select-role | AUTH | Chọn role 1 lần khi role = null |
+| 17 | POST | /api/v1/scalar-auth/login | Public | Proxy login cho Scalar docs |
+| 18 | POST | /api/v1/scalar-auth/register | Public | Proxy register cho Scalar docs (dùng cùng flow app) |
+| 19 | POST | /api/v1/scalar-auth/logout | Public | Proxy logout cho Scalar docs |
 
 #### Users (6 endpoints)
 
@@ -994,27 +1010,19 @@ erDiagram
 
 > **Chi tiết tất cả bugs xem tại:** [docs/PROJECT_ISSUES.md](./docs/PROJECT_ISSUES.md)
 
-### FE Issues (cần fix ngay)
+### Issues còn lại
+
+Xem file theo dõi chi tiết: `docs/BUGS_TO_FIX.md`.
+
+Các nhóm đáng ưu tiên sau auth cleanup:
 
 | # | Severity | Issue | File |
 |---|----------|-------|------|
-| 1 | 🔴 Critical | Login page `setError` crash | `auth/login/page.tsx:132,151` |
-| 2 | 🔴 Critical | Homepage JobCard link 404 | `components/candidate/JobCard.tsx:39` |
-| 3 | 🔴 Critical | Companies CTA link `/register` sai | `companies/CompaniesPageClient.tsx:145` |
-| 4 | 🔴 Critical | Employer registration broken | `auth/register/page.tsx:61` |
-| 5 | 🟡 Significant | Apply modal upload không gửi file | `jobs/[slug]/JobDetailClient.tsx:355` |
-| 6 | 🟡 Significant | Homepage SearchBar không hoạt động | `components/candidate/SearchBar.tsx:146` |
-| 7 | 🟡 Moderate | Employer jobs hiển thị raw enum | `employer/jobs/page.tsx:79` |
-| 8 | 🟡 Moderate | Dashboard `jobType` vs `type` mismatch | `candidate/dashboard/page.tsx:175` |
-
-### BE Issues (cần fix)
-
-| # | Severity | Issue | File |
-|---|----------|-------|------|
-| 1 | 🔴 Critical | Mock webhook payment bypass | `payments.service.ts:85` |
-| 2 | 🔴 Critical | Admin role escalation qua registration | `auth.ts:118` |
-| 3 | 🟢 Significant | XSS qua template data interpolation | `template-engine.service.ts:100` |
-| 4 | 🟢 Significant | Public job listing leak DRAFT | `jobs.controller.ts:15` |
+| 1 | 🟡 Significant | Employer registration UI còn lệch step/onboarding công ty | `auth/register/page.tsx` |
+| 2 | 🔴 Critical | Public jobs endpoint cần audit filter `status` để không leak job chưa active | `jobs.controller.ts`, `jobs.service.ts` |
+| 3 | 🔴 Critical | Payment mock fallback cần production policy rõ hơn | `payments.service.ts`, `payments.controller.ts` |
+| 4 | 🔴 Critical | CV/template HTML rendering cần audit XSS end-to-end | `template-engine.service.ts`, `components/cv/*` |
+| 5 | 🟢 Minor | Candidate profile save thiếu UX lỗi/thành công | `candidate/profile/page.tsx` |
 
 ---
 

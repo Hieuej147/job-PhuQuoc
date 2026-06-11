@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefcase, Building2, User, Loader2 } from "lucide-react";
-import { getUserProfile } from "@/lib/auth";
+import { getUserProfile, selectMyRole } from "@/lib/auth";
 
 export default function SelectRolePage() {
   const router = useRouter();
@@ -21,12 +21,15 @@ export default function SelectRolePage() {
           router.push("/auth/login");
           return;
         }
-        // If user already has a role (not null/undefined), redirect
-        if (user.role && user.role !== "CANDIDATE") {
-          // EMPLOYER or ADMIN → employer dashboard
+        // If user already has a role, redirect to appropriate dashboard
+        if (user.role === "EMPLOYER") {
           router.push("/employer/dashboard");
+        } else if (user.role === "CANDIDATE") {
+          router.push("/candidate/dashboard");
+        } else if (user.role === "ADMIN") {
+          router.push("/");
         }
-        // CANDIDATE or null → stay on this page to select
+        // null → stay on this page to select
       } catch {
         router.push("/auth/login");
       } finally {
@@ -41,16 +44,7 @@ export default function SelectRolePage() {
     setError("");
 
     try {
-      const response = await fetch("/api/v1/auth/me", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ role }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Cập nhật thất bại");
-      }
+      await selectMyRole(role);
 
       if (role === "EMPLOYER") {
         router.push("/employer/dashboard");

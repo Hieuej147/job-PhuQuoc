@@ -22,7 +22,15 @@ describe('AuthGuard', () => {
     };
     prismaMock = {
       user: {
-        findUnique: vi.fn().mockResolvedValue({ isActive: true, isLocked: false }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'u1',
+          email: 'test@test.com',
+          name: 'Test',
+          role: 'CANDIDATE',
+          emailVerified: true,
+          isActive: true,
+          isLocked: false,
+        }),
       },
     };
     guard = new AuthGuard(reflector, configServiceMock, authServiceMock, prismaMock);
@@ -86,8 +94,17 @@ describe('AuthGuard', () => {
   it('should reject deactivated user (isActive=false)', async () => {
     vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(undefined);
     authServiceMock.api.getSession.mockResolvedValue({
-      user: { id: 'u1', email: 'test@test.com', name: 'Test', role: 'CANDIDATE', isActive: false, isLocked: false },
+      user: { id: 'u1', email: 'test@test.com', name: 'Test', role: 'CANDIDATE' },
       session: { id: 's1' },
+    });
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      email: 'test@test.com',
+      name: 'Test',
+      role: 'CANDIDATE',
+      emailVerified: true,
+      isActive: false,
+      isLocked: false,
     });
 
     const ctx = mockContext(
@@ -101,8 +118,17 @@ describe('AuthGuard', () => {
   it('should reject locked user (isLocked=true)', async () => {
     vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(undefined);
     authServiceMock.api.getSession.mockResolvedValue({
-      user: { id: 'u1', email: 'test@test.com', name: 'Test', role: 'CANDIDATE', isActive: true, isLocked: true },
+      user: { id: 'u1', email: 'test@test.com', name: 'Test', role: 'CANDIDATE' },
       session: { id: 's1' },
+    });
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      email: 'test@test.com',
+      name: 'Test',
+      role: 'CANDIDATE',
+      emailVerified: true,
+      isActive: true,
+      isLocked: true,
     });
 
     const ctx = mockContext(

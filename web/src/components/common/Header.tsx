@@ -36,12 +36,18 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isDark, setIsDark] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Initialize theme state after hydration
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
 
   // Fetch auth state
@@ -139,13 +145,15 @@ export default function Header() {
               onClick={() => {
                 const html = document.documentElement;
                 html.classList.toggle("dark");
-                localStorage.setItem("theme", html.classList.contains("dark") ? "dark" : "light");
+                const newIsDark = html.classList.contains("dark");
+                setIsDark(newIsDark);
+                localStorage.setItem("theme", newIsDark ? "dark" : "light");
               }}
               className="p-2 rounded-full text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               aria-label="Toggle theme"
             >
               <span className="material-symbols-outlined text-[20px] leading-none">
-                {typeof document !== "undefined" && document.documentElement.classList.contains("dark") ? "light_mode" : "dark_mode"}
+                {isDark ? "light_mode" : "dark_mode"}
               </span>
             </button>
 

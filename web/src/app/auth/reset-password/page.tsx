@@ -8,8 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Lock, Eye, EyeOff, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const AUTH_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:3000";
+import { resetPassword, requestPasswordReset } from "@/lib/auth";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -92,30 +91,22 @@ function ResetPasswordContent() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${AUTH_URL}/api/auth/email-otp/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp: otpCode, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.message?.includes("too many") || data.message?.includes("exceeded")) {
-          setError("Đã hết lượt thử. Vui lòng gửi lại OTP.");
-          setCanResend(true);
-          setTimer(0);
-        } else if (data.message?.includes("expired")) {
-          setError("Mã OTP đã hết hạn. Vui lòng gửi lại OTP.");
-          setCanResend(true);
-          setTimer(0);
-        } else {
-          setError(data.message || "Mã OTP không chính xác.");
-        }
-        return;
-      }
+      await resetPassword(email, otpCode, password);
       setSuccess(true);
       setTimeout(() => router.push("/auth/login?reset=true"), 2000);
-    } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Có lỗi xảy ra. Vui lòng thử lại.";
+      if (message.toLowerCase().includes("too many") || message.toLowerCase().includes("exceeded")) {
+        setError("Đã hết lượt thử. Vui lòng gửi lại OTP.");
+        setCanResend(true);
+        setTimer(0);
+      } else if (message.toLowerCase().includes("expired")) {
+        setError("Mã OTP đã hết hạn. Vui lòng gửi lại OTP.");
+        setCanResend(true);
+        setTimer(0);
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -128,11 +119,18 @@ function ResetPasswordContent() {
     setError("");
     inputRefs.current[0]?.focus();
     try {
-      await fetch(`${AUTH_URL}/api/auth/email-otp/request-password-reset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+      const result = await requestPasswordReset(email);
+      if (result.status === "VERIFY_EMAIL_REQUIRED") {
+        router.push(
+          `/auth/verify-otp?email=${encodeURIComponent(email)}&mode=verify-email&next=reset-password`,
+        );
+        return;
+      }
+      if (result.status === "OAUTH_ONLY") {
+        setError("Tài khoản này dùng Google. Vui lòng đăng nhập bằng Google.");
+      } else if (result.status === "EMAIL_NOT_FOUND") {
+        setError("Email không hợp lệ. Vui lòng thử lại.");
+      }
     } catch {
       setError("Không thể gửi lại OTP. Vui lòng thử lại.");
     }

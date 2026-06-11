@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -12,8 +12,4 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   image?: string;
-
-  @IsOptional()
-  @IsEnum(['CANDIDATE', 'EMPLOYER'])
-  role?: 'CANDIDATE' | 'EMPLOYER';
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSession } from "@/lib/auth";
+import { getUserProfile } from "@/lib/auth";
 import { Loader2, Briefcase } from "lucide-react";
 
 export default function AuthCallbackPage() {
@@ -12,39 +12,35 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     async function handleCallback() {
       try {
-        const session = await getSession();
+        const user = await getUserProfile();
 
-        if (!session) {
-          router.push("/auth/login");
+        if (!user) {
+          router.replace("/auth/login");
           return;
         }
 
-        const role = session.user?.role;
-        const createdAt = session.user?.createdAt;
+        const role = user.role;
 
-        // Detect new user: created within last 2 minutes
-        const isNewUser = createdAt
-          ? Date.now() - new Date(createdAt).getTime() < 2 * 60 * 1000
-          : false;
-
-        if (isNewUser) {
-          // New user via Google OAuth → must select role
-          router.push("/auth/select-role");
+        // No role → new OAuth user, must select role
+        if (!role) {
+          router.replace("/auth/select-role");
           return;
         }
 
-        // Existing user → redirect based on role
+        // Has role → redirect to appropriate dashboard
         switch (role) {
-          case "EMPLOYER":
           case "ADMIN":
-            router.push("/employer/dashboard");
+            router.replace("/");
+            break;
+          case "EMPLOYER":
+            router.replace("/employer/dashboard");
             break;
           case "CANDIDATE":
           default:
-            router.push("/candidate/dashboard");
+            router.replace("/candidate/dashboard");
             break;
         }
-      } catch (err) {
+      } catch {
         setError("Đã xảy ra lỗi. Vui lòng thử lại.");
       }
     }
