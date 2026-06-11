@@ -9,17 +9,11 @@ export function proxy(request: NextRequest) {
 
   const isCandidateRoute = path.startsWith("/candidate");
   const isEmployerRoute = path.startsWith("/employer");
-  const isAuthRoute = path.startsWith("/auth");
   const isProtectedRoute = isCandidateRoute || isEmployerRoute;
 
   // Chưa login → redirect login
   if (isProtectedRoute && !isLoggedIn) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
-  }
-
-  // Đã login → redirect khỏi auth pages
-  if (isAuthRoute && isLoggedIn) {
-    return NextResponse.redirect(new URL("/candidate/dashboard", request.url));
   }
 
   return NextResponse.next();

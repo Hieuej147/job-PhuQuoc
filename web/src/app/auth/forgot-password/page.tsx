@@ -7,11 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Mail, Lock } from "lucide-react";
-import { createAuthClient } from "better-auth/client";
-
-const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:3000",
-});
+import { authClient } from "@/lib/auth-client";
+import { requestPasswordReset } from "@/lib/auth";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -30,25 +27,29 @@ export default function ForgotPasswordPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:3000"}/api/auth/email-otp/request-password-reset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.message?.includes("not found") || data.message?.includes("no user")) {
-          setError("Email không tồn tại trong hệ thống.");
-        } else if (data.message?.includes("google") || data.message?.includes("social")) {
-          setError("Tài khoản này đăng ký bằng Google. Vui lòng đăng nhập với Google.");
-        } else {
-          setError(data.message || "Không thể gửi OTP. Vui lòng thử lại.");
-        }
+      const result = await requestPasswordReset(email);
+
+      if (result.status === "RESET_OTP_SENT") {
+        router.push(`/auth/reset-password?email=${encodeURIComponent(email)}`);
         return;
       }
-      router.push(`/auth/reset-password?email=${encodeURIComponent(email)}`);
-    } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+
+      if (result.status === "VERIFY_EMAIL_REQUIRED") {
+        router.push(
+          `/auth/verify-otp?email=${encodeURIComponent(email)}&mode=verify-email&next=reset-password`,
+        );
+        return;
+      }
+
+      if (result.status === "OAUTH_ONLY") {
+        setError("Tài khoản này dùng Google. Vui lòng đăng nhập bằng Google.");
+        return;
+      }
+
+      setError("Email chưa có mật khẩu hoặc không tồn tại.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Có lỗi xảy ra. Vui lòng thử lại.";
+      setError(message);
     } finally {
       setLoading(false);
     }

@@ -15,7 +15,7 @@ Backend API cho website tìm việc làm tại Phú Quốc, xây dựng với Ne
 | Email | Resend | 6.12 |
 | Async Events | Inngest | 4.4 |
 | Payment | Stripe | 22.2 |
-| API Docs | Scalar + Swagger | — |
+| API Docs | Scalar | — |
 | Testing | Vitest + Supertest | 3.0 |
 
 ---
@@ -219,14 +219,14 @@ Client Request
 │    ├── AuthGuard                                                │
 │    │   ├── @Public()? → skip auth                               │
 │    │   ├── Bearer token? → JWT verify + DB isActive/isLocked   │
-│    │   ├── Session cookie? → better-auth getSession + check    │
+│    │   ├── Session cookie? → better-auth getSession + expiry   │
 │    │   └── None? → 401 Unauthorized                            │
 │    │                                                            │
 │    └── RolesGuard                                               │
 │        ├── Get user.role from request.user                      │
 │        ├── @Roles() specified? → check role in list            │
 │        ├── No @Roles()? → allow any authenticated user         │
-│        └── role null? → default to CANDIDATE                   │
+│        └── role null? → deny protected role routes              │
 └─────────────────────────────────────────────────────────────────┘
      │
      ▼
@@ -270,47 +270,49 @@ Client Response
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    REGISTRATION FLOW                             │
+│                    EMAIL/PASSWORD REGISTER                      │
 │                                                                  │
 │  Client                  Backend                   better-auth  │
 │    │                       │                           │        │
-│    │ POST /sign-up/email   │                           │        │
+│    │ POST /auth/register-email │                       │        │
 │    │ {name,email,pass,role}│                           │        │
 │    │──────────────────────►│                           │        │
-│    │                       │                           │        │
 │    │                       │ before hook:              │        │
 │    │                       │ - Validate role           │        │
-│    │                       │ - Set role in user data   │        │
+│    │                       │ - Require CANDIDATE/EMPLOYER │     │
 │    │                       │                           │        │
 │    │                       │ createUser() ────────────►│        │
-│    │                       │                           │        │
-│    │                       │ after hook:               │        │
-│    │                       │ - Check if OAuth user     │        │
-│    │                       │ - If email user: keep role│        │
-│    │                       │ - If OAuth: set role=null │        │
-│    │                       │ - Send Inngest event      │        │
-│    │                       │                           │        │
-│    │                       │ linkAccount (credential)  │        │
-│    │                       │──────────────────────────►│        │
 │    │                       │                           │        │
 │    │                       │ createSession             │        │
 │    │                       │──────────────────────────►│        │
 │    │                       │                           │        │
-│    │                       │ Set-Cookie: session_token │        │
-│    │◄──────────────────────│                           │        │
-│    │                       │                           │        │
-│    │ POST /email-otp/send  │                           │        │
-│    │──────────────────────►│                           │        │
-│    │                       │ Send OTP via Resend       │        │
+│    │                       │ Send verification OTP     │        │
 │    │◄──────────────────────│                           │        │
 │    │                       │                           │        │
 │    │ [User enters OTP]     │                           │        │
 │    │                       │                           │        │
-│    │ POST /email-otp/verify│                           │        │
+│    │ POST /auth/complete-email-registration │          │        │
 │    │──────────────────────►│                           │        │
-│    │                       │ Verify OTP                │        │
+│    │                       │ Verify OTP + hash password│        │
 │    │                       │ Set emailVerified=true    │        │
 │    │◄──────────────────────│                           │        │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                       GOOGLE OAUTH                               │
+│                                                                  │
+│  Client                  Backend                   better-auth  │
+│    │                       │                           │        │
+│    │ POST /sign-in/social/google                     │        │
+│    │──────────────────────►│                           │        │
+│    │                       │ Create/link OAuth user    │        │
+│    │                       │ role=null for new user    │        │
+│    │                       │ Set-Cookie: session_token │        │
+│    │◄──────────────────────│                           │        │
+│    │                       │ GET /api/v1/auth/me       │        │
+│    │                       │──────────────────────────►│        │
+│    │                       │ role=null → FE /select-role │      │
+│    │                       │ role set → dashboard      │        │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
@@ -326,6 +328,7 @@ Client Response
 │    │                       │ Check emailVerified       │        │
 │    │                       │ Check isActive            │        │
 │    │                       │ Check isLocked            │        │
+│    │                       │ Create session with expiry │        │
 │    │                       │                           │        │
 │    │                       │ createSession ───────────►│        │
 │    │                       │                           │        │
@@ -339,6 +342,7 @@ Client Response
 │    │                       │ AuthGuard.verifySession() │        │
 │    │                       │ getSession() ────────────►│        │
 │    │                       │                           │        │
+│    │                       │ Check session expiry      │        │
 │    │                       │ Check isActive/isLocked   │        │
 │    │                       │ Set request.user          │        │
 │    │                       │                           │        │
@@ -354,7 +358,7 @@ Client Response
 │  3. API call: Authorization: Bearer <JWT>                       │
 │  4. AuthGuard.verifyJwt():                                      │
 │     - Verify signature with JWKS                                │
-│     - Check isActive/isLocked in DB                             │
+│     - Check isActive/isLocked/emailVerified in DB               │
 │     - Set request.user                                          │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -761,7 +765,7 @@ Payment ── N:1 ──► PricingPackage (packageId)
 
 | Method | Path | Auth | Mô tả |
 |--------|------|------|-------|
-| POST | /api/auth/sign-up/email | PUBLIC | Đăng ký (name, email, password, role) |
+| POST | /api/auth/sign-up/email | PUBLIC | Đăng ký email/password (name, email, password, role bắt buộc) |
 | POST | /api/auth/sign-in/email | PUBLIC | Đăng nhập → Set session cookie + JWT |
 | POST | /api/auth/sign-out | SESSION | Đăng xuất |
 | GET | /api/auth/token | SESSION | Lấy JWT token |
@@ -776,16 +780,19 @@ Payment ── N:1 ──► PricingPackage (packageId)
 
 | Method | Path | Auth | Mô tả |
 |--------|------|------|-------|
+| POST | /api/v1/auth/register-email | PUBLIC | Đăng ký email/password: user mới tạo tài khoản rồi xác nhận email, user OAuth cũ cùng email thì gửi OTP xác nhận |
+| POST | /api/v1/auth/complete-email-registration | PUBLIC | Xác nhận OTP và hoàn tất credential account |
+| POST | /api/v1/auth/request-password-reset | PUBLIC | Yêu cầu quên mật khẩu: tự phân luồng verify email / reset password / báo Google-only |
 | GET | /api/v1/auth/me | AUTH | Lấy profile hiện tại |
-| PATCH | /api/v1/auth/me | AUTH | Cập nhật profile (name, phone, role) |
-| GET | /api/v1/auth/admin-only | ADMIN | Test endpoint cho admin |
+| PATCH | /api/v1/auth/me | AUTH | Cập nhật profile (name, phone, image) |
+| PATCH | /api/v1/auth/select-role | AUTH | Chọn role 1 lần cho user chưa có role |
 
 ### Scalar Auth (API Docs UI)
 
 | Method | Path | Auth | Mô tả |
 |--------|------|------|-------|
 | POST | /api/v1/scalar-auth/login | PUBLIC | Proxy login cho Scalar docs UI |
-| POST | /api/v1/scalar-auth/register | PUBLIC | Proxy register cho Scalar docs UI |
+| POST | /api/v1/scalar-auth/register | PUBLIC | Proxy register cho Scalar docs UI (dùng cùng flow app) |
 | POST | /api/v1/scalar-auth/logout | PUBLIC | Proxy logout cho Scalar docs UI |
 
 ### Users (ADMIN)
@@ -1018,6 +1025,7 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | EMAIL_FROM | ❌ | onboarding@resend.dev | Sender email |
 | GOOGLE_CLIENT_ID | ❌ | — | Google OAuth client ID |
 | GOOGLE_CLIENT_SECRET | ❌ | — | Google OAuth client secret |
+| GOOGLE_CALLBACK_URL | ❌ | `${FRONTEND_URL}/api/auth/callback/google` | Google OAuth redirect URI qua Next.js BFF |
 | STRIPE_SECRET_KEY | ❌ | — | Stripe secret key |
 | STRIPE_WEBHOOK_SECRET | ❌ | — | Stripe webhook secret |
 | INNGEST_EVENT_KEY | ❌ | — | Inngest event key |

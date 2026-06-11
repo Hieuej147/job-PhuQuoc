@@ -2,11 +2,15 @@ import { Controller, Post, Body, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from './decorators/public.decorator';
 import { Response } from 'express';
+import { RegisterEmailUseCase } from './use-cases/register-email.usecase';
 
 @ApiTags('Auth')
 @Controller('scalar-auth')
 export class ScalarAuthController {
   private readonly AUTH_URL = process.env.BETTER_AUTH_URL || 'http://localhost:3000';
+  private readonly ORIGIN = process.env.FRONTEND_URL || this.AUTH_URL;
+
+  constructor(private readonly registerEmailUseCase: RegisterEmailUseCase) {}
 
   @Post('login')
   @Public()
@@ -25,7 +29,7 @@ export class ScalarAuthController {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Origin': this.AUTH_URL,
+          'Origin': this.ORIGIN,
         },
         body: JSON.stringify(body),
       });
@@ -47,35 +51,14 @@ export class ScalarAuthController {
   @Public()
   @ApiOperation({
     summary: 'Đăng ký (Scalar)',
-    description: 'Proxy endpoint cho Scalar docs. Gọi better-auth sign-up. Chỉ dùng trên Scalar UI.',
+    description: 'Proxy endpoint cho Scalar docs. Dùng cùng flow đăng ký của app.',
   })
   @ApiResponse({ status: 200, description: 'Đăng ký thành công' })
   @ApiResponse({ status: 422, description: 'Email đã tồn tại' })
   async register(
-    @Body() body: { name: string; email: string; password: string; role?: string },
-    @Res() res: Response,
+    @Body() body: { name: string; email: string; password: string; role: 'CANDIDATE' | 'EMPLOYER'; phone?: string },
   ) {
-    try {
-      const response = await fetch(`${this.AUTH_URL}/api/auth/sign-up/email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Origin': this.AUTH_URL,
-        },
-        body: JSON.stringify(body),
-      });
-
-      // Forward Set-Cookie headers
-      const setCookies = response.headers.getSetCookie();
-      for (const cookie of setCookies) {
-        res.append('Set-Cookie', cookie);
-      }
-
-      const data = await response.json();
-      res.status(response.status).json(data);
-    } catch (error) {
-      res.status(500).json({ message: 'Auth service unavailable' });
-    }
+    return this.registerEmailUseCase.execute(body);
   }
 
   @Post('logout')
@@ -90,7 +73,7 @@ export class ScalarAuthController {
       const response = await fetch(`${this.AUTH_URL}/api/auth/sign-out`, {
         method: 'POST',
         headers: {
-          'Origin': this.AUTH_URL,
+          'Origin': this.ORIGIN,
         },
       });
 

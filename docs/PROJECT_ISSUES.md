@@ -628,28 +628,26 @@ message = process.env.NODE_ENV === 'production'
 
 # PHẦN 3: DEAD CODE
 
-## Backend Dead Files (9 files + 2 directories)
+## Backend Dead Files (8 files + 2 directories)
 
 | # | File | Status |
 |---|------|--------|
 | 1 | `backend/src/auth/dto/login.dto.ts` | Never imported |
-| 2 | `backend/src/auth/dto/register.dto.ts` | Never imported |
-| 3 | `backend/src/common/pipes/parse-cuid.pipe.ts` | Never imported |
-| 4 | `backend/src/common/dto/response.dto.ts` | Never imported |
-| 5 | `backend/src/common/types/request.types.ts` | Never imported |
-| 6 | `backend/src/common/types/response.types.ts` | Never imported |
-| 7 | `backend/src/common/types/index.ts` | Barrel, never imported |
-| 8 | `backend/src/common/cache/index.ts` | Barrel, never imported |
-| 9 | `backend/src/modules/shared/contracts/index.ts` | Barrel, never imported |
+| 2 | `backend/src/common/pipes/parse-cuid.pipe.ts` | Never imported |
+| 3 | `backend/src/common/dto/response.dto.ts` | Never imported |
+| 4 | `backend/src/common/types/request.types.ts` | Never imported |
+| 5 | `backend/src/common/types/response.types.ts` | Never imported |
+| 6 | `backend/src/common/types/index.ts` | Barrel, never imported |
+| 7 | `backend/src/common/cache/index.ts` | Barrel, never imported |
+| 8 | `backend/src/modules/shared/contracts/index.ts` | Barrel, never imported |
 
 ## Backend Partially Dead Code
 
 | # | File | What's dead |
 |---|------|-------------|
 | 1 | `backend/src/modules/users/dto/user.dto.ts` | `UserResponseDto` class |
-| 2 | `backend/src/common/email/email.service.ts` | `EmailService` class (only `resendClient` used) |
-| 3 | `backend/src/inngest/inngest.service.ts` | `sendBatch()` method |
-| 4 | `backend/src/modules/payments/gateways/mock.gateway.ts` | `verifyWebhook()` method |
+| 2 | `backend/src/inngest/inngest.service.ts` | `sendBatch()` method |
+| 3 | `backend/src/modules/payments/gateways/mock.gateway.ts` | `verifyWebhook()` method |
 
 ## Backend Duplicated Code
 

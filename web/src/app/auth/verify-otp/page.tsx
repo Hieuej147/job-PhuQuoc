@@ -5,14 +5,24 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Mail, CheckCircle } from "lucide-react";
-
-const AUTH_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:3000";
+import { Mail, CheckCircle } from "lucide-react";
+import {
+  requestPasswordReset,
+  sendVerificationOtp,
+  verifyEmailOtp,
+} from "@/lib/auth";
+import {
+  clearPendingRegisterPassword,
+  getPendingRegisterPassword,
+  completeEmailRegistration,
+} from "@/lib/auth-registration";
 
 function VerifyOtpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
+  const mode = searchParams.get("mode") === "verify-email" ? "verify-email" : "register";
+  const next = searchParams.get("next") || "login";
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
@@ -89,30 +99,57 @@ function VerifyOtpContent() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${AUTH_URL}/api/auth/email-otp/verify-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp: otpCode }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.message?.includes("too many") || data.message?.includes("exceeded")) {
-          setError("Đã hết lượt thử. Vui lòng gửi lại OTP.");
-          setCanResend(true);
-          setTimer(0);
-        } else if (data.message?.includes("expired")) {
-          setError("Mã OTP đã hết hạn. Vui lòng gửi lại OTP.");
-          setCanResend(true);
-          setTimer(0);
-        } else {
-          setError("Mã OTP không chính xác.");
+      if (mode === "register") {
+        const pendingPassword = getPendingRegisterPassword(email);
+        if (!pendingPassword) {
+          setError("Không tìm thấy mật khẩu tạm. Vui lòng đăng ký lại.");
+          return;
         }
+
+        await completeEmailRegistration({
+          email,
+          otp: otpCode,
+          password: pendingPassword,
+        });
+        clearPendingRegisterPassword(email);
+        setSuccess(true);
+        setTimeout(() => router.push("/auth/login?verified=true"), 1500);
         return;
       }
+
+      await verifyEmailOtp(email, otpCode);
+      if (next === "reset-password") {
+        const resetResult = await requestPasswordReset(email);
+        if (resetResult.status !== "RESET_OTP_SENT") {
+          if (resetResult.status === "OAUTH_ONLY") {
+            setError("Tài khoản này dùng Google. Vui lòng đăng nhập bằng Google.");
+          } else if (resetResult.status === "EMAIL_NOT_FOUND") {
+            setError("Email không hợp lệ. Vui lòng thử lại.");
+          } else {
+            setError("Không thể chuyển sang đặt lại mật khẩu. Vui lòng thử lại.");
+          }
+          return;
+        }
+        setSuccess(true);
+        setTimeout(() => router.push(`/auth/reset-password?email=${encodeURIComponent(email)}`), 1500);
+        return;
+      }
+
       setSuccess(true);
       setTimeout(() => router.push("/auth/login?verified=true"), 1500);
-    } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message.toLowerCase().includes("too many") || message.toLowerCase().includes("exceeded")) {
+        setError("Đã hết lượt thử. Vui lòng gửi lại OTP.");
+        setCanResend(true);
+        setTimer(0);
+      } else if (message.toLowerCase().includes("expired")) {
+        setError("Mã OTP đã hết hạn. Vui lòng gửi lại OTP.");
+        setCanResend(true);
+        setTimer(0);
+      } else {
+        setError("Mã OTP không chính xác hoặc đã hết hạn.");
+      }
     } finally {
       setLoading(false);
     }
@@ -125,11 +162,7 @@ function VerifyOtpContent() {
     setError("");
     inputRefs.current[0]?.focus();
     try {
-      await fetch(`${AUTH_URL}/api/auth/email-otp/send-verification-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, type: "email-verification" }),
-      });
+      await sendVerificationOtp(email);
     } catch {
       setError("Không thể gửi lại OTP. Vui lòng thử lại.");
     }
@@ -171,9 +204,13 @@ function VerifyOtpContent() {
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Link href="/" className="hover:text-foreground transition-colors">Trang chủ</Link>
           <span>›</span>
-          <Link href="/auth/register" className="hover:text-foreground transition-colors">Đăng ký</Link>
+          <Link href={mode === "register" ? "/auth/register" : "/auth/forgot-password"} className="hover:text-foreground transition-colors">
+            {mode === "register" ? "Đăng ký" : "Quên mật khẩu"}
+          </Link>
           <span>›</span>
-          <span className="text-foreground font-semibold">Xác nhận OTP</span>
+          <span className="text-foreground font-semibold">
+            {mode === "register" ? "Xác nhận OTP" : "Xác nhận email"}
+          </span>
         </div>
 
         <Card className="p-8">
@@ -183,9 +220,14 @@ function VerifyOtpContent() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-bold text-foreground">Xác nhận email</h1>
+              <h1 className="text-2xl font-bold text-foreground">
+                Xác nhận email
+              </h1>
               <p className="text-sm text-muted-foreground">
-                Mã OTP đã gửi đến <span className="font-semibold text-foreground">{email}</span>
+                {mode === "register"
+                  ? "Mã OTP đã gửi đến "
+                  : "Nhập OTP để xác nhận email đã đăng ký cho "}
+                <span className="font-semibold text-foreground">{email}</span>
               </p>
             </div>
 
