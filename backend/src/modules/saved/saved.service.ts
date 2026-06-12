@@ -1,5 +1,6 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SavedQueryDto } from './dto/saved-query.dto';
 
 @Injectable()
 export class SavedService {
@@ -19,9 +20,9 @@ export class SavedService {
     return { saved: true };
   }
 
-  async getSavedJobs(userId: string, query: { page?: number | string; limit?: number | string }) {
-    const page = Math.max(1, parseInt(String(query.page)) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(String(query.limit)) || 10));
+  async getSavedJobs(userId: string, query: SavedQueryDto) {
+    const page = query.page || 1;
+    const limit = Math.min(100, query.limit || 10);
     const [items, total] = await Promise.all([
       this.prisma.savedJob.findMany({
         where: { userId }, skip: (page - 1) * limit, take: limit,
@@ -40,9 +41,9 @@ export class SavedService {
     return { saved: true };
   }
 
-  async getSavedCompanies(userId: string, query: { page?: number | string; limit?: number | string }) {
-    const page = Math.max(1, parseInt(String(query.page)) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(String(query.limit)) || 10));
+  async getSavedCompanies(userId: string, query: SavedQueryDto) {
+    const page = query.page || 1;
+    const limit = Math.min(100, query.limit || 10);
     const [items, total] = await Promise.all([
       this.prisma.savedCompany.findMany({
         where: { userId }, skip: (page - 1) * limit, take: limit,

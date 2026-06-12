@@ -4,6 +4,7 @@ import { ApplicationsService } from './applications.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { CreateApplicationDto, UpdateApplicationStatusDto } from './dto/application.dto';
+import { ApplicationQueryDto } from './dto/application-query.dto';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 
 @ApiTags('Applications')
@@ -31,7 +32,7 @@ export class ApplicationsController {
   @ApiQuery({ name: 'limit', required: false, description: 'Số item/trang' })
   @ApiResponse({ status: 200, description: 'Danh sách applications phân trang' })
   @ApiResponse({ status: 403, description: 'Không phải CANDIDATE' })
-  findMyApplications(@CurrentUser() user: UserSession, @Query() query: { page?: number; limit?: number }) {
+  findMyApplications(@CurrentUser() user: UserSession, @Query() query: ApplicationQueryDto) {
     return this.applicationsService.findByUser(user.user.id, query);
   }
 
@@ -43,7 +44,7 @@ export class ApplicationsController {
   @ApiQuery({ name: 'limit', required: false, description: 'Số item/trang' })
   @ApiResponse({ status: 200, description: 'Danh sách applications phân trang' })
   @ApiResponse({ status: 403, description: 'Không phải EMPLOYER' })
-  findEmployerApplications(@CurrentUser() user: UserSession, @Query() query: { page?: number; limit?: number }) {
+  findEmployerApplications(@CurrentUser() user: UserSession, @Query() query: ApplicationQueryDto) {
     return this.applicationsService.findByEmployer(user.user.id, query);
   }
 
@@ -57,7 +58,7 @@ export class ApplicationsController {
   @ApiResponse({ status: 200, description: 'Danh sách applications phân trang' })
   @ApiResponse({ status: 403, description: 'Không phải owner của công ty' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy job' })
-  findByJob(@Param('jobId') jobId: string, @CurrentUser() user: UserSession, @Query() query: { page?: number; limit?: number }) {
+  findByJob(@Param('jobId') jobId: string, @CurrentUser() user: UserSession, @Query() query: ApplicationQueryDto) {
     return this.applicationsService.findByJob(jobId, user.user.id, query);
   }
 

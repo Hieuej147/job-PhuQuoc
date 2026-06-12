@@ -35,21 +35,36 @@ describe('CategoriesService', () => {
   });
 
   describe('findAll', () => {
-    it('should return all categories ordered by name', async () => {
+    it('should return categories ordered by job count', async () => {
       const mockCategories = [
-        { id: '1', name: 'Category A', slug: 'category-a' },
-        { id: '2', name: 'Category B', slug: 'category-b' },
+        { id: '1', name: 'Category A', slug: 'category-a', _count: { jobs: 2 } },
+        { id: '2', name: 'Category B', slug: 'category-b', _count: { jobs: 5 } },
       ];
       prismaMock.jobCategory.findMany.mockResolvedValue(mockCategories);
 
       const result = await service.findAll();
 
-      expect(result).toEqual(mockCategories);
+      expect(result).toEqual([
+        expect.objectContaining({ id: '2', jobCount: 5 }),
+        expect.objectContaining({ id: '1', jobCount: 2 }),
+      ]);
       expect(prismaMock.jobCategory.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: { name: 'asc' },
+          include: { _count: { select: { jobs: true } } },
         }),
       );
+    });
+
+    it('should limit categories when requested', async () => {
+      prismaMock.jobCategory.findMany.mockResolvedValue([
+        { id: '1', name: 'Category A', slug: 'category-a', _count: { jobs: 1 } },
+        { id: '2', name: 'Category B', slug: 'category-b', _count: { jobs: 3 } },
+      ]);
+
+      const result = await service.findAll({ limit: 1 }) as Array<{ id: string; jobCount: number }>;
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(expect.objectContaining({ id: '2', jobCount: 3 }));
     });
   });
 
