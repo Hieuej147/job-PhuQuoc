@@ -225,3 +225,24 @@ export class JobQueryDto {
   @IsString()
   sort?: string;
 }
+
+export class MyJobsQueryDto {
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
+
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+}

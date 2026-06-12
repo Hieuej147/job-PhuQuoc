@@ -4,7 +4,7 @@ import { JobsService } from './jobs.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { CreateJobDto, UpdateJobDto, JobQueryDto } from './dto/job.dto';
+import { CreateJobDto, UpdateJobDto, JobQueryDto, MyJobsQueryDto } from './dto/job.dto';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 
 @ApiTags('Jobs')
@@ -42,7 +42,7 @@ export class JobsController {
   @ApiQuery({ name: 'status', required: false, description: 'Lọc theo status: DRAFT, PENDING, ACTIVE, CLOSED' })
   @ApiResponse({ status: 200, description: 'Danh sách jobs phân trang' })
   @ApiResponse({ status: 403, description: 'Không phải EMPLOYER' })
-  findMyJobs(@CurrentUser() user: UserSession, @Query() query: { page?: number; limit?: number; status?: string }) {
+  findMyJobs(@CurrentUser() user: UserSession, @Query() query: MyJobsQueryDto) {
     return this.jobsService.findByOwner(user.user.id, query);
   }
 

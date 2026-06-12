@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
-import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
+import { CategoryQueryDto, CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 
 @ApiTags('Categories')
 @Controller('categories')
@@ -14,8 +14,8 @@ export class CategoriesController {
   @Public()
   @ApiOperation({ summary: 'Danh mục nghề', description: 'Lấy tất cả danh mục nghề.' })
   @ApiResponse({ status: 200, description: 'Danh sách categories' })
-  findAll() {
-    return this.categoriesService.findAll();
+  findAll(@Query() query: CategoryQueryDto) {
+    return this.categoriesService.findAll(query);
   }
 
   @Get(':id')

@@ -860,6 +860,18 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | PATCH | /api/v1/resumes/:id | OWNER | Cập nhật CV |
 | DELETE | /api/v1/resumes/:id | OWNER | Xóa CV |
 
+**Luồng lưu CV từ AI agent**
+
+1. Agent tạo draft template gồm `name`, `htmlTemplate`, `cssTemplate`, `isPublic`.
+2. Agent review/repair draft để tránh backend validator reject các pattern không an toàn như `script`, event handler, `@import`, `url(...)`.
+3. Agent gọi `POST /api/v1/resumes/templates`.
+4. Backend validate HTML/CSS; nếu không hợp lệ thì trả `400` và không tạo record.
+5. Prisma/DB sinh `ResumeTemplate.id`; agent chỉ được dùng id backend trả về.
+6. Agent gọi `POST /api/v1/resumes` với `templateId` đó.
+7. Export PDF chỉ dùng `GET /api/v1/resumes/:id/pdf` sau khi resume đã lưu.
+
+`templateId` là DB-generated. FE/agent không được tự tạo hoặc dùng id giả.
+
 ### Notifications
 
 | Method | Path | Auth | Mô tả |

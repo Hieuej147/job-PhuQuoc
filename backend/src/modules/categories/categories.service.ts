@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../../prisma/prisma.service';
 import { CacheService } from '../../common/cache/cache.service';
 import { JobContractService } from '../shared/contracts/job.contract';
+import { CategoryQueryDto, CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -18,8 +19,9 @@ export class CategoriesService {
     private readonly jobContract: JobContractService,
   ) { }
 
-  async findAll() {
-    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, 'all');
+  async findAll(query: CategoryQueryDto = {}) {
+    const limit = query.limit ? Math.min(100, query.limit) : undefined;
+    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, 'all', limit ?? 'full');
     const cached = await this.cache.get(cacheKey);
     if (cached) return cached;
 
@@ -38,11 +40,12 @@ export class CategoriesService {
       icon: c.icon,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
-      jobCount: c._count.jobs
+      jobCount: c._count?.jobs ?? 0
     })).sort((a, b) => b.jobCount - a.jobCount);
 
-    await this.cache.set(cacheKey, sorted, this.CACHE_TTL);
-    return sorted;
+    const result = limit ? sorted.slice(0, limit) : sorted;
+    await this.cache.set(cacheKey, result, this.CACHE_TTL);
+    return result;
   }
 
   async findById(id: string) {
@@ -57,13 +60,13 @@ export class CategoriesService {
     return cat;
   }
 
-  async create(data: { name: string; icon?: string }) {
+  async create(data: CreateCategoryDto) {
     const category = await this.prisma.jobCategory.create({ data: { ...data, slug: slugify(data.name) } });
     await this.invalidateCache();
     return category;
   }
 
-  async update(id: string, data: { name?: string; icon?: string }) {
+  async update(id: string, data: UpdateCategoryDto) {
     const cat = await this.findById(id);
     const updated = await this.prisma.jobCategory.update({ where: { id }, data: { ...data, slug: data.name ? slugify(data.name) : cat.slug } });
     await this.invalidateCache();

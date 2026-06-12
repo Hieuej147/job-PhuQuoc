@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, NotificationType } from '@prisma/client';
+import { NotificationQueryDto } from './dto/notification.dto';
 
 @Injectable()
 export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByUser(userId: string, query: { page?: number; limit?: number; isRead?: boolean }) {
+  async findByUser(userId: string, query: NotificationQueryDto) {
     const { page = 1, limit = 20, isRead } = query;
     const where: Prisma.NotificationWhereInput = { userId };
     if (isRead !== undefined) where.isRead = isRead;

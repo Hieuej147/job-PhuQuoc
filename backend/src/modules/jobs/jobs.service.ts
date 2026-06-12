@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { InngestService } from '../../inngest/inngest.service';
-import { AuditService } from '../audit/audit.service';
+import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { CacheService } from '../../common/cache/cache.service';
 import { CompanyContractService } from '../shared/contracts/company.contract';
 import { Prisma, JobStatus, JobType, ExperienceLevel, JobLevel } from '@prisma/client';
+import { CreateJobDto, JobQueryDto, MyJobsQueryDto, UpdateJobDto } from './dto/job.dto';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -25,12 +26,12 @@ export class JobsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly inngest: InngestService,
-    private readonly auditService: AuditService,
+    private readonly auditWriteContract: AuditWriteContractService,
     private readonly cache: CacheService,
     private readonly companyContract: CompanyContractService,
   ) { }
 
-  async findAll(query: { page?: number; limit?: number; search?: string; categoryId?: string; type?: string; experience?: string; level?: string; status?: string; salaryMin?: number; salaryMax?: number; salaryRange?: string; wardId?: string; companyId?: string; sort?: string }) {
+  async findAll(query: JobQueryDto) {
     const { search, categoryId, type, experience, level, status, salaryMin, salaryMax, salaryRange, wardId, companyId, sort } = query;
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
@@ -138,13 +139,13 @@ export class JobsService {
     }
 
     // Xác định orderBy dựa trên sort param
-    let orderBy: Prisma.JobOrderByWithRelationInput = { createdAt: 'desc' };
+    let orderBy: Prisma.JobOrderByWithRelationInput | Prisma.JobOrderByWithRelationInput[] = { createdAt: 'desc' };
     if (sort === 'salary_asc') {
-      orderBy = { salaryMin: 'asc' };
+      orderBy = [{ salaryMin: 'asc' }, { salaryMax: 'asc' }, { createdAt: 'desc' }];
     } else if (sort === 'salary_desc') {
-      orderBy = { salaryMin: 'desc' };
+      orderBy = [{ salaryMax: 'desc' }, { salaryMin: 'desc' }, { createdAt: 'desc' }];
     } else if (sort === 'expiring_soon') {
-      orderBy = { deadline: 'asc' };
+      orderBy = [{ deadline: 'asc' }, { createdAt: 'desc' }];
     }
 
     const [items, total] = await Promise.all([
@@ -176,7 +177,7 @@ export class JobsService {
     return job;
   }
 
-  async findByOwner(ownerId: string, query: { page?: number; limit?: number; status?: string }) {
+  async findByOwner(ownerId: string, query: MyJobsQueryDto) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
     const where: Prisma.JobWhereInput = { company: { ownerId } };
@@ -208,7 +209,7 @@ export class JobsService {
     return job;
   }
 
-  async create(userId: string, data: { title: string; description: string; requirements?: string; benefits?: string; quantity?: number; salaryMin?: number; salaryMax?: number; wardId?: string; addressDetail?: string; type?: string; experience?: string; level?: string; deadline?: string; categoryId: string }) {
+  async create(userId: string, data: CreateJobDto) {
     const company = await this.companyContract.findByOwnerId(userId);
     if (!company) throw new NotFoundException('You need a company to post jobs');
     const slug = slugify(data.title) + '-' + Date.now().toString(36);
@@ -224,7 +225,7 @@ export class JobsService {
     return job;
   }
 
-  async update(id: string, userId: string, data: object) {
+  async update(id: string, userId: string, data: UpdateJobDto) {
     const job = await this.prisma.job.findUnique({ where: { id }, include: { company: true } });
     if (!job) throw new NotFoundException('Job not found');
     if (job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
@@ -243,7 +244,7 @@ export class JobsService {
 
     const updated = await this.prisma.job.update({ where: { id }, data: { status }, select: { id: true, title: true, status: true } });
 
-    await this.auditService.log({
+    await this.auditWriteContract.log({
       action: 'job.status.changed',
       entityType: 'Job',
       entityId: id,
@@ -402,6 +403,9 @@ export class JobsService {
   }
 
   private async invalidateCache() {
-    await this.cache.delPattern(`${this.CACHE_PREFIX}:*`);
+    await Promise.all([
+      this.cache.delPattern(`${this.CACHE_PREFIX}:*`),
+      this.cache.delPattern(`categories:*`),
+    ]);
   }
 }

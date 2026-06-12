@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AuditService } from '../audit/audit.service';
+import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { Prisma, Role } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditService: AuditService,
+    private readonly auditWriteContract: AuditWriteContractService,
   ) {}
 
   async findAll(query: { page?: number; limit?: number; role?: string; search?: string }) {
@@ -51,7 +51,7 @@ export class UsersService {
     const oldUser = await this.findById(id);
     const updated = await this.prisma.user.update({ where: { id }, data, select: { id: true, name: true, email: true, role: true, phone: true, image: true } });
 
-    await this.auditService.log({
+    await this.auditWriteContract.log({
       action: 'user.updated',
       entityType: 'User',
       entityId: id,
@@ -67,7 +67,7 @@ export class UsersService {
     const user = await this.findById(id);
     const updated = await this.prisma.user.update({ where: { id }, data: { isActive: !user.isActive }, select: { id: true, name: true, email: true, isActive: true } });
 
-    await this.auditService.log({
+    await this.auditWriteContract.log({
       action: 'user.active.toggled',
       entityType: 'User',
       entityId: id,
@@ -83,7 +83,7 @@ export class UsersService {
     const user = await this.findById(id);
     const updated = await this.prisma.user.update({ where: { id }, data: { isLocked: !user.isLocked }, select: { id: true, name: true, email: true, isLocked: true } });
 
-    await this.auditService.log({
+    await this.auditWriteContract.log({
       action: 'user.locked.toggled',
       entityType: 'User',
       entityId: id,
@@ -99,7 +99,7 @@ export class UsersService {
     const user = await this.findById(id);
     await this.prisma.user.delete({ where: { id } });
 
-    await this.auditService.log({
+    await this.auditWriteContract.log({
       action: 'user.deleted',
       entityType: 'User',
       entityId: id,

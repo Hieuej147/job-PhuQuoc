@@ -4,6 +4,7 @@ import { CompanyContractService } from './contracts/company.contract';
 import { PricingContractService } from './contracts/pricing.contract';
 import { PaymentContractService } from './contracts/payment.contract';
 import { UserContractService } from './contracts/user.contract';
+import { AuditWriteContractService } from './contracts/audit.contract';
 
 @Global()
 @Module({
@@ -13,6 +14,7 @@ import { UserContractService } from './contracts/user.contract';
     PricingContractService,
     PaymentContractService,
     UserContractService,
+    AuditWriteContractService,
   ],
   exports: [
     JobContractService,
@@ -20,6 +22,7 @@ import { UserContractService } from './contracts/user.contract';
     PricingContractService,
     PaymentContractService,
     UserContractService,
+    AuditWriteContractService,
   ],
 })
 export class SharedModule {}

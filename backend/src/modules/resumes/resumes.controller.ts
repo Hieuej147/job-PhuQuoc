@@ -6,6 +6,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { CreateResumeDto, UpdateResumeDto, CreateTemplateDto, UpdateTemplateDto } from './dto/resume.dto';
+import { RenderTemplateDto } from './dto/render-template.dto';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 
 @ApiTags('Resumes')
@@ -114,7 +115,7 @@ export class ResumesController {
   @Public()
   @ApiOperation({ summary: 'Render template với data', description: 'Render template với data mẫu để preview.' })
   @ApiResponse({ status: 200, description: 'HTML render' })
-  async renderTemplate(@Body() body: { templateId: string; data: any; mode?: string }) {
+  async renderTemplate(@Body() body: RenderTemplateDto) {
     const result = await this.resumesService.renderTemplate(body.templateId, body.data, (body.mode as 'view' | 'edit') || 'view');
     return { data: result };
   }
