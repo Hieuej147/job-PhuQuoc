@@ -5,6 +5,7 @@ import { MapPin, Bookmark } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useAuth } from "@/components/auth/auth-provider";
 
 interface JobCardProps {
     job: {
@@ -27,16 +28,14 @@ interface JobCardProps {
     };
 }
 
-let savedJobIdsPromise: Promise<string[]> | null = null;
+const savedJobIdsPromiseByUser = new Map<string, Promise<string[]>>();
 
-async function fetchSavedJobIds(): Promise<string[]> {
-    if (savedJobIdsPromise) return savedJobIdsPromise;
+async function fetchSavedJobIds(userId: string): Promise<string[]> {
+    const cached = savedJobIdsPromiseByUser.get(userId);
+    if (cached) return cached;
 
-    savedJobIdsPromise = (async () => {
+    const promise = (async () => {
         try {
-            const meRes = await fetch("/api/v1/auth/me", { credentials: "include" });
-            if (!meRes.ok) return [];
-
             const res = await fetch("/api/v1/saved/jobs?limit=100", { credentials: "include" });
             if (!res.ok) return [];
             const data = await res.json();
@@ -47,16 +46,22 @@ async function fetchSavedJobIds(): Promise<string[]> {
         }
     })();
 
-    return savedJobIdsPromise;
+    savedJobIdsPromiseByUser.set(userId, promise);
+    return promise;
 }
 
 export default function JobCard({ job }: JobCardProps) {
     const router = useRouter();
+    const { user } = useAuth();
     const [isSaved, setIsSaved] = useState(false);
 
     useEffect(() => {
+        if (!user) {
+            setIsSaved(false);
+            return;
+        }
         let active = true;
-        fetchSavedJobIds().then((ids) => {
+        fetchSavedJobIds(user.id).then((ids) => {
             if (active && ids.includes(job.id)) {
                 setIsSaved(true);
             }
@@ -64,33 +69,28 @@ export default function JobCard({ job }: JobCardProps) {
         return () => {
             active = false;
         };
-    }, [job.id]);
+    }, [job.id, user]);
 
     const handleBookmark = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
 
         try {
-            const res = await fetch("/api/v1/auth/me", { credentials: "include" });
-            if (res.ok) {
-                const data = await res.json();
-                const user = data.data?.user || data.data;
-                if (user) {
-                    // Call API to toggle save/unsave job
-                    const saveRes = await fetch(`/api/v1/saved/jobs/${job.id}`, {
-                        method: "POST",
-                        credentials: "include"
-                    });
-                    if (saveRes.ok) {
-                        setIsSaved(!isSaved);
-                        toast.success(!isSaved ? "Đã lưu công việc thành công!" : "Đã bỏ lưu công việc!");
-                    } else {
-                        toast.error("Không thể lưu công việc. Vui lòng thử lại!");
-                    }
-                    return;
-                }
+            if (!user) {
+                router.push(`/auth/login?redirect=/jobs/${job.slug}`);
+                return;
             }
-            router.push(`/auth/login?redirect=/jobs/${job.slug}`);
+
+            const saveRes = await fetch(`/api/v1/saved/jobs/${job.id}`, {
+                method: "POST",
+                credentials: "include"
+            });
+            if (saveRes.ok) {
+                setIsSaved(!isSaved);
+                toast.success(!isSaved ? "Đã lưu công việc thành công!" : "Đã bỏ lưu công việc!");
+            } else {
+                toast.error("Không thể lưu công việc. Vui lòng thử lại!");
+            }
         } catch {
             router.push(`/auth/login?redirect=/jobs/${job.slug}`);
         }
@@ -101,14 +101,9 @@ export default function JobCard({ job }: JobCardProps) {
         e.stopPropagation();
 
         try {
-            const res = await fetch("/api/v1/auth/me", { credentials: "include" });
-            if (res.ok) {
-                const data = await res.json();
-                const user = data.data?.user || data.data;
-                if (user) {
-                    router.push(`/jobs/${job.slug}`);
-                    return;
-                }
+            if (user) {
+                router.push(`/jobs/${job.slug}`);
+                return;
             }
             router.push(`/auth/login?redirect=/jobs/${job.slug}`);
         } catch {

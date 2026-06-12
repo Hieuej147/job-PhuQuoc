@@ -6,6 +6,7 @@ from schemas.candidate import CandidateState
 from core.context import AgentContext
 from core.prompts import CANDIDATE_SYSTEM_PROMPT
 from core.api_client import ApiClient
+from tools.candidate.career_advisor import CareerAdvisorTool
 from tools.candidate.search_jobs import SearchJobsTool
 from tools.candidate.cv_tools import GenerateCVTemplateTool, AdjustCVTemplateTool, SaveResumeTool
 
@@ -27,8 +28,10 @@ class CandidateAgent(BaseAgent):
 
         save_tool = SaveResumeTool()
         save_tool.api_client = self.api_client
+        save_tool.llm = self.llm
 
         return [
+            CareerAdvisorTool(),
             SearchJobsTool(api_client=self.api_client),
             gen_tool,
             adj_tool,
@@ -47,11 +50,13 @@ class CandidateAgent(BaseAgent):
         return CandidateState
 
     def _get_lc_tools_for_toolnode(self) -> list:
-        """Only regular tools go to ToolNode. CV tools use custom nodes."""
-        return [t.to_langchain_tool() for t in self.tools if not isinstance(t, (GenerateCVTemplateTool, AdjustCVTemplateTool, SaveResumeTool))]
+        """Candidate tools use custom nodes so they can emit worker progress."""
+        return []
 
     def _get_routing_map(self) -> dict:
         return {
+            "analyze_candidate_dashboard": "career_advisor_node",
+            "search_jobs": "job_searcher_node",
             "generate_cv_template": "generate_template_node",
             "adjust_cv_template": "adjust_template_node",
             "save_resume": "save_resume_node",
@@ -59,6 +64,6 @@ class CandidateAgent(BaseAgent):
 
     def _add_custom_nodes(self, workflow):
         for t in self.tools:
-            if isinstance(t, (GenerateCVTemplateTool, AdjustCVTemplateTool, SaveResumeTool)):
-                node_name = self._get_routing_map().get(t.name, f"{t.name}_node")
+            node_name = self._get_routing_map().get(t.name)
+            if node_name and hasattr(t, "as_node"):
                 workflow.add_node(node_name, t.as_node())

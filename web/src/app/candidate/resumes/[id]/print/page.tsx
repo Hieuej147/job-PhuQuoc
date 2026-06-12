@@ -82,7 +82,7 @@ export default function PrintResumePage() {
     degree: resume.degree || "",
     languages: resume.languages || "",
     skills: resume.skills || "",
-    socicallink: resume.socialLinks || [],
+    socialLinks: resume.socialLinks || [],
     education: resume.education || [],
     experience: resume.experience || [],
     projects: resume.projects || [],

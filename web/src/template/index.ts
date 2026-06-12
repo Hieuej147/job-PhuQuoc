@@ -52,7 +52,9 @@ export interface ResumeData {
   degree: string;
   languages: string;
   skills: string;
-  socicallink: SocialLink[];
+  socialLinks: SocialLink[];
+  /** @deprecated legacy alias for old template components */
+  socicallink?: SocialLink[];
   education: Education[];
   experience: Experience[];
   projects: Project[];

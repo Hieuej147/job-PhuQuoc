@@ -2,7 +2,7 @@
 "use client";
 import type { TemplateProps, UserData, ResumeData } from "./index";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 /**
  * TemplateModern — Phong cách hiện đại, bold, single-column (Form nhập liệu)
@@ -21,7 +21,7 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
         summary: resume.summary || "",
         degree: resume.degree || "",
         languages: resume.languages || "",
-        socicallink: resume.socicallink || [],
+        socialLinks: resume.socialLinks || resume.socicallink || [],
         education: resume.education || [],
         experience: resume.experience || [],
         projects: resume.projects || [],
@@ -29,29 +29,7 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
 
     const [showSaveToast, setShowSaveToast] = useState(false);
 
-    // Load saved data on mount
-    useEffect(() => {
-        const savedUser = localStorage.getItem("pqjobs_cv_user");
-        const savedResume = localStorage.getItem("pqjobs_cv_resume");
-        if (savedUser) {
-            try {
-                setUserData(JSON.parse(savedUser));
-            } catch (e) {
-                console.error("Failed to parse saved user data", e);
-            }
-        }
-        if (savedResume) {
-            try {
-                setResumeData(JSON.parse(savedResume));
-            } catch (e) {
-                console.error("Failed to parse saved resume data", e);
-            }
-        }
-    }, []);
-
     const handleSave = () => {
-        localStorage.setItem("pqjobs_cv_user", JSON.stringify(userData));
-        localStorage.setItem("pqjobs_cv_resume", JSON.stringify(resumeData));
         setShowSaveToast(true);
         setTimeout(() => setShowSaveToast(false), 2500);
     };
@@ -190,25 +168,25 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
 
                             {/* Social Links */}
                             <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                                {resumeData.socicallink.map((s, i) => (
+                                {resumeData.socialLinks.map((s, i) => (
                                     <div key={i} className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 font-medium relative group/link">
                                         🔗
                                         <input
                                             type="text"
                                             value={s.platform}
-                                            onChange={(e) => handleArrayChange("socicallink", i, "platform", e.target.value)}
+                                            onChange={(e) => handleArrayChange("socialLinks", i, "platform", e.target.value)}
                                             className="bg-transparent border-none outline-none text-white w-14 font-semibold ml-0.5"
                                             placeholder="GitHub"
                                         />
                                         <input
                                             type="text"
                                             value={s.url}
-                                            onChange={(e) => handleArrayChange("socicallink", i, "url", e.target.value)}
+                                            onChange={(e) => handleArrayChange("socialLinks", i, "url", e.target.value)}
                                             className="bg-transparent border-none outline-none text-blue-200 w-24 ml-0.5"
                                             placeholder="URL"
                                         />
                                         <button
-                                            onClick={() => removeArrayItem("socicallink", i)}
+                                            onClick={() => removeArrayItem("socialLinks", i)}
                                             className="text-red-300 hover:text-red-500 font-bold ml-1 opacity-0 group-hover/link:opacity-100 transition-opacity print:hidden"
                                         >
                                             ✕
@@ -216,7 +194,7 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
                                     </div>
                                 ))}
                                 <button
-                                    onClick={() => addArrayItem("socicallink", { platform: "Social", url: "" })}
+                                    onClick={() => addArrayItem("socialLinks", { platform: "Social", url: "" })}
                                     className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/20 hover:bg-white/10 transition px-3 py-1 text-white text-xs print:hidden"
                                 >
                                     + Thêm mạng xã hội
@@ -446,7 +424,7 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
             {showSaveToast && (
                 <div className="fixed bottom-4 right-4 bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2 animate-bounce print:hidden">
                     <span>✓</span>
-                    <span>Đã lưu thông tin CV vào trình duyệt của bạn!</span>
+                    <span>Đã cập nhật bản xem trước trong phiên làm việc!</span>
                 </div>
             )}
         </div>

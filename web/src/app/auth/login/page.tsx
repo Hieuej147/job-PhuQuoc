@@ -20,15 +20,16 @@ import { AuthLayout } from "@/components/auth/auth-layout";
 import { GoogleButton } from "@/components/auth/google-button";
 import {
   signIn,
-  getUserProfile,
   sendVerificationOtp,
 } from "@/lib/auth";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { useAuth } from "@/components/auth/auth-provider";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, setUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -39,18 +40,15 @@ function LoginForm() {
   const toastShownRef = useRef(false);
 
   useEffect(() => {
-    getUserProfile().then((user) => {
-      if (user) {
-        const role = user.role;
-        if (!role) router.replace("/auth/select-role");
-        else if (role === "EMPLOYER")
-          router.replace("/employer/dashboard");
-        else if (role === "ADMIN")
-          router.replace("/");
-        else router.replace("/candidate/dashboard");
-      }
-    });
-  }, [router]);
+    if (!user) return;
+    const role = user.role;
+    if (!role) router.replace("/auth/select-role");
+    else if (role === "EMPLOYER")
+      router.replace("/employer/dashboard");
+    else if (role === "ADMIN")
+      router.replace("/");
+    else router.replace("/candidate/dashboard");
+  }, [router, user]);
 
   useEffect(() => {
     if (toastShownRef.current) return;
@@ -85,6 +83,7 @@ function LoginForm() {
     try {
       const session = await signIn(email, password);
       const role = session.user?.role;
+      setUser(session.user);
       toast.success("Đăng nhập thành công!");
       if (!role) router.push("/auth/select-role");
       else if (role === "EMPLOYER")
@@ -92,7 +91,6 @@ function LoginForm() {
       else if (role === "ADMIN")
         router.push("/");
       else router.push("/candidate/dashboard");
-      router.refresh();
     } catch (err: unknown) {
       const msg = (err as Error).message || "";
       if (

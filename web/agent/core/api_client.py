@@ -32,24 +32,40 @@ class ApiClient:
             h.update(headers)
         return h
 
+    def _raise_for_status(self, response: httpx.Response):
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            detail = response.text
+            try:
+                body = response.json()
+                detail = body.get("message") or body.get("error") or str(body)
+            except Exception:
+                pass
+            raise httpx.HTTPStatusError(
+                f"{exc.response.status_code} {exc.response.reason_phrase}: {detail}",
+                request=exc.request,
+                response=exc.response,
+            ) from exc
+
     async def get(self, path: str, params: Optional[Dict] = None, headers: Optional[Dict] = None) -> Any:
         response = await self.client.get(path, params=params, headers=self._get_headers(headers))
-        response.raise_for_status()
+        self._raise_for_status(response)
         return response.json()
 
     async def post(self, path: str, json: Optional[Dict] = None, headers: Optional[Dict] = None) -> Any:
         response = await self.client.post(path, json=json, headers=self._get_headers(headers))
-        response.raise_for_status()
+        self._raise_for_status(response)
         return response.json()
 
     async def patch(self, path: str, json: Optional[Dict] = None, headers: Optional[Dict] = None) -> Any:
         response = await self.client.patch(path, json=json, headers=self._get_headers(headers))
-        response.raise_for_status()
+        self._raise_for_status(response)
         return response.json()
 
     async def delete(self, path: str, headers: Optional[Dict] = None) -> Any:
         response = await self.client.delete(path, headers=self._get_headers(headers))
-        response.raise_for_status()
+        self._raise_for_status(response)
         return response.json()
 
     async def close(self):

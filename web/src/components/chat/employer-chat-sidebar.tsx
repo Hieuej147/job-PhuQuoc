@@ -2,24 +2,10 @@
 
 import { CopilotSidebar } from "@copilotkit/react-core/v2";
 import { useAgentContext } from "@copilotkit/react-core/v2";
-import { useEffect, useState } from "react";
-
-interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  role?: string | null;
-}
+import { useAuth } from "@/components/auth/auth-provider";
 
 function EmployerChatContent() {
-  const [user, setUser] = useState<UserProfile | null>(null);
-
-  useEffect(() => {
-    fetch("/api/v1/auth/me", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setUser(d.data?.user || null))
-      .catch(() => setUser(null));
-  }, []);
+  const { user } = useAuth();
 
   useAgentContext({
     description: "Thông tin nhà tuyển dụng hiện tại",

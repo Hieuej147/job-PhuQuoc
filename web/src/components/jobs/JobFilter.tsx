@@ -369,6 +369,7 @@ export function JobFilterMobileDrawer({
             onFilterChange={onFilterChange}
             onClearAll={onClearAll}
             categories={categories}
+            stats={stats}
           />
         </div>
 

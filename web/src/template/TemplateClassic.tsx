@@ -2,7 +2,7 @@
 "use client";
 import type { TemplateProps, UserData, ResumeData } from "./index";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 /**
  * TemplateClassic — Phong cách thanh lịch, truyền thống (Form nhập liệu)
@@ -21,7 +21,7 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
         summary: resume.summary || "",
         degree: resume.degree || "",
         languages: resume.languages || "",
-        socicallink: resume.socicallink || [],
+        socialLinks: resume.socialLinks || resume.socicallink || [],
         education: resume.education || [],
         experience: resume.experience || [],
         projects: resume.projects || [],
@@ -29,29 +29,7 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
 
     const [showSaveToast, setShowSaveToast] = useState(false);
 
-    // Load saved data on mount
-    useEffect(() => {
-        const savedUser = localStorage.getItem("pqjobs_cv_user");
-        const savedResume = localStorage.getItem("pqjobs_cv_resume");
-        if (savedUser) {
-            try {
-                setUserData(JSON.parse(savedUser));
-            } catch (e) {
-                console.error("Failed to parse saved user data", e);
-            }
-        }
-        if (savedResume) {
-            try {
-                setResumeData(JSON.parse(savedResume));
-            } catch (e) {
-                console.error("Failed to parse saved resume data", e);
-            }
-        }
-    }, []);
-
     const handleSave = () => {
-        localStorage.setItem("pqjobs_cv_user", JSON.stringify(userData));
-        localStorage.setItem("pqjobs_cv_resume", JSON.stringify(resumeData));
         setShowSaveToast(true);
         setTimeout(() => setShowSaveToast(false), 2500);
     };
@@ -183,24 +161,24 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
 
                         {/* Social Links */}
                         <div className="mt-2 flex flex-wrap gap-3 text-sm">
-                            {resumeData.socicallink.map((s, i) => (
+                            {resumeData.socialLinks.map((s, i) => (
                                 <div key={i} className="flex items-center gap-1 bg-stone-700/40 px-2 py-0.5 rounded border border-stone-600/40 relative group/link">
                                     <input
                                         type="text"
                                         value={s.platform}
-                                        onChange={(e) => handleArrayChange("socicallink", i, "platform", e.target.value)}
+                                        onChange={(e) => handleArrayChange("socialLinks", i, "platform", e.target.value)}
                                         className="bg-transparent border-none outline-none text-stone-200 text-xs w-16 font-semibold"
                                         placeholder="Nền tảng"
                                     />
                                     <input
                                         type="text"
                                         value={s.url}
-                                        onChange={(e) => handleArrayChange("socicallink", i, "url", e.target.value)}
+                                        onChange={(e) => handleArrayChange("socialLinks", i, "url", e.target.value)}
                                         className="bg-transparent border-none outline-none text-stone-300 text-xs w-28"
                                         placeholder="URL liên kết"
                                     />
                                     <button
-                                        onClick={() => removeArrayItem("socicallink", i)}
+                                        onClick={() => removeArrayItem("socialLinks", i)}
                                         className="text-stone-400 hover:text-red-400 font-sans text-xs ml-1 opacity-0 group-hover/link:opacity-100 transition-opacity print:hidden"
                                     >
                                         ✕
@@ -208,7 +186,7 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
                                 </div>
                             ))}
                             <button
-                                onClick={() => addArrayItem("socicallink", { platform: "GitHub", url: "" })}
+                                onClick={() => addArrayItem("socialLinks", { platform: "GitHub", url: "" })}
                                 className="text-stone-300 hover:text-white text-xs underline font-sans flex items-center gap-1 print:hidden"
                             >
                                 + Thêm liên kết
@@ -429,7 +407,7 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
             {showSaveToast && (
                 <div className="fixed bottom-4 right-4 bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2 animate-bounce print:hidden">
                     <span>✓</span>
-                    <span>Đã lưu thông tin CV vào trình duyệt của bạn!</span>
+                    <span>Đã cập nhật bản xem trước trong phiên làm việc!</span>
                 </div>
             )}
         </div>

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { Navbar } from "@/components/layout/navbar";
 import { EmployerSidebar } from "@/components/layout/employer-sidebar";
-import { EmployerChatSidebar } from "@/components/chat/employer-chat-sidebar";
 import { getServerAuthUser } from "@/lib/server-auth";
 
 export default async function EmployerLayout({ children }: { children: React.ReactNode }) {
@@ -29,7 +28,6 @@ export default async function EmployerLayout({ children }: { children: React.Rea
       <div className="flex">
         <EmployerSidebar />
         <main className="flex-1 min-w-0">{children}</main>
-        <EmployerChatSidebar />
       </div>
     </div>
   );
