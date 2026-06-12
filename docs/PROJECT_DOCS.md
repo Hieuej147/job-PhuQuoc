@@ -682,6 +682,14 @@ CreateTemplateDto:
 UpdateTemplateDto: (tất cả optional)
 ```
 
+**AI CV persist contract:**
+
+- `templateId` chỉ do DB sinh khi gọi `POST /resumes/templates`.
+- Agent/FE chỉ gửi template draft: `name`, `htmlTemplate`, `cssTemplate`, `isPublic`.
+- Nếu template validator fail, backend trả `400` và không tạo `ResumeTemplate`.
+- Sau khi backend trả template `id`, agent dùng id đó làm `templateId` khi gọi `POST /resumes`.
+- PDF export chỉ chạy sau khi đã có `resumeId` thật.
+
 ---
 
 ### 4.9 Notifications Module
@@ -1525,8 +1533,9 @@ generate_template_node:
     │  1. cv_flow = "generating", progress = 50
     │  2. copilotkit_emit_state() → frontend nhận state
     │  3. LLM tạo HTML + CSS CV
-    │  4. cv_flow = "preview", progress = 80
-    │  5. Return ToolMessage với HTML/CSS
+    │  4. cv_reviewer validate/repair HTML + CSS tối đa 2 lần
+    │  5. cv_flow = "preview", progress = 80
+    │  6. Return ToolMessage với HTML/CSS
     ▼
 Frontend render CV preview (useTemplateRenderer → iframe)
     │
@@ -1540,7 +1549,8 @@ LLM gọi tool: adjust_cv_template { adjustment }
 adjust_template_node:
     │  1. cv_flow = "editing"
     │  2. LLM chỉnh sửa HTML/CSS
-    │  3. Return HTML/CSS mới
+    │  3. cv_reviewer validate/repair HTML + CSS tối đa 2 lần
+    │  4. Return HTML/CSS mới
     ▼
 User đồng ý: "Lưu CV đi"
     │
@@ -1549,9 +1559,12 @@ LLM gọi tool: save_resume { title }
     │
     ▼
 save_resume_node:
-    │  1. POST /resumes { title, summary, skills, templateId, ... }
-    │  2. cv_flow = "idle"
-    │  3. Return resume ID
+    │  1. Review/repair template draft lần cuối
+    │  2. POST /resumes/templates { name, htmlTemplate, cssTemplate, isPublic }
+    │  3. Backend validator pass → DB tạo ResumeTemplate.id
+    │  4. POST /resumes { title, summary, skills, templateId, ... }
+    │  5. cv_flow = "done"
+    │  6. Return resume ID + template ID
     ▼
 User muốn PDF: "Export PDF"
     │

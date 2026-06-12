@@ -7,6 +7,7 @@ import { JobFilterSidebar, JobFilterMobileDrawer } from "@/components/jobs/JobFi
 import JobSortBar from "@/components/jobs/JobSortBar";
 import JobList from "@/components/jobs/JobList";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth/auth-provider";
 
 interface JobItem {
   id: string;
@@ -111,6 +112,7 @@ function mapJobType(item: JobItem) {
 export default function JobsPageClient({ initialJobs, initialTotal, initialTotalPages, categories, stats }: JobsPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [jobs, setJobs] = useState(initialJobs);
   const [totalJobs, setTotalJobs] = useState(initialTotal);
   const [totalPages, setTotalPages] = useState(initialTotalPages);
@@ -122,11 +124,14 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
 
   // Fetch saved job IDs from API on mount
   useEffect(() => {
+    if (!user) {
+      setBookmarkedIds(new Set());
+      return;
+    }
+
     let active = true;
     (async () => {
       try {
-        const meRes = await fetch("/api/v1/auth/me", { credentials: "include" });
-        if (!meRes.ok) return;
         const res = await fetch("/api/v1/saved/jobs?limit=200", { credentials: "include" });
         if (!res.ok) return;
         const data = await res.json();
@@ -138,7 +143,7 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [user]);
 
   const [filters, setFilters] = useState(() => {
     const search = searchParams.get("search") || "";
@@ -268,8 +273,7 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
   // Toggle bookmark with API call
   const toggleBookmark = useCallback(async (id: string) => {
     try {
-      const meRes = await fetch("/api/v1/auth/me", { credentials: "include" });
-      if (!meRes.ok) {
+      if (!user) {
         router.push("/auth/login?redirect=/jobs");
         return;
       }
@@ -289,7 +293,7 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
     } catch {
       // silently fail
     }
-  }, []);
+  }, [router, user]);
 
   const handleSearch = useCallback((keyword: string, location: string, industry: string) => {
     updateFilters({ keyword, location, industries: industry ? [industry] : [] });

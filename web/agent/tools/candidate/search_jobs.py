@@ -1,3 +1,9 @@
+import json
+from typing import cast
+
+from copilotkit.langchain import copilotkit_emit_state
+from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 from typing import Optional
 from tools.base_tool import BaseTool
@@ -22,6 +28,46 @@ class SearchJobsTool(BaseTool):
 
     def __init__(self, api_client: ApiClient):
         self.api_client = api_client
+
+    def as_node(self):
+        tool_instance = self
+
+        async def node(state: dict, config: RunnableConfig) -> dict:
+            ai_message = cast(AIMessage, state["messages"][-1])
+            tool_call = ai_message.tool_calls[0]
+            tool_call_id = tool_call["id"]
+            args = tool_call.get("args", {})
+
+            state["activeWorker"] = "job_searcher"
+            state["status"] = "running"
+            state["currentStep"] = "Đang tìm việc phù hợp..."
+            state["toolStatus"] = "search_jobs"
+            state["progress"] = 45
+            await copilotkit_emit_state(config, state)
+
+            result = await tool_instance.run(
+                keyword=args.get("keyword", ""),
+                location=args.get("location"),
+                min_salary=args.get("min_salary"),
+                max_salary=args.get("max_salary"),
+                limit=args.get("limit", 10),
+            )
+
+            state["status"] = "done" if not result.get("error") else "error"
+            state["currentStep"] = "Đã tìm xong việc phù hợp." if not result.get("error") else "Không thể tìm việc lúc này."
+            state["progress"] = 100
+            state["messages"] = [
+                ToolMessage(
+                    tool_call_id=tool_call_id,
+                    name=tool_call["name"],
+                    content=json.dumps(result, ensure_ascii=False),
+                )
+            ]
+            await copilotkit_emit_state(config, state)
+            return state
+
+        node.__name__ = "job_searcher_node"
+        return node
 
     async def run(
         self,

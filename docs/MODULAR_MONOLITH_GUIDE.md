@@ -175,6 +175,20 @@ export class ApplicationsService {
 }
 ```
 
+### ✅ Đúng: Audit write qua contract chung
+
+```typescript
+// Module nghiệp vụ chỉ ghi audit qua shared contract
+import { AuditWriteContractService } from '../shared/contracts/audit.contract';
+
+@Injectable()
+export class JobsService {
+  constructor(private readonly auditWriteContract: AuditWriteContractService) {}
+}
+```
+
+`AuditModule` chỉ giữ phần đọc log/admin view; write path đi qua `SharedModule`.
+
 ### ❌ Sai: Import trực tiếp module khác
 
 ```typescript

@@ -2,7 +2,7 @@
 "use client";
 import type { TemplateProps, UserData, ResumeData } from "./index";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 /**
  * TemplateMinimalistModern — Phong cách tối giản hiện đại (Minimalist Modern), siêu sạch, thanh thoát
@@ -20,7 +20,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
         summary: resume.summary || "",
         degree: resume.degree || "",
         languages: resume.languages || "",
-        socicallink: resume.socicallink || [],
+        socialLinks: resume.socialLinks || resume.socicallink || [],
         education: resume.education || [],
         experience: resume.experience || [],
         projects: resume.projects || [],
@@ -28,29 +28,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
 
     const [showSaveToast, setShowSaveToast] = useState(false);
 
-    // Load saved data on mount
-    useEffect(() => {
-        const savedUser = localStorage.getItem("pqjobs_cv_user");
-        const savedResume = localStorage.getItem("pqjobs_cv_resume");
-        if (savedUser) {
-            try {
-                setUserData(JSON.parse(savedUser));
-            } catch (e) {
-                console.error("Failed to parse saved user data", e);
-            }
-        }
-        if (savedResume) {
-            try {
-                setResumeData(JSON.parse(savedResume));
-            } catch (e) {
-                console.error("Failed to parse saved resume data", e);
-            }
-        }
-    }, []);
-
     const handleSave = () => {
-        localStorage.setItem("pqjobs_cv_user", JSON.stringify(userData));
-        localStorage.setItem("pqjobs_cv_resume", JSON.stringify(resumeData));
         setShowSaveToast(true);
         setTimeout(() => setShowSaveToast(false), 2500);
     };
@@ -406,24 +384,24 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
                             {/* Social platform connections */}
                             <Section title="Liên kết" icon="public">
                                 <div className="space-y-2">
-                                    {resumeData.socicallink.map((s, i) => (
+                                    {resumeData.socialLinks.map((s, i) => (
                                         <div key={i} className="flex items-center gap-1 border-b border-slate-100 pb-1 relative group/link">
                                             <input
                                                 type="text"
                                                 value={s.platform}
-                                                onChange={(e) => handleArrayChange("socicallink", i, "platform", e.target.value)}
+                                                onChange={(e) => handleArrayChange("socialLinks", i, "platform", e.target.value)}
                                                 className="bg-transparent border-none outline-none text-xs w-16 font-semibold text-slate-700"
                                                 placeholder="Social"
                                             />
                                             <input
                                                 type="text"
                                                 value={s.url}
-                                                onChange={(e) => handleArrayChange("socicallink", i, "url", e.target.value)}
+                                                onChange={(e) => handleArrayChange("socialLinks", i, "url", e.target.value)}
                                                 className="bg-transparent border-none outline-none text-[10px] w-28 text-slate-400"
                                                 placeholder="URL"
                                             />
                                             <button
-                                                onClick={() => removeArrayItem("socicallink", i)}
+                                                onClick={() => removeArrayItem("socialLinks", i)}
                                                 className="text-red-400 hover:text-red-650 font-bold ml-1 text-xs opacity-0 group-hover/link:opacity-100 transition-opacity print:hidden"
                                             >
                                                 ✕
@@ -431,7 +409,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
                                         </div>
                                     ))}
                                     <button
-                                        onClick={() => addArrayItem("socicallink", { platform: "Social", url: "" })}
+                                        onClick={() => addArrayItem("socialLinks", { platform: "Social", url: "" })}
                                         className="text-xs text-slate-500 hover:text-slate-700 font-semibold flex items-center gap-1 pt-1 print:hidden"
                                     >
                                         <span className="material-symbols-outlined text-xs">add</span>
@@ -448,7 +426,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
             {showSaveToast && (
                 <div className="fixed bottom-4 right-4 bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2 animate-bounce print:hidden">
                     <span className="material-symbols-outlined">check_circle</span>
-                    <span>Đã lưu thông tin CV vào trình duyệt của bạn!</span>
+                    <span>Đã cập nhật bản xem trước trong phiên làm việc!</span>
                 </div>
             )}
         </div>

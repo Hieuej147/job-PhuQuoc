@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import Type, Any, cast
 from pydantic import BaseModel, Field
 from langchain_core.messages import AIMessage, ToolMessage, SystemMessage, HumanMessage
@@ -9,6 +10,32 @@ from langgraph.types import interrupt
 from copilotkit.langchain import copilotkit_emit_state
 
 logger = logging.getLogger(__name__)
+
+MAX_TEMPLATE_REPAIR_ATTEMPTS = 2
+BLOCKED_HTML_PATTERNS = [
+    re.compile(r"<script[\s>]", re.IGNORECASE),
+    re.compile(r"</script", re.IGNORECASE),
+    re.compile(r"javascript\s*:", re.IGNORECASE),
+    re.compile(r"on\w+\s*=", re.IGNORECASE),
+    re.compile(r"<iframe", re.IGNORECASE),
+    re.compile(r"<object", re.IGNORECASE),
+    re.compile(r"<embed", re.IGNORECASE),
+    re.compile(r"<form", re.IGNORECASE),
+    re.compile(r"<input", re.IGNORECASE),
+    re.compile(r"<button", re.IGNORECASE),
+    re.compile(r"<select", re.IGNORECASE),
+    re.compile(r"<textarea", re.IGNORECASE),
+    re.compile(r"data\s*:", re.IGNORECASE),
+    re.compile(r"vbscript\s*:", re.IGNORECASE),
+]
+BLOCKED_CSS_PATTERNS = [
+    re.compile(r"expression\s*\(", re.IGNORECASE),
+    re.compile(r"@import", re.IGNORECASE),
+    re.compile(r"url\s*\(", re.IGNORECASE),
+    re.compile(r"behavior\s*:", re.IGNORECASE),
+    re.compile(r"-moz-binding", re.IGNORECASE),
+    re.compile(r"position\s*:\s*fixed", re.IGNORECASE),
+]
 
 
 # ============================================================
@@ -78,6 +105,131 @@ def _build_resume_data(state: dict) -> dict:
     }
 
 
+def _unwrap_api_data(response: Any) -> Any:
+    """Unwrap backend responses that may be wrapped by Nest interceptors."""
+    data = response
+    while isinstance(data, dict) and "data" in data and len(data) <= 2:
+        next_data = data.get("data")
+        if next_data is data:
+            break
+        data = next_data
+    return data
+
+
+def _extract_api_id(response: Any) -> str | None:
+    data = _unwrap_api_data(response)
+    if isinstance(data, dict):
+        value = data.get("id")
+        return value if isinstance(value, str) else None
+    return None
+
+
+def _validate_template_artifacts(html: str, css: str) -> list[str]:
+    errors: list[str] = []
+
+    if len(html) > 100 * 1024:
+        errors.append(f"HTML quá lớn ({len(html)} bytes)")
+    if len(css) > 50 * 1024:
+        errors.append(f"CSS quá lớn ({len(css)} bytes)")
+
+    for pattern in BLOCKED_HTML_PATTERNS:
+        if pattern.search(html):
+            errors.append(f"HTML chứa pattern không an toàn: {pattern.pattern}")
+
+    for pattern in BLOCKED_CSS_PATTERNS:
+        if pattern.search(css):
+            errors.append(f"CSS chứa pattern không an toàn: {pattern.pattern}")
+
+    return errors
+
+
+def _sanitize_template_artifacts(html: str, css: str) -> tuple[str, str]:
+    sanitized_html = html
+    sanitized_html = re.sub(r"<script[\s\S]*?<\/script>", "", sanitized_html, flags=re.IGNORECASE)
+    sanitized_html = re.sub(
+        r"\son\w+\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)",
+        "",
+        sanitized_html,
+        flags=re.IGNORECASE,
+    )
+    sanitized_html = re.sub(r"javascript\s*:", "", sanitized_html, flags=re.IGNORECASE)
+
+    sanitized_css = css
+    sanitized_css = re.sub(r"@import[^;]+;", "", sanitized_css, flags=re.IGNORECASE)
+    sanitized_css = re.sub(r"url\s*\([^)]*\)", "", sanitized_css, flags=re.IGNORECASE)
+    sanitized_css = re.sub(r"expression\s*\([^)]*\)", "", sanitized_css, flags=re.IGNORECASE)
+
+    return sanitized_html.strip(), sanitized_css.strip()
+
+
+async def _repair_template_if_needed(
+    tool_instance: Any,
+    state: dict,
+    config: RunnableConfig,
+    purpose: str,
+    name: str,
+    html: str,
+    css: str,
+    extra_context: str = "",
+) -> tuple[str, str, str]:
+    current_name = name
+    current_html, current_css = _sanitize_template_artifacts(html, css)
+    errors = _validate_template_artifacts(current_html, current_css)
+
+    attempt = 0
+    while errors and attempt < MAX_TEMPLATE_REPAIR_ATTEMPTS:
+        attempt += 1
+        state["activeWorker"] = "cv_reviewer"
+        state["status"] = "running"
+        state["currentStep"] = f"Đang đánh giá template CV ({attempt}/{MAX_TEMPLATE_REPAIR_ATTEMPTS})..."
+        state["toolStatus"] = f"{purpose}_review"
+        state["progress"] = min(90, 60 + attempt * 10)
+        await copilotkit_emit_state(config, state)
+
+        prompt = f"""Bạn là worker review template CV. Nhiệm vụ: sửa template để pass validator backend.
+
+MỤC TIÊU:
+- Không được dùng script, iframe, form, input, button, event handler, external assets.
+- Không được dùng @import, url(...), Google Fonts, font ngoài, CDN, CSS external.
+- Giữ placeholders và data-section/data-repeat.
+
+{extra_context}
+
+LỖI HIỆN TẠI:
+{json.dumps(errors, ensure_ascii=False)}
+
+NAME HIỆN TẠI:
+{current_name}
+
+HTML HIỆN TẠI:
+{current_html[:12000]}
+
+CSS HIỆN TẠI:
+{current_css[:12000]}
+
+TRẢ VỀ JSON:
+{{"name": "Tên template", "html": "HTML body content", "css": "CSS content"}}
+CHỈ TRẢ VỀ JSON."""
+
+        response = await tool_instance.llm.ainvoke([
+            SystemMessage(content="Bạn là worker review/repair template CV. Luôn trả về JSON hợp lệ."),
+            HumanMessage(content=prompt),
+        ])
+
+        result = _parse_json_from_llm(response.content)
+        current_name = result.get("name", current_name)
+        current_html, current_css = _sanitize_template_artifacts(
+            result.get("html", current_html),
+            result.get("css", current_css),
+        )
+        errors = _validate_template_artifacts(current_html, current_css)
+
+    if errors:
+        raise ValueError(f"Template không hợp lệ sau {MAX_TEMPLATE_REPAIR_ATTEMPTS} lần sửa: {', '.join(errors[:3])}")
+
+    return current_name, current_html, current_css
+
+
 def _parse_json_from_llm(content: str) -> dict:
     """Parse JSON from LLM response, handling markdown code blocks."""
     content = content.strip()
@@ -142,6 +294,10 @@ class GenerateCVTemplateTool(BaseTool):
             description = args.get("description", "")
 
             # 2. Emit state: generating
+            state["activeWorker"] = "cv_designer"
+            state["status"] = "running"
+            state["currentStep"] = "Đang thiết kế CV HTML/CSS..."
+            state["toolStatus"] = "generate_cv_template"
             state["cv_flow"] = "generating"
             state["step"] = "Đang tạo CV..."
             state["progress"] = 50
@@ -149,10 +305,14 @@ class GenerateCVTemplateTool(BaseTool):
 
             # 3. Generate HTML/CSS with LLM
             try:
-                html, css, name = await tool_instance._generate_with_llm(description, state)
+                html, css, name = await tool_instance._generate_with_llm(description, state, config)
                 logger.info(f"[generate_template_node] Generated: {name}, html={len(html)}")
             except Exception as e:
                 logger.error(f"[generate_template_node] Error: {e}")
+                state["activeWorker"] = "cv_designer"
+                state["status"] = "error"
+                state["currentStep"] = "Không thể tạo CV."
+                state["toolStatus"] = "generate_cv_template"
                 state["cv_flow"] = "idle"
                 state["step"] = ""
                 state["progress"] = 0
@@ -164,13 +324,18 @@ class GenerateCVTemplateTool(BaseTool):
                 return state
 
             # 4. Update state
+            state["current_template_id"] = None
+            state["current_template_name"] = name
             state["current_template_html"] = html
             state["current_template_css"] = css
+            state["activeWorker"] = "cv_designer"
+            state["status"] = "waiting_user"
+            state["currentStep"] = "CV đã tạo, chờ candidate xem preview."
+            state["toolStatus"] = "generate_cv_template"
             state["cv_flow"] = "preview"
             state["step"] = "CV đã tạo! Xem preview."
             state["progress"] = 80
 
-            # 5. Tool result = JSON có HTML → useRenderTool sẽ parse
             result_json = json.dumps({
                 "name": name,
                 "html": html,
@@ -190,13 +355,13 @@ class GenerateCVTemplateTool(BaseTool):
         node.__name__ = "generate_template_node"
         return node
 
-    async def _generate_with_llm(self, description: str, state: dict):
+    async def _generate_with_llm(self, description: str, state: dict, config: RunnableConfig):
         if not self.llm:
             raise ValueError("LLM not configured")
 
         user_info = _build_user_context(state)
 
-        prompt = f"""Bạn là chuyên gia thiết kế CV. Tạo template CV HTML với INLINE CSS.
+        prompt = f"""Bạn là chuyên gia thiết kế CV và frontend UI. Tạo template CV bằng HTML semantic + CSS chuyên nghiệp.
 
 THÔNG TIN USER:
 {user_info}
@@ -204,28 +369,24 @@ THÔNG TIN USER:
 MÔ TẢ: {description}
 
 YÊU CẦU BẮT BUỘC:
-1. HTML với INLINE CSS (style attribute trên mỗi element)
-2. Dùng data-field markers: name, email, phone, address, degree, summary, skills, languages
-3. Sections: data-section="education", data-repeat="education", data-field="education.school"
-4. Kích thước A4 (max-width: 210mm, min-height: 297mm)
-5. Không dùng script, iframe, form, input, button
-6. Không dùng Tailwind CSS, không dùng class
-7. Dùng {{{{name}}}}, {{{{email}}}}... làm placeholders
-8. Font: Inter, Arial, sans-serif
+1. Trả HTML body content và CSS tách riêng.
+2. Được dùng class CSS rõ nghĩa; hạn chế inline style trừ khi thật cần.
+3. Dùng data-field markers: name, email, phone, address, degree, summary, skills, languages.
+4. Sections dùng data-section và data-repeat, ví dụ data-section="education", data-repeat="education".
+5. Dùng placeholders {{{{name}}}}, {{{{email}}}}, {{{{phone}}}}, {{{{address}}}}, {{{{degree}}}}, {{{{summary}}}}, {{{{skills}}}}, {{{{languages}}}}.
+6. Repeat item placeholders dùng {{{{school}}}}, {{{{field}}}}, {{{{startYear}}}}, {{{{endYear}}}}, {{{{company}}}}, {{{{position}}}}, {{{{description}}}}, {{{{link}}}}.
+7. Kích thước A4: container max-width: 210mm, min-height: 297mm, print-friendly.
+8. Không dùng script, iframe, form, input, button, event handler, external assets.
+9. Font stack: Inter, Arial, sans-serif.
 
-THIẾT KẾ CHUYÊN NGHIỆP:
-- Màu chủ đạo: #005a71 (xanh dương đậm) cho headings
-- Màu phụ: #666 cho text thường
-- Background: trắng #fff
-- Border-bottom cho section headings: 2px solid #005a71
-- Spacing: padding 40px, margin-bottom 24px cho sections
-- Header: tên lớn 28px, thông tin liên lạc nhỏ hơn
-- Kinh nghiệm: position bold 16px, company + thời gian màu #666
-- Skills: liệt kế bằng dấu phẩy hoặc bullet points
-- Layout sạch, dễ đọc, chuyên nghiệp
+THIẾT KẾ:
+- Hãy thiết kế như một frontend designer thật: hierarchy rõ, spacing cân, typography đẹp, layout phù hợp vị trí ứng tuyển.
+- Có thể dùng 1 cột, 2 cột, sidebar, header band, section cards nhẹ, timeline; chọn theo nội dung user.
+- CSS phải tự chứa toàn bộ style cần thiết, gồm @media print nếu cần.
+- Không render dữ liệu cá nhân thật nếu user chưa cung cấp; dùng placeholder.
 
 TRẢ VỀ JSON:
-{{{{"name": "Tên template", "html": "HTML content với inline css", "css": ""}}}}
+{{{{"name": "Tên template", "html": "HTML body content", "css": "CSS content", "metadata": {{{{"layout": "single-column|two-column|minimal|creative|executive", "targetRole": "..."}}}}}}}}
 CHỈ TRẢ VỀ JSON, KHÔNG giải thích."""
 
         response = await self.llm.ainvoke([
@@ -236,8 +397,19 @@ CHỈ TRẢ VỀ JSON, KHÔNG giải thích."""
         result = _parse_json_from_llm(response.content)
         if "html" not in result:
             raise ValueError("Template không hợp lệ: thiếu HTML")
-
-        return result["html"], result.get("css", ""), result.get("name", "Custom Template")
+        name = result.get("name", "Custom Template")
+        html = result["html"]
+        css = result.get("css", "")
+        return await _repair_template_if_needed(
+            self,
+            state,
+            config,
+            "generate_cv_template",
+            name,
+            html,
+            css,
+            extra_context="Đây là template CV mới cần được review trước khi lưu vào DB.",
+        )
 
 
 # ============================================================
@@ -288,16 +460,25 @@ class AdjustCVTemplateTool(BaseTool):
                 return state
 
             # Emit state: editing
+            state["activeWorker"] = "cv_designer"
+            state["status"] = "running"
+            state["currentStep"] = "Đang chỉnh sửa CV theo yêu cầu..."
+            state["toolStatus"] = "adjust_cv_template"
             state["cv_flow"] = "editing"
             state["step"] = "Đang chỉnh sửa..."
+            state["progress"] = 60
             await copilotkit_emit_state(config, state)
 
             # Adjust with LLM
             try:
-                new_html, new_css, changes = await tool_instance._adjust_with_llm(current_html, current_css, adjustment)
+                new_html, new_css, changes = await tool_instance._adjust_with_llm(current_html, current_css, adjustment, state, config)
                 logger.info(f"[adjust_template_node] Adjusted: {changes}")
             except Exception as e:
                 logger.error(f"[adjust_template_node] Error: {e}")
+                state["activeWorker"] = "cv_designer"
+                state["status"] = "error"
+                state["currentStep"] = "Không thể chỉnh sửa CV."
+                state["toolStatus"] = "adjust_cv_template"
                 state["messages"] = [ToolMessage(
                     tool_call_id=tool_call_id, name=tool_call["name"],
                     content=f"❌ Lỗi chỉnh sửa: {e}",
@@ -305,14 +486,27 @@ class AdjustCVTemplateTool(BaseTool):
                 return state
 
             # Update state
+            state["current_template_name"] = state.get("current_template_name") or "AI Generated CV"
             state["current_template_html"] = new_html
             state["current_template_css"] = new_css
+            state["activeWorker"] = "cv_designer"
+            state["status"] = "waiting_user"
+            state["currentStep"] = "CV đã chỉnh sửa, chờ candidate xem preview."
+            state["toolStatus"] = "adjust_cv_template"
             state["cv_flow"] = "preview"
             state["step"] = "Đã chỉnh sửa!"
+            state["progress"] = 85
+
+            result_json = json.dumps({
+                "name": state.get("current_template_name") or "AI Generated CV",
+                "html": new_html,
+                "css": new_css,
+                "changes": changes,
+            }, ensure_ascii=False)
 
             state["messages"] = [ToolMessage(
                 tool_call_id=tool_call_id, name=tool_call["name"],
-                content=f"Đã cập nhật CV: {changes}",
+                content=result_json,
             )]
 
             await copilotkit_emit_state(config, state)
@@ -321,18 +515,21 @@ class AdjustCVTemplateTool(BaseTool):
         node.__name__ = "adjust_template_node"
         return node
 
-    async def _adjust_with_llm(self, current_html: str, current_css: str, adjustment: str):
+    async def _adjust_with_llm(self, current_html: str, current_css: str, adjustment: str, state: dict, config: RunnableConfig):
         if not self.llm:
             raise ValueError("LLM not configured")
 
-        prompt = f"""Điều chỉnh template CV. Giữ nguyên data-field markers.
+        prompt = f"""Điều chỉnh template CV. Giữ nguyên data-field markers, placeholders và cấu trúc repeat sections.
 
 HTML HIỆN TẠI:
-{current_html[:3000]}
+{current_html[:12000]}
+
+CSS HIỆN TẠI:
+{current_css[:12000]}
 
 YÊU CẦU: {adjustment}
 
-TRẢ VỀ JSON: {{{{"html": "...", "css": "...", "changes": "Mô tả"}}}}
+TRẢ VỀ JSON: {{{{"html": "HTML body content", "css": "CSS content", "changes": "Mô tả"}}}}
 CHỈ TRẢ VỀ JSON."""
 
         response = await self.llm.ainvoke([
@@ -341,7 +538,20 @@ CHỈ TRẢ VỀ JSON."""
         ])
 
         result = _parse_json_from_llm(response.content)
-        return result["html"], result.get("css", current_css), result.get("changes", "Đã điều chỉnh")
+        name = result.get("name", state.get("current_template_name") or "AI Generated CV")
+        html = result["html"]
+        css = result.get("css", current_css)
+        repaired_name, repaired_html, repaired_css = await _repair_template_if_needed(
+            self,
+            state,
+            config,
+            "adjust_cv_template",
+            name,
+            html,
+            css,
+            extra_context="Template này đang được chỉnh sửa theo yêu cầu user. Giữ nguyên nội dung hợp lệ và chỉ sửa phần cần sửa.",
+        )
+        return repaired_html, repaired_css, result.get("changes", "Đã điều chỉnh")
 
     def to_langchain_tool(self):
         from langchain_core.tools import StructuredTool
@@ -369,6 +579,7 @@ class SaveResumeTool(BaseTool):
     args_schema: type[BaseModel] = SaveResumeInput
 
     api_client: Any = None
+    llm: Any = None
 
     def _run(self, *args, **kwargs):
         raise NotImplementedError("Dùng as_node().")
@@ -397,20 +608,78 @@ class SaveResumeTool(BaseTool):
                 )]
                 return state
 
-            # Build resume data
-            resume_data = _build_resume_data(state)
-            resume_data["title"] = title
+            if not tool_instance.api_client:
+                raise ValueError("Không thể lưu CV: thiếu backend client để tạo template DB.")
 
-            # Save to backend (qua BFF proxy — path chỉ cần /resumes)
+            template_name = state.get("current_template_name") or title or "AI Generated CV"
+            template_name, html, css = await _repair_template_if_needed(
+                tool_instance,
+                state,
+                config,
+                "save_resume",
+                template_name,
+                html,
+                state.get("current_template_css", ""),
+                extra_context="Template này sẽ được lưu vào DB. Phải pass validator backend trước khi tạo record.",
+            )
+            state["current_template_name"] = template_name
+            state["current_template_html"] = html
+            state["current_template_css"] = css
+
+            template_payload = {
+                "name": template_name,
+                "description": f"Template CV AI cho {state.get('user_name', 'candidate')}",
+                "htmlTemplate": html,
+                "cssTemplate": css,
+                "isPublic": False,
+            }
+
+            # Sync template, then save/update resume
             try:
-                if tool_instance.api_client:
-                    result = await tool_instance.api_client.post("/resumes", json=resume_data)
-                    resume_id = result.get("data", {}).get("id") or result.get("id")
-                    state["current_resume_id"] = resume_id
+                state["activeWorker"] = "cv_designer"
+                state["status"] = "running"
+                state["currentStep"] = "Đang lưu template và CV..."
+                state["toolStatus"] = "save_resume"
+                state["cv_flow"] = "saving"
+                state["step"] = "Đang lưu CV..."
+                state["progress"] = 75
+                await copilotkit_emit_state(config, state)
+
+                if state.get("current_template_id"):
+                    await tool_instance.api_client.patch(
+                        f"/resumes/templates/{state['current_template_id']}",
+                        json=template_payload,
+                    )
+                    template_id = state["current_template_id"]
                 else:
-                    state["current_resume_id"] = "mock-id"
+                    template_result = await tool_instance.api_client.post("/resumes/templates", json=template_payload)
+                    template_id = _extract_api_id(template_result)
+                    if not template_id:
+                        raise ValueError("Backend không trả về templateId sau khi tạo template CV.")
+                    state["current_template_id"] = template_id
+
+                resume_data = _build_resume_data(state)
+                resume_data["title"] = title
+                resume_data["templateId"] = state["current_template_id"]
+
+                if state.get("current_resume_id"):
+                    result = await tool_instance.api_client.patch(
+                        f"/resumes/{state['current_resume_id']}",
+                        json=resume_data,
+                    )
+                else:
+                    result = await tool_instance.api_client.post("/resumes", json=resume_data)
+
+                resume_id = _extract_api_id(result)
+                if not resume_id:
+                    raise ValueError("Backend không trả về resumeId sau khi lưu CV.")
+                state["current_resume_id"] = resume_id
             except Exception as e:
                 logger.error(f"[save_resume_node] Error: {e}")
+                state["activeWorker"] = "cv_designer"
+                state["status"] = "error"
+                state["currentStep"] = "Không thể lưu CV."
+                state["toolStatus"] = "save_resume"
                 state["messages"] = [ToolMessage(
                     tool_call_id=tool_call_id, name=tool_call["name"],
                     content=f"❌ Lỗi lưu CV: {e}",
@@ -418,13 +687,17 @@ class SaveResumeTool(BaseTool):
                 return state
 
             # Clean state after save
-            state["cv_flow"] = "idle"
-            state["step"] = ""
-            state["progress"] = 0
+            state["activeWorker"] = "cv_designer"
+            state["status"] = "done"
+            state["currentStep"] = "CV đã lưu thành công."
+            state["toolStatus"] = "save_resume"
+            state["cv_flow"] = "done"
+            state["step"] = "CV đã lưu thành công."
+            state["progress"] = 100
 
             state["messages"] = [ToolMessage(
                 tool_call_id=tool_call_id, name=tool_call["name"],
-                content=f"Đã lưu CV thành công! ID: {state.get('current_resume_id')}. Bạn muốn export PDF không?",
+                content=f"Đã lưu CV thành công! Resume ID: {state.get('current_resume_id')}, Template ID: {state.get('current_template_id')}. Bạn muốn export PDF không?",
             )]
 
             await copilotkit_emit_state(config, state)

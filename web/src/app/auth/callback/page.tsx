@@ -2,17 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getUserProfile } from "@/lib/auth";
 import { Loader2, Briefcase } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function handleCallback() {
       try {
-        const user = await getUserProfile();
+        const user = await refresh();
 
         if (!user) {
           router.replace("/auth/login");
@@ -46,7 +47,7 @@ export default function AuthCallbackPage() {
     }
 
     handleCallback();
-  }, [router]);
+  }, [refresh, router]);
 
   if (error) {
     return (

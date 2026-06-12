@@ -56,7 +56,7 @@ export default function TemplateGalleryPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
+            body: JSON.stringify({
             templateId: tpl.id,
             data: {
               name: "Nguyễn Văn A",
@@ -68,6 +68,10 @@ export default function TemplateGalleryPage() {
                 "Lập trình viên với 3 năm kinh nghiệm phát triển ứng dụng web. Thành thạo React, TypeScript, Node.js. Đam mê tạo ra sản phẩm chất lượng cao.",
               skills: "React, TypeScript, Node.js, PostgreSQL, Docker, Git",
               languages: "Tiếng Anh (IELTS 7.0), Tiếng Việt (Bản ngữ)",
+              socialLinks: [
+                { platform: "LinkedIn", url: "https://linkedin.com/in/nguyenvana" },
+                { platform: "GitHub", url: "https://github.com/nguyenvana" },
+              ],
               education: [
                 {
                   school: "Đại học Cần Thơ",

@@ -16,8 +16,11 @@ import {
   XCircle,
   UserPlus,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmployerDashboardAiTab } from "@/components/ai/dashboard-ai-tab";
 
 // ── Types ──
 
@@ -287,19 +290,29 @@ export default function EmployerDashboard() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <Tabs defaultValue="overview" className="mx-auto max-w-5xl space-y-6">
       {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">
-          Chào buổi sáng! 👋
-        </h1>
-        <p className="text-sm text-[#3f484c] dark:text-[#94A3B8] mt-1">
-          Hôm nay có {stats.activeJobs} tin đang tuyển dụng
-        </p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">
+            Chào buổi sáng! 👋
+          </h1>
+          <p className="text-sm text-[#3f484c] dark:text-[#94A3B8] mt-1">
+            Hôm nay có {stats.activeJobs} tin đang tuyển dụng
+          </p>
+        </div>
+        <TabsList className="w-full md:w-fit">
+          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+          <TabsTrigger value="ai">
+            <Sparkles className="size-4" />
+            AI Co-worker
+          </TabsTrigger>
+        </TabsList>
       </div>
 
+      <TabsContent value="overview" className="space-y-6">
       {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Active Jobs */}
         <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex items-center justify-between mb-3">
@@ -355,7 +368,7 @@ export default function EmployerDashboard() {
       </div>
 
       {/* ── Chart + Quick Actions ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Stats Summary */}
         <div className="lg:col-span-2 bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
           <div className="mb-5">
@@ -449,7 +462,7 @@ export default function EmployerDashboard() {
       </div>
 
       {/* ── Jobs Table ── */}
-      <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm mb-6">
+      <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">Tin tuyển dụng gần đây</h2>
           <Link href="/employer/jobs" className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-80">
@@ -620,6 +633,16 @@ export default function EmployerDashboard() {
           </div>
         </div>
       </div>
-    </div>
+      </TabsContent>
+
+      <TabsContent value="ai">
+        <EmployerDashboardAiTab
+          title="Hiring Co-worker"
+          initialMessage="Xin chào! Tôi là Hiring Co-worker. Tôi có thể tóm tắt pipeline, ưu tiên hồ sơ cần xử lý, gợi ý job cần tối ưu và soạn email nháp cho ứng viên."
+          contextDescription="Employer dashboard context: jobs, applicants, notifications, and pipeline stats."
+          contextValue={{ jobs, applicants, notifications, stats }}
+        />
+      </TabsContent>
+    </Tabs>
   );
 }

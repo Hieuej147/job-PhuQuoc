@@ -105,6 +105,9 @@ class BaseAgent(ABC):
                 if tool_name in custom_routing:
                     return custom_routing[tool_name]
 
+                if not lc_tools_for_toolnode:
+                    return "__end__"
+
                 return "tool_node"
             return "__end__"
 
@@ -195,7 +198,8 @@ class BaseAgent(ABC):
         workflow = StateGraph(state_class)
         workflow.add_node("auth_node", auth_node)
         workflow.add_node("chat_node", chat_node)
-        workflow.add_node("tool_node", ToolNode(tools=lc_tools_for_toolnode))
+        if lc_tools_for_toolnode:
+            workflow.add_node("tool_node", ToolNode(tools=lc_tools_for_toolnode))
 
         # Add custom nodes (CV nodes, etc.)
         self._add_custom_nodes(workflow)
@@ -206,11 +210,13 @@ class BaseAgent(ABC):
         # Routing
         custom_routing = self._get_routing_map()
         routing_map = {v: v for v in custom_routing.values()}
-        routing_map["tool_node"] = "tool_node"
+        if lc_tools_for_toolnode:
+            routing_map["tool_node"] = "tool_node"
         routing_map["__end__"] = "__end__"
         workflow.add_conditional_edges("chat_node", should_continue, routing_map)
 
-        workflow.add_edge("tool_node", "chat_node")
+        if lc_tools_for_toolnode:
+            workflow.add_edge("tool_node", "chat_node")
         for node_name in custom_routing.values():
             workflow.add_edge(node_name, "chat_node")
 
