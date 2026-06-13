@@ -65,7 +65,7 @@ export default function Header() {
           fetch("/api/v1/notifications?limit=5", { credentials: "include" })
             .then((r) => r.json())
             .then((d) => setNotifications(d.data?.items || []))
-            .catch(() => {});
+            .catch(() => { });
         }
       })
       .catch(() => setProfile(null));
@@ -81,7 +81,7 @@ export default function Header() {
     { label: "Trang chủ", href: "/" },
     { label: "Việc làm", href: "/jobs" },
     { label: "Công ty", href: "/companies" },
-    { label: "Blog", href: "/blog" },
+    { label: "Bài viết", href: "/blog" },
   ];
 
   const renderNotiIcon = (type: string) => {
@@ -126,11 +126,10 @@ export default function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`h-8 flex items-center border-b-2 text-[14px] font-semibold transition-all duration-150 ${
-                    isActive
-                      ? "text-[#005a71] dark:text-[#67e8f9] border-[#005a71] dark:border-[#67e8f9] font-bold"
-                      : "text-slate-600 dark:text-slate-400 border-transparent hover:text-[#005a71] dark:hover:text-[#67e8f9]"
-                  }`}
+                  className={`h-8 flex items-center border-b-2 text-[14px] font-semibold transition-all duration-150 ${isActive
+                    ? "text-[#005a71] dark:text-[#67e8f9] border-[#005a71] dark:border-[#67e8f9] font-bold"
+                    : "text-slate-600 dark:text-slate-400 border-transparent hover:text-[#005a71] dark:hover:text-[#67e8f9]"
+                    }`}
                 >
                   {item.label}
                 </Link>
@@ -163,9 +162,8 @@ export default function Header() {
                 <button
                   onClick={() => { setShowNoti(!showNoti); setIsOpenMenu(false); }}
                   title="Thông báo"
-                  className={`relative p-2 rounded-full transition-colors ${
-                    showNoti ? "bg-[#005a71]/10 text-[#005a71]" : "hover:bg-[#005a71]/8 text-slate-600 dark:text-slate-400"
-                  }`}
+                  className={`relative p-2 rounded-full transition-colors ${showNoti ? "bg-[#005a71]/10 text-[#005a71]" : "hover:bg-[#005a71]/8 text-slate-600 dark:text-slate-400"
+                    }`}
                 >
                   <span className="material-symbols-outlined text-[20px] leading-none">notifications</span>
                   {unreadCount > 0 && (
@@ -267,11 +265,10 @@ export default function Header() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setIsOpenMenu(false)}
-                    className={`px-3 py-2.5 rounded-lg text-[14px] font-semibold transition-colors ${
-                      isActive
-                        ? "text-[#005a71] dark:text-[#67e8f9] bg-[#005a71]/8 dark:bg-[#67e8f9]/10 font-bold"
-                        : "text-slate-600 dark:text-slate-400 hover:text-[#005a71] dark:hover:text-[#67e8f9] hover:bg-slate-50 dark:hover:bg-slate-800"
-                    }`}
+                    className={`px-3 py-2.5 rounded-lg text-[14px] font-semibold transition-colors ${isActive
+                      ? "text-[#005a71] dark:text-[#67e8f9] bg-[#005a71]/8 dark:bg-[#67e8f9]/10 font-bold"
+                      : "text-slate-600 dark:text-slate-400 hover:text-[#005a71] dark:hover:text-[#67e8f9] hover:bg-slate-50 dark:hover:bg-slate-800"
+                      }`}
                   >
                     {item.label}
                   </Link>
