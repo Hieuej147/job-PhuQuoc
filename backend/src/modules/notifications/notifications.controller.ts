@@ -1,3 +1,10 @@
+/**
+ * TÊN FILE: Quản lý Thông báo (Notifications Controller)
+ * MÔ TẢ: Cung cấp API lấy danh sách thông báo và đánh dấu trạng thái "đã đọc" cho User (bao gồm Employer).
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - `GET /api/v1/notifications`: Fetch dữ liệu từ bảng `Notification` trong DB trả về cho FE.
+ * - Cho phép tương tác cập nhật dữ liệu trạng thái (đã đọc) qua method PATCH.
+ */
 import { Controller, Get, Patch, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';

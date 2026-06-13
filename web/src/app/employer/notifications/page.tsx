@@ -1,3 +1,11 @@
+/**
+ * TÊN TRANG: Thông báo hệ thống (Employer Notifications)
+ * MÔ TẢ: Hiển thị danh sách các thông báo dành cho nhà tuyển dụng (có người ứng tuyển, tin sắp hết hạn, tin được duyệt...). Cho phép đánh dấu đã đọc.
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - GET `/api/v1/notifications`: Lấy danh sách thông báo từ bảng `Notification` của nhà tuyển dụng.
+ * - PATCH `/api/v1/notifications/:id/read`: Đánh dấu một thông báo là đã đọc (isRead = true).
+ * - PATCH `/api/v1/notifications/read-all`: Đánh dấu tất cả thông báo là đã đọc.
+ */
 "use client";
 
 import { useState, useEffect } from "react";

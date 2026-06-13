@@ -1,3 +1,10 @@
+/**
+ * TÊN FILE: Quản lý Hồ sơ Công ty (Companies Controller)
+ * MÔ TẢ: Định tuyến các API liên quan đến thao tác với công ty (Tạo mới, Sửa thông tin, Lấy chi tiết).
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - `GET /api/v1/companies/my`: Truy vấn CSDL bảng `Company` thông qua `CompaniesService` để lấy thông tin thật của Employer.
+ * - Các thay đổi trên trang FE "Hồ sơ công ty" sẽ được gửi qua `PATCH` đến đây và lưu thẳng vào DB.
+ */
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { CompaniesService } from './companies.service';

@@ -1,3 +1,10 @@
+/**
+ * TÊN TRANG: Đăng Tin Tuyển Dụng Mới (Create Job)
+ * MÔ TẢ: Form điền thông tin chi tiết (tiêu đề, mô tả, lương, yêu cầu, hạn nộp) để đăng tải một tin tuyển dụng mới.
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - Fetch `/api/v1/categories`: Lấy danh sách ngành nghề (Categories) để hiển thị trong dropdown chọn ngành.
+ * - POST `/api/v1/jobs`: Gửi dữ liệu form (thông tin job) xuống Backend để lưu vào bảng `Job` trong Database. Sau khi tạo thành công sẽ chuyển hướng sang trang thanh toán gói đăng tin.
+ */
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

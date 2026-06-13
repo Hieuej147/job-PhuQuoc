@@ -1,3 +1,11 @@
+/**
+ * TÊN TRANG: Thanh toán / Chọn Gói Đăng Tin (Checkout Job Package)
+ * MÔ TẢ: Hiển thị danh sách các gói đăng tin (Pricing packages) cho nhà tuyển dụng chọn lựa sau khi tạo tin thành công.
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - GET `/api/v1/pricing`: Lấy danh sách các gói cước từ bảng `Pricing` trong DB.
+ * - GET `/api/v1/jobs/:id`: Lấy thông tin tin tuyển dụng vừa tạo để xác nhận.
+ * - POST `/api/v1/payments/checkout`: Gửi yêu cầu thanh toán xuống BE để tích hợp cổng thanh toán (ví dụ VNPay, Stripe) hoặc ghi nhận giao dịch vào DB.
+ */
 "use client";
 
 import { useState, useEffect } from "react";

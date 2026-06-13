@@ -1,3 +1,10 @@
+/**
+ * TÊN FILE: Quản lý Tin Tuyển Dụng (Jobs Controller)
+ * MÔ TẢ: Tiếp nhận các request từ Frontend liên quan đến Job (Đăng tin, sửa tin, tìm kiếm, lấy danh sách tin của Employer).
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - Giao tiếp với `JobsService` để truy vấn thực tế vào bảng `Job` trong PostgreSQL (qua Prisma).
+ * - FE gọi `GET /api/v1/jobs/my` -> BE xác thực Employer -> Trả về danh sách việc làm thực tế từ DB.
+ */
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { JobsService } from './jobs.service';

@@ -1,3 +1,9 @@
+/**
+ * TÊN TRANG: Cài đặt hệ thống (Employer Settings)
+ * MÔ TẢ: Trang cho phép nhà tuyển dụng cấu hình các thiết lập cá nhân như giao diện hiển thị (Dark Mode/Light Mode).
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - Hiện tại chỉ tương tác với local state (LocalStorage) thông qua Context API (useTheme) để chuyển đổi giao diện, chưa giao tiếp với Database.
+ */
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

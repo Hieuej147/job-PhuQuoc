@@ -1,3 +1,11 @@
+/**
+ * TÊN FILE: Quản lý Đơn Ứng Tuyển (Applications Controller)
+ * MÔ TẢ: Xử lý logic nộp CV của Candidate và quản lý trạng thái hồ sơ của Employer.
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - Tương tác trực tiếp với bảng `Application` qua Prisma.
+ * - FE gọi `GET /api/v1/applications/employer` -> Trả về dữ liệu thật từ DB cho Nhà tuyển dụng.
+ * - FE gọi `PATCH /api/v1/applications/:id/status` -> Lưu trạng thái mới (Duyệt/Từ chối) thẳng vào Database.
+ */
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { ApplicationsService } from './applications.service';

@@ -1,3 +1,10 @@
+/**
+ * TÊN TRANG: Hồ sơ ứng viên (Employer Applications)
+ * MÔ TẢ: Danh sách hồ sơ các ứng viên đã ứng tuyển vào các vị trí tuyển dụng của công ty. Cho phép cập nhật trạng thái hồ sơ.
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - GET `/api/v1/applications/employer`: Lấy danh sách hồ sơ ứng tuyển từ bảng `Application` liên kết với tài khoản nhà tuyển dụng hiện tại.
+ * - PATCH `/api/v1/applications/:id/status`: Gửi API xuống backend để cập nhật trạng thái hồ sơ (Chờ duyệt, Chấp nhận, Từ chối) vào DB.
+ */
 "use client";
 
 import { useEffect, useState } from "react";
