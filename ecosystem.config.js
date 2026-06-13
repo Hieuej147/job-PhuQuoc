@@ -1,7 +1,7 @@
 /**
  * @file ecosystem.config.js
  * @description PM2 ecosystem configuration.
- * @note [HuynhhThanh & AI] Đã xóa service `agent` do lỗi `/bin/bash` không tương thích trên Windows, giúp lệnh `npm run dev` khởi chạy frontend và backend thành công.
+ * @note [HuynhhThanh] Đã xóa service `agent` do lỗi `/bin/bash` không tương thích trên Windows, giúp lệnh `npm run dev` khởi chạy frontend và backend thành công.
  */
 const path = require("path");
 const root = __dirname;

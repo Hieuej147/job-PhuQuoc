@@ -1,3 +1,8 @@
+/**
+ * @file BlogPageClient.tsx
+ * @description Component Client-side để render và xử lý danh sách bài viết (lọc, phân trang, tìm kiếm).
+ * @note [HuynhhThanh] Trao đổi dữ liệu: Nhận mảng `initialBlogs` (dữ liệu thật từ DB) từ page.tsx. Các thông tin render trên thẻ đều được lấy thực tế từ dữ liệu trả về, không dùng mock data tĩnh nữa.
+ */
 "use client";
 
 import { useState, useMemo, useEffect } from "react";

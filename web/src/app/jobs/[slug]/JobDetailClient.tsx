@@ -1,7 +1,7 @@
 /**
  * @file JobDetailClient.tsx
  * @description Component hiển thị chi tiết công việc.
- * @note [HuynhhThanh & AI] Đã thêm logic kiểm tra đăng nhập (useAuth) khi nhấn "Ứng tuyển" và "Lưu việc làm". Tự động gọi API kiểm tra trạng thái lưu việc làm và yêu cầu người dùng đăng nhập để thao tác.
+ * @note [HuynhhThanh] Đã thêm logic kiểm tra đăng nhập (useAuth) khi nhấn "Ứng tuyển" và "Lưu việc làm". Tự động gọi API kiểm tra trạng thái lưu việc làm và yêu cầu người dùng đăng nhập để thao tác.
  */
 "use client";
 

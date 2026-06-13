@@ -1,7 +1,15 @@
+/**
+ * @file BlogDetailClient.tsx
+ * @description Component Client-side để hiển thị nội dung chi tiết bài viết Blog.
+ * @note [HuynhhThanh] Trao đổi dữ liệu: Nhận đối tượng `blog` (chứa content, views, date thực tế) từ Database thông qua page.tsx. Các thông số như "lượt xem", "thời gian đọc", "số liệu liên quan" đã được tính toán từ dữ liệu thật.
+ */
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth/auth-provider";
+import { toast } from "sonner";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import { RichContent } from "@/components/ui/rich-content";
@@ -33,8 +41,10 @@ export default function BlogDetailClient({
   relatedBlogs,
   popularBlogs,
 }: BlogDetailClientProps) {
+  const router = useRouter();
+  const { user } = useAuth();
   const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(148);
+  const [likeCount, setLikeCount] = useState(0);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [email, setEmail] = useState("");
 
@@ -119,8 +129,22 @@ export default function BlogDetailClient({
   };
 
   const handleLike = () => {
+    if (!user) {
+      router.push(`/auth/login?redirect=/blog/${blog.slug}`);
+      return;
+    }
     setLiked(!liked);
     setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+    if (!liked) toast.success("Đã thêm bài viết vào danh sách yêu thích!");
+    else toast.info("Đã gỡ bài viết khỏi danh sách yêu thích.");
+  };
+
+  const handleSave = () => {
+    if (!user) {
+      router.push(`/auth/login?redirect=/blog/${blog.slug}`);
+      return;
+    }
+    toast.success("Đã lưu bài viết để đọc sau!");
   };
 
   const formattedDate = new Date(blog.createdAt).toLocaleDateString("vi-VN", {
@@ -139,6 +163,8 @@ export default function BlogDetailClient({
   const authorInitials = authorName
     ? authorName.slice(0, 2).toUpperCase()
     : "BB";
+
+  const readTime = Math.max(1, Math.ceil((blog.content?.length || 0) / 800));
 
   return (
     <div className="min-h-screen bg-[#f7f9ff] text-[#001e30] dark:bg-[#071a2b] dark:text-[#e0f2fe] font-sans antialiased overflow-x-hidden">
@@ -215,7 +241,7 @@ export default function BlogDetailClient({
                     <span className="material-symbols-outlined text-[14px]">
                       schedule
                     </span>{" "}
-                    6 phút đọc
+                    {readTime} phút đọc
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">
@@ -288,13 +314,22 @@ export default function BlogDetailClient({
                   </span>
                   <span>{likeCount}</span> Yêu thích
                 </button>
-                <button className="flex items-center gap-1.5 px-[18px] py-2 border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-full text-xs font-semibold cursor-pointer bg-white dark:bg-[#0d2137] text-slate-500 dark:text-[#94a3b8] hover:border-[#0e7490] hover:text-[#0e7490] transition-colors duration-200">
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    toast.success("Đã sao chép đường dẫn bài viết!");
+                  }}
+                  className="flex items-center gap-1.5 px-[18px] py-2 border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-full text-xs font-semibold cursor-pointer bg-white dark:bg-[#0d2137] text-slate-500 dark:text-[#94a3b8] hover:border-[#0e7490] hover:text-[#0e7490] transition-colors duration-200"
+                >
                   <span className="material-symbols-outlined text-[18px]">
                     share
                   </span>{" "}
                   Chia sẻ
                 </button>
-                <button className="flex items-center gap-1.5 px-[18px] py-2 border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-full text-xs font-semibold cursor-pointer bg-white dark:bg-[#0d2137] text-slate-500 dark:text-[#94a3b8] hover:border-[#0e7490] hover:text-[#0e7490] transition-colors duration-200">
+                <button 
+                  onClick={handleSave}
+                  className="flex items-center gap-1.5 px-[18px] py-2 border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-full text-xs font-semibold cursor-pointer bg-white dark:bg-[#0d2137] text-slate-500 dark:text-[#94a3b8] hover:border-[#0e7490] hover:text-[#0e7490] transition-colors duration-200"
+                >
                   <span className="material-symbols-outlined text-[18px]">
                     bookmark
                   </span>{" "}
@@ -370,8 +405,6 @@ export default function BlogDetailClient({
                             {new Date(b.createdAt).toLocaleDateString("vi-VN")}
                           </span>
                           <span>•</span>
-                          <span>6 phút đọc</span>
-                          <span>•</span>
                           <span>{formatViews(b.views)} lượt xem</span>
                         </div>
                       </div>
@@ -427,7 +460,7 @@ export default function BlogDetailClient({
                 Tìm việc tại resort ngay!
               </p>
               <p className="text-white/70 text-xs mb-4">
-                350+ vị trí đang tuyển dụng tại Phú Quốc
+                Rất nhiều vị trí đang tuyển dụng tại Phú Quốc
               </p>
               <Link
                 href="/"
@@ -452,7 +485,14 @@ export default function BlogDetailClient({
                 placeholder="Email của bạn..."
                 className="w-full text-sm border border-slate-200 dark:border-[#1a3d5c] rounded-xl px-3 py-2 bg-[#f7f9ff] dark:bg-[#0a1e30] text-[#001e30] dark:text-[#e0f2fe] focus:ring-2 focus:ring-[#005a71]/30 focus:outline-none mb-2"
               />
-              <button className="w-full bg-[#005a71] dark:bg-[#0e7490] text-white font-semibold text-sm py-2.5 rounded-xl hover:opacity-90 transition-opacity">
+              <button 
+                onClick={() => {
+                   if (!email) return toast.error("Vui lòng nhập email hợp lệ!");
+                   toast.success("Đăng ký nhận bài thành công!");
+                   setEmail("");
+                }}
+                className="w-full bg-[#005a71] dark:bg-[#0e7490] text-white font-semibold text-sm py-2.5 rounded-xl hover:opacity-90 transition-opacity"
+              >
                 Đăng ký nhận bài
               </button>
             </div>

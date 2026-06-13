@@ -3,7 +3,7 @@
 /**
  * @file JobsHero.tsx
  * @description Component banner tìm kiếm chính của trang danh sách việc làm.
- * @note [HuynhhThanh & AI] Đã loại bỏ các Quick Tags hardcode và thay bằng dữ liệu thực tế (categories) lấy từ cơ sở dữ liệu để đảm bảo tính đồng bộ và linh hoạt.
+ * @note [HuynhhThanh] Đã loại bỏ các Quick Tags hardcode và thay bằng dữ liệu thực tế (categories) lấy từ cơ sở dữ liệu để đảm bảo tính đồng bộ và linh hoạt.
  * 
  * Các phân hệ chức năng:
  * 1. Tiêu đề & Thống kê: Tiêu đề động và thống kê số lượng bài đăng việc làm hiện có trên hệ thống.
