@@ -1,22 +1,24 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { InngestService } from '../../inngest/inngest.service';
-import { AuditService } from '../audit/audit.service';
+import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { JobContractService } from '../shared/contracts/job.contract';
 import { CompanyContractService } from '../shared/contracts/company.contract';
 import { ApplicationStatus } from '@prisma/client';
+import { CreateApplicationDto, UpdateApplicationStatusDto } from './dto/application.dto';
+import { ApplicationQueryDto } from './dto/application-query.dto';
 
 @Injectable()
 export class ApplicationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly inngest: InngestService,
-    private readonly auditService: AuditService,
+    private readonly auditWriteContract: AuditWriteContractService,
     private readonly jobContract: JobContractService,
     private readonly companyContract: CompanyContractService,
   ) {}
 
-  async apply(userId: string, data: { jobId: string; cvUrl?: string; resumeId?: string; coverLetter?: string }) {
+  async apply(userId: string, data: CreateApplicationDto) {
     // Verify job exists via contract
     const job = await this.jobContract.findById(data.jobId);
     if (!job) throw new NotFoundException('Job not found');
@@ -40,7 +42,7 @@ export class ApplicationsService {
       },
     });
 
-    await this.auditService.log({
+    await this.auditWriteContract.log({
       action: 'application.created',
       entityType: 'Application',
       entityId: application.id,
@@ -51,7 +53,7 @@ export class ApplicationsService {
     return application;
   }
 
-  async findByUser(userId: string, query: { page?: number; limit?: number }) {
+  async findByUser(userId: string, query: ApplicationQueryDto) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
     const [items, total] = await Promise.all([
@@ -65,7 +67,7 @@ export class ApplicationsService {
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findByEmployer(employerId: string, query: { page?: number; limit?: number }) {
+  async findByEmployer(employerId: string, query: ApplicationQueryDto) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
     const [items, total] = await Promise.all([
@@ -84,7 +86,7 @@ export class ApplicationsService {
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findByJob(jobId: string, userId: string, query: { page?: number; limit?: number }) {
+  async findByJob(jobId: string, userId: string, query: ApplicationQueryDto) {
     // Verify job ownership via contract
     const job = await this.jobContract.findById(jobId);
     if (!job) throw new NotFoundException('Job not found');
@@ -105,7 +107,7 @@ export class ApplicationsService {
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async updateStatus(id: string, userId: string, status: string) {
+  async updateStatus(id: string, userId: string, status: UpdateApplicationStatusDto['status']) {
     const app = await this.prisma.jobApplication.findUnique({
       where: { id },
       include: { job: { include: { company: true } }, user: true },
@@ -150,7 +152,7 @@ export class ApplicationsService {
       });
     }
 
-    await this.auditService.log({
+    await this.auditWriteContract.log({
       action: 'application.status.changed',
       entityType: 'Application',
       entityId: id,

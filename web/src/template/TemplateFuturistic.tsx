@@ -2,7 +2,7 @@
 "use client";
 import type { TemplateProps, UserData, ResumeData } from "./index";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 /**
  * TemplateFuturistic — Phong cách tương lai, tối tân (Tech/Dark Mode), sử dụng Google Material Symbols
@@ -20,7 +20,7 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
         summary: resume.summary || "",
         degree: resume.degree || "",
         languages: resume.languages || "",
-        socicallink: resume.socicallink || [],
+        socialLinks: resume.socialLinks || resume.socicallink || [],
         education: resume.education || [],
         experience: resume.experience || [],
         projects: resume.projects || [],
@@ -28,29 +28,7 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
 
     const [showSaveToast, setShowSaveToast] = useState(false);
 
-    // Load saved data on mount
-    useEffect(() => {
-        const savedUser = localStorage.getItem("pqjobs_cv_user");
-        const savedResume = localStorage.getItem("pqjobs_cv_resume");
-        if (savedUser) {
-            try {
-                setUserData(JSON.parse(savedUser));
-            } catch (e) {
-                console.error("Failed to parse saved user data", e);
-            }
-        }
-        if (savedResume) {
-            try {
-                setResumeData(JSON.parse(savedResume));
-            } catch (e) {
-                console.error("Failed to parse saved resume data", e);
-            }
-        }
-    }, []);
-
     const handleSave = () => {
-        localStorage.setItem("pqjobs_cv_user", JSON.stringify(userData));
-        localStorage.setItem("pqjobs_cv_resume", JSON.stringify(resumeData));
         setShowSaveToast(true);
         setTimeout(() => setShowSaveToast(false), 2500);
     };
@@ -327,25 +305,25 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
                         {/* Social */}
                         <Section title="Social Networks" icon="connect_without_contact">
                             <div className="space-y-2">
-                                {resumeData.socicallink.map((s, i) => (
+                                {resumeData.socialLinks.map((s, i) => (
                                     <div key={i} className="flex items-center gap-1 bg-slate-800/80 p-2 rounded border border-slate-700 relative group/link shadow-sm">
                                         <span className="material-symbols-outlined text-sm text-cyan-400">link</span>
                                         <input
                                             type="text"
                                             value={s.platform}
-                                            onChange={(e) => handleArrayChange("socicallink", i, "platform", e.target.value)}
+                                            onChange={(e) => handleArrayChange("socialLinks", i, "platform", e.target.value)}
                                             className="bg-transparent border-none outline-none text-xs w-14 font-semibold text-slate-200"
                                             placeholder="Nền tảng"
                                         />
                                         <input
                                             type="text"
                                             value={s.url}
-                                            onChange={(e) => handleArrayChange("socicallink", i, "url", e.target.value)}
+                                            onChange={(e) => handleArrayChange("socialLinks", i, "url", e.target.value)}
                                             className="bg-transparent border-none outline-none text-[10px] w-24 text-cyan-400"
                                             placeholder="URL Link"
                                         />
                                         <button
-                                            onClick={() => removeArrayItem("socicallink", i)}
+                                            onClick={() => removeArrayItem("socialLinks", i)}
                                             className="text-red-400 hover:text-red-650 font-bold ml-1 text-xs opacity-0 group-hover/link:opacity-100 transition-opacity print:hidden"
                                         >
                                             ✕
@@ -353,7 +331,7 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
                                     </div>
                                 ))}
                                 <button
-                                    onClick={() => addArrayItem("socicallink", { platform: "Social", url: "" })}
+                                    onClick={() => addArrayItem("socialLinks", { platform: "Social", url: "" })}
                                     className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 pt-1 print:hidden"
                                 >
                                     <span className="material-symbols-outlined text-xs">add_circle</span>
@@ -449,7 +427,7 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
             {showSaveToast && (
                 <div className="fixed bottom-4 right-4 bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2 animate-bounce print:hidden">
                     <span className="material-symbols-outlined">check_circle</span>
-                    <span>Đã lưu thông tin CV vào trình duyệt của bạn!</span>
+                    <span>Đã cập nhật bản xem trước trong phiên làm việc!</span>
                 </div>
             )}
         </div>

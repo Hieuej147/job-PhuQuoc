@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CacheService } from '../../common/cache/cache.service';
-import { AuditService } from '../audit/audit.service';
+import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { Prisma, CompanySize } from '@prisma/client';
+import { CompanyQueryDto, CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -16,10 +17,10 @@ export class CompaniesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
-    private readonly auditService: AuditService,
+    private readonly auditWriteContract: AuditWriteContractService,
   ) { }
 
-  async findAll(query: { page?: number; limit?: number; search?: string }) {
+  async findAll(query: CompanyQueryDto) {
     const { search } = query;
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
@@ -91,14 +92,14 @@ export class CompaniesService {
     return company;
   }
 
-  async create(ownerId: string, data: { name: string; description?: string; website?: string; logo?: string; wardId?: string; addressDetail?: string; size?: string; industry?: string }) {
+  async create(ownerId: string, data: CreateCompanyDto) {
     const slug = slugify(data.name) + '-' + Date.now().toString(36);
     const company = await this.prisma.company.create({
       data: { ...data, slug, ownerId, size: data.size as CompanySize, isApproved: true },
     });
 
     // Emit audit event
-    await this.auditService.log({
+    await this.auditWriteContract.log({
       action: 'company.created',
       entityType: 'Company',
       entityId: company.id,
@@ -110,7 +111,7 @@ export class CompaniesService {
     return company;
   }
 
-  async update(id: string, userId: string, data: Partial<{ name: string; description: string; website: string; logo: string; wardId: string; addressDetail: string; size: string; industry: string }>) {
+  async update(id: string, userId: string, data: UpdateCompanyDto) {
     const company = await this.prisma.company.findUnique({ where: { id } });
     if (!company) throw new NotFoundException('Company not found');
     if (company.ownerId !== userId) throw new ForbiddenException('Not company owner');

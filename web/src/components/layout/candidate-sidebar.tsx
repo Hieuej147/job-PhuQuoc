@@ -12,18 +12,12 @@ import {
   LogOut,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useAuth } from "@/components/auth/auth-provider";
 
 export function CandidateSidebar() {
   const pathname = usePathname();
-  const [userName, setUserName] = useState("Ứng viên");
-
-  useEffect(() => {
-    fetch("/api/v1/auth/me", { credentials: "include" })
-      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
-      .then((d) => { if (d.data?.user?.name) setUserName(d.data.user.name); })
-      .catch(() => { /* dùng tên mặc định */ });
-  }, []);
+  const { user } = useAuth();
+  const userName = user?.name || "Ứng viên";
 
   const navGroups = [
     {

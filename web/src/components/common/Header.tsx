@@ -12,6 +12,7 @@ import {
   Info,
   User,
 } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 
 interface UserProfile {
   id: string;
@@ -34,10 +35,10 @@ export default function Header() {
   const [isOpenMenu, setIsOpenMenu] = useState(false);
   const [showNoti, setShowNoti] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isDark, setIsDark] = useState(false);
   const pathname = usePathname();
+  const { user: profile } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -50,26 +51,17 @@ export default function Header() {
     setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
 
-  // Fetch auth state
   useEffect(() => {
-    fetch("/api/v1/auth/me", { credentials: "include" })
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then((d) => {
-        const user = d.data?.user || d.data;
-        if (user) {
-          setProfile(user);
-          // Fetch notifications
-          fetch("/api/v1/notifications?limit=5", { credentials: "include" })
-            .then((r) => r.json())
-            .then((d) => setNotifications(d.data?.items || []))
-            .catch(() => { });
-        }
-      })
-      .catch(() => setProfile(null));
-  }, []);
+    if (!profile) {
+      setNotifications([]);
+      return;
+    }
+
+    fetch("/api/v1/notifications?limit=5", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => setNotifications(d.data?.items || []))
+      .catch(() => { });
+  }, [profile?.id]);
 
   const isLoggedIn = !!profile;
   const unreadCount = notifications.filter((n) => !n.isRead).length;

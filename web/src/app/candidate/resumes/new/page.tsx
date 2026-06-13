@@ -80,21 +80,22 @@ function CvBuilderContent() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
-            templateId: template.id,
-            data: {
-              name: "Nguyễn Văn A", // Placeholder for preview
-              email: "email@example.com",
-              phone: "0909123456",
-              address: data.address,
-              degree: data.degree,
-              summary: data.summary,
-              skills: data.skills,
-              languages: data.languages,
-              education: data.education,
-              experience: data.experience,
-              projects: data.projects,
-            },
+            body: JSON.stringify({
+              templateId: template.id,
+              data: {
+                name: "Nguyễn Văn A", // Placeholder for preview
+                email: "email@example.com",
+                phone: "0909123456",
+                address: data.address,
+                degree: data.degree,
+                summary: data.summary,
+                skills: data.skills,
+                languages: data.languages,
+                socialLinks: data.socialLinks,
+                education: data.education,
+                experience: data.experience,
+                projects: data.projects,
+              },
             mode: editMode ? "edit" : "view",
           }),
         });

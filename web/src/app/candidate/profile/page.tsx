@@ -6,33 +6,38 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { User, Mail, Phone, Save } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 
 export default function ProfilePage() {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(true);
+  const { user, setUser } = useAuth();
+  const [name, setName] = useState(user?.name || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/v1/auth/me", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => {
-        const u = d.data?.user;
-        if (u) { setName(u.name || ""); setPhone(u.phone || ""); setEmail(u.email || ""); }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    if (!user) return;
+    setName(user.name || "");
+    setPhone(user.phone || "");
+    setEmail(user.email || "");
+  }, [user]);
 
   const handleSave = async () => {
     setSaving(true);
-    await fetch("/api/v1/auth/me", {
+    const res = await fetch("/api/v1/auth/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ name, phone }),
     });
+    if (res.ok) {
+      const payload = await res.json().catch(() => null);
+      const updated = payload?.data?.user || payload?.user || null;
+      if (updated) {
+        setUser(updated);
+      }
+    }
     setSaving(false);
   };
 

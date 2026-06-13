@@ -14,7 +14,7 @@ function LoadingCard({ text }: { text: string }) {
   );
 }
 
-function CVPreviewInline({ html }: { html: string }) {
+function CVPreviewInline({ html, css = "" }: { html: string; css?: string }) {
   return (
     <div className="my-4 border rounded-xl overflow-hidden bg-white shadow-lg">
       <div className="px-4 py-2 bg-muted/30 border-b">
@@ -25,7 +25,11 @@ function CVPreviewInline({ html }: { html: string }) {
           srcDoc={`<!DOCTYPE html><html lang="vi"><head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>* { box-sizing: border-box; } body { margin: 0; padding: 0; }</style>
+            <style>
+              * { box-sizing: border-box; }
+              body { margin: 0; padding: 0; background: #f8fafc; }
+              ${css}
+            </style>
           </head><body>${html}</body></html>`}
           className="w-full"
           style={{ height: "800px", border: "none" }}
@@ -50,15 +54,14 @@ export function useTemplateRenderer() {
         return <LoadingCard text="Đang tạo CV..." />;
       }
 
-      // complete — parse JSON từ result, lấy HTML
       if (status === "complete" && result) {
         try {
           const data = typeof result === "string" ? JSON.parse(result) : result;
           if (data.html) {
-            return <CVPreviewInline html={data.html} />;
+            return <CVPreviewInline html={data.html} css={data.css || ""} />;
           }
         } catch {
-          // result không phải JSON → bỏ qua
+          // result không phải JSON -> bỏ qua
         }
       }
 
@@ -79,9 +82,11 @@ export function useTemplateRenderer() {
         try {
           const data = typeof result === "string" ? JSON.parse(result) : result;
           if (data.html) {
-            return <CVPreviewInline html={data.html} />;
+            return <CVPreviewInline html={data.html} css={data.css || ""} />;
           }
-        } catch {}
+        } catch {
+          // result không phải JSON -> bỏ qua
+        }
       }
 
       return null;

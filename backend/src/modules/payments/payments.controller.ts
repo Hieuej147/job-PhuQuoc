@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Req, Headers, Query, Param } from '@nestjs
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
+import { MockCompletePaymentDto, PaymentQueryDto } from './dto/payment.dto';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
@@ -61,7 +62,7 @@ export class PaymentsController {
   @ApiResponse({ status: 403, description: 'Không khả dụng ở production' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy payment pending' })
   async mockComplete(
-    @Body() body: { jobId?: string; sessionId?: string },
+    @Body() body: MockCompletePaymentDto,
   ) {
     if (process.env.NODE_ENV === 'production') {
       const { ForbiddenException } = await import('@nestjs/common');
@@ -79,7 +80,7 @@ export class PaymentsController {
   @ApiResponse({ status: 200, description: 'Danh sách payments phân trang' })
   findMyPayments(
     @CurrentUser() user: UserSession,
-    @Query() query: { page?: number; limit?: number },
+    @Query() query: PaymentQueryDto,
   ) {
     return this.paymentsService.findByUser(user.user.id, query);
   }

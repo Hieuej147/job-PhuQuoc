@@ -2,56 +2,52 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefcase, Building2, User, Loader2 } from "lucide-react";
-import { getUserProfile, selectMyRole } from "@/lib/auth";
+import { selectMyRole } from "@/lib/auth";
+import { useAuth } from "@/components/auth/auth-provider";
 
 export default function SelectRolePage() {
   const router = useRouter();
+  const { user, setUser, isLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function checkSession() {
-      try {
-        const user = await getUserProfile();
-        if (!user) {
-          router.push("/auth/login");
-          return;
-        }
-        // If user already has a role, redirect to appropriate dashboard
-        if (user.role === "EMPLOYER") {
-          router.push("/employer/dashboard");
-        } else if (user.role === "CANDIDATE") {
-          router.push("/candidate/dashboard");
-        } else if (user.role === "ADMIN") {
-          router.push("/");
-        }
-        // null → stay on this page to select
-      } catch {
-        router.push("/auth/login");
-      } finally {
-        setChecking(false);
-      }
+    if (isLoading) return;
+
+    if (!user) {
+      router.push("/auth/login");
+      setChecking(false);
+      return;
     }
-    checkSession();
-  }, [router]);
+
+    // If user already has a role, redirect to appropriate dashboard
+    if (user.role === "EMPLOYER") {
+      router.push("/employer/dashboard");
+    } else if (user.role === "CANDIDATE") {
+      router.push("/candidate/dashboard");
+    } else if (user.role === "ADMIN") {
+      router.push("/");
+    }
+
+    setChecking(false);
+  }, [isLoading, router, user]);
 
   const handleSelectRole = async (role: "CANDIDATE" | "EMPLOYER") => {
     setLoading(true);
     setError("");
 
     try {
-      await selectMyRole(role);
+      const updated = await selectMyRole(role);
+      setUser(updated);
 
       if (role === "EMPLOYER") {
         router.push("/employer/dashboard");
       } else {
         router.push("/candidate/dashboard");
       }
-      router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Đã xảy ra lỗi");
     } finally {

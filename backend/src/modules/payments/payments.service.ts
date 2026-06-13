@@ -1,20 +1,21 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { InngestService } from '../../inngest/inngest.service';
-import { AuditService } from '../audit/audit.service';
+import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { JobContractService } from '../shared/contracts/job.contract';
 import { CompanyContractService } from '../shared/contracts/company.contract';
 import { PricingContractService } from '../shared/contracts/pricing.contract';
 import { StripeGateway } from './gateways/stripe.gateway';
 import { MockGateway } from './gateways/mock.gateway';
 import { PinoLoggerService } from '../../common/logger/pino-logger.service';
+import { PaymentQueryDto } from './dto/payment.dto';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly inngest: InngestService,
-    private readonly auditService: AuditService,
+    private readonly auditWriteContract: AuditWriteContractService,
     private readonly logger: PinoLoggerService,
     private readonly jobContract: JobContractService,
     private readonly companyContract: CompanyContractService,
@@ -160,7 +161,7 @@ export class PaymentsService {
       data: { jobId: payment.jobId, deadline: deadline.toISOString() },
     });
 
-    await this.auditService.log({
+    await this.auditWriteContract.log({
       action: 'job.activated',
       entityType: 'Job',
       entityId: payment.jobId,
@@ -196,7 +197,7 @@ export class PaymentsService {
       data: { jobId, deadline: deadline.toISOString() },
     });
 
-    await this.auditService.log({
+    await this.auditWriteContract.log({
       action: 'job.activated',
       entityType: 'Job',
       entityId: payment.jobId,
@@ -240,7 +241,7 @@ export class PaymentsService {
       data: { jobId: payment.jobId, deadline: deadline.toISOString() },
     });
 
-    await this.auditService.log({
+    await this.auditWriteContract.log({
       action: 'job.activated',
       entityType: 'Job',
       entityId: payment.jobId,
@@ -253,7 +254,7 @@ export class PaymentsService {
     return { message: 'Payment completed' };
   }
 
-  async findByUser(userId: string, query: { page?: number; limit?: number }) {
+  async findByUser(userId: string, query: PaymentQueryDto) {
     const { page = 1, limit = 10 } = query;
     const [items, total] = await Promise.all([
       this.prisma.payment.findMany({

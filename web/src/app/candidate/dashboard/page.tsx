@@ -5,11 +5,14 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
-import { FileText, Bookmark, Search, Briefcase, ArrowRight, CheckCircle2, Circle, Plus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, Bookmark, Search, Briefcase, ArrowRight, CheckCircle2, Circle, Plus, Sparkles } from "lucide-react";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { RecentApplications } from "@/components/dashboard/recent-applications";
+import { CandidateDashboardAiTab } from "@/components/ai/dashboard-ai-tab";
 import { timeAgo } from "@/lib/utils/date";
 import { formatSalary, jobTypeLabel, companyInitials } from "@/lib/utils/format";
+import { useAuth } from "@/components/auth/auth-provider";
 
 interface Application { id: string; job: { title: string; company: { name: string } }; createdAt: string; status: "PENDING" | "REVIEWING" | "ACCEPTED" | "REJECTED"; }
 interface SavedJob { id: string; job: { id: string; title: string; company: { name: string }; jobType: string; salaryMin?: number; salaryMax?: number }; createdAt: string; }
@@ -31,22 +34,26 @@ function computeChecklist(profile: Record<string, unknown> | null): ProfileCheck
 }
 
 export default function CandidateDashboard() {
+  const { user } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [resumes, setResumes] = useState<Resume[]>([]);
-  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
+  const [profile, setProfile] = useState<Record<string, unknown> | null>(user as Record<string, unknown> | null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    setProfile(user as Record<string, unknown> | null);
+  }, [user]);
+
   const fetchData = useCallback(async () => {
     try {
-      const [appsRes, savedRes, notifRes, resumesRes, profileRes] = await Promise.allSettled([
+      const [appsRes, savedRes, notifRes, resumesRes] = await Promise.allSettled([
         fetch("/api/v1/applications/my?limit=5", { credentials: "include" }),
         fetch("/api/v1/saved/jobs?limit=3", { credentials: "include" }),
         fetch("/api/v1/notifications?limit=4", { credentials: "include" }),
         fetch("/api/v1/resumes/my", { credentials: "include" }),
-        fetch("/api/v1/auth/me", { credentials: "include" }),
       ]);
 
       const errors: string[] = [];
@@ -54,7 +61,6 @@ export default function CandidateDashboard() {
       if (savedRes.status === "fulfilled" && savedRes.value.ok) { const d = await savedRes.value.json(); setSavedJobs(d.data?.items ?? d.data ?? []); }
       if (notifRes.status === "fulfilled" && notifRes.value.ok) { const d = await notifRes.value.json(); setNotifications(d.data?.items ?? d.data ?? []); }
       if (resumesRes.status === "fulfilled" && resumesRes.value.ok) { const d = await resumesRes.value.json(); setResumes(d.data?.items ?? d.data ?? []); }
-      if (profileRes.status === "fulfilled" && profileRes.value.ok) { const d = await profileRes.value.json(); setProfile(d.data ?? d); }
       if (errors.length > 0) setError(errors.join("; "));
     } catch (e) { setError(e instanceof Error ? e.message : "Failed to fetch data"); } finally { setLoading(false); }
   }, []);
@@ -76,138 +82,158 @@ export default function CandidateDashboard() {
   const unreadNotifs = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="space-y-6">
+    <Tabs defaultValue="overview" className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-[#E0F2FE]">Xin chào{profile?.name ? `, ${String(profile.name)}` : ""} 👋</h1>
-        <p className="text-sm text-gray-500 dark:text-[#94A3B8] mt-1">
-          {new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} • Phú Quốc
-        </p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-[#E0F2FE]">Xin chào{profile?.name ? `, ${String(profile.name)}` : ""} 👋</h1>
+          <p className="text-sm text-gray-500 dark:text-[#94A3B8] mt-1">
+            {new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} • Phú Quốc
+          </p>
+        </div>
+        <TabsList className="w-full md:w-fit">
+          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+          <TabsTrigger value="ai">
+            <Sparkles className="size-4" />
+            AI Co-worker
+          </TabsTrigger>
+        </TabsList>
       </div>
 
-      {/* Stats */}
-      <StatsCards applicationsCount={applications.length} savedJobsCount={savedJobs.length} resumesCount={resumes.length} />
+      <TabsContent value="overview" className="space-y-6">
+        {/* Stats */}
+        <StatsCards applicationsCount={applications.length} savedJobsCount={savedJobs.length} resumesCount={resumes.length} />
 
-      {/* Profile + Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Hoàn thiện hồ sơ</CardTitle>
-            <Link href="/candidate/profile" className="text-xs font-semibold text-[#005a71] hover:opacity-80 dark:text-[#67E8F9]">Chỉnh sửa →</Link>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="mb-5">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-500 dark:text-[#94A3B8]">Tổng thể</span>
-                <span className="font-bold text-[#005a71] dark:text-[#67E8F9]">{completionPct}%</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-[#e1efff] dark:bg-[#1E5F74]">
-                <div className="h-full rounded-full bg-gradient-to-r from-[#005a71] to-[#0e7490] transition-all duration-600" style={{ width: `${completionPct}%` }} />
-              </div>
-            </div>
-            <div className="flex flex-col gap-3">
-              {checklist.map((item) => (
-                <div key={item.label} className="flex items-center gap-3">
-                  {item.done ? (
-                    <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"><CheckCircle2 className="size-3.5 text-green-600" /></div>
-                  ) : (
-                    <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-[#1E5F74]/30"><Circle className="size-3.5 text-gray-400" /></div>
-                  )}
-                  <span className={`text-sm ${item.done ? "text-gray-900 dark:text-[#E0F2FE]" : "text-gray-500 dark:text-[#94A3B8]"}`}>{item.label}</span>
-                  {item.done ? (
-                    <span className="ml-auto text-xs font-medium text-green-600">Hoàn thành</span>
-                  ) : (
-                    <Link href={item.href} className="ml-auto text-xs font-medium text-[#005a71] hover:opacity-80 dark:text-[#67E8F9]"><Plus className="mr-0.5 inline size-3" />Thêm</Link>
-                  )}
+        {/* Profile + Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Hoàn thiện hồ sơ</CardTitle>
+              <Link href="/candidate/profile" className="text-xs font-semibold text-[#005a71] hover:opacity-80 dark:text-[#67E8F9]">Chỉnh sửa →</Link>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="mb-5">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-500 dark:text-[#94A3B8]">Tổng thể</span>
+                  <span className="font-bold text-[#005a71] dark:text-[#67E8F9]">{completionPct}%</span>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
-          <CardHeader className="pb-2"><CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Thao tác nhanh</CardTitle></CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex flex-col gap-3">
-              {[
-                { href: "/jobs", icon: <Search className="size-5 text-[#005a71] dark:text-[#67E8F9]" />, title: "Tìm việc làm", desc: "1,200+ việc đang tuyển", color: "bg-[#005a71]/5 hover:bg-[#005a71]/10 dark:bg-[#005a71]/10" },
-                { href: "/candidate/resumes", icon: <FileText className="size-5 text-[#F59E0B]" />, title: "Cập nhật CV", desc: "CV Builder online", color: "bg-[#F59E0B]/5 hover:bg-[#F59E0B]/10" },
-                { href: "/candidate/applications", icon: <Briefcase className="size-5 text-[#0d9488] dark:text-[#2DD4BF]" />, title: "Đơn ứng tuyển", desc: `${applications.length} đơn đang xử lý`, color: "bg-[#0d9488]/5 hover:bg-[#0d9488]/10" },
-                { href: "/candidate/saved", icon: <Bookmark className="size-5 text-blue-600" />, title: "Việc đã lưu", desc: `${savedJobs.length} việc làm`, color: "bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/10" },
-              ].map((item) => (
-                <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${item.color} group`}>
-                  {item.icon}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-[#E0F2FE]">{item.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-[#94A3B8]">{item.desc}</p>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-[#e1efff] dark:bg-[#1E5F74]">
+                  <div className="h-full rounded-full bg-gradient-to-r from-[#005a71] to-[#0e7490] transition-all duration-600" style={{ width: `${completionPct}%` }} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                {checklist.map((item) => (
+                  <div key={item.label} className="flex items-center gap-3">
+                    {item.done ? (
+                      <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"><CheckCircle2 className="size-3.5 text-green-600" /></div>
+                    ) : (
+                      <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-[#1E5F74]/30"><Circle className="size-3.5 text-gray-400" /></div>
+                    )}
+                    <span className={`text-sm ${item.done ? "text-gray-900 dark:text-[#E0F2FE]" : "text-gray-500 dark:text-[#94A3B8]"}`}>{item.label}</span>
+                    {item.done ? (
+                      <span className="ml-auto text-xs font-medium text-green-600">Hoàn thành</span>
+                    ) : (
+                      <Link href={item.href} className="ml-auto text-xs font-medium text-[#005a71] hover:opacity-80 dark:text-[#67E8F9]"><Plus className="mr-0.5 inline size-3" />Thêm</Link>
+                    )}
                   </div>
-                  <ArrowRight className="size-4 text-gray-400 transition-colors group-hover:text-[#005a71] dark:group-hover:text-[#67E8F9]" />
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Recent Applications */}
-      <RecentApplications applications={applications} />
-
-      {/* Saved Jobs + Notifications */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Saved Jobs */}
-        <Card className="border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Việc làm đã lưu</CardTitle>
-            <Link href="/candidate/saved" className="text-xs font-semibold text-[#005a71] hover:opacity-80 dark:text-[#67E8F9]">Xem tất cả →</Link>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex flex-col gap-3">
-              {savedJobs.map((sj) => {
-                const job = sj.job;
-                const company = job?.company?.name || "N/A";
-                return (
-                  <Link key={sj.id} href={`/jobs/${job?.id || ""}`} className="flex items-start gap-3 rounded-xl border border-[#e1efff] bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-[#1E5F74] dark:bg-[#0d2d42]">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#005a71]/10 text-sm font-bold text-[#005a71]">{companyInitials(company)}</div>
+          <Card className="border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
+            <CardHeader className="pb-2"><CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Thao tác nhanh</CardTitle></CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex flex-col gap-3">
+                {[
+                  { href: "/jobs", icon: <Search className="size-5 text-[#005a71] dark:text-[#67E8F9]" />, title: "Tìm việc làm", desc: "1,200+ việc đang tuyển", color: "bg-[#005a71]/5 hover:bg-[#005a71]/10 dark:bg-[#005a71]/10" },
+                  { href: "/candidate/resumes", icon: <FileText className="size-5 text-[#F59E0B]" />, title: "Cập nhật CV", desc: "CV Builder online", color: "bg-[#F59E0B]/5 hover:bg-[#F59E0B]/10" },
+                  { href: "/candidate/applications", icon: <Briefcase className="size-5 text-[#0d9488] dark:text-[#2DD4BF]" />, title: "Đơn ứng tuyển", desc: `${applications.length} đơn đang xử lý`, color: "bg-[#0d9488]/5 hover:bg-[#0d9488]/10" },
+                  { href: "/candidate/saved", icon: <Bookmark className="size-5 text-blue-600" />, title: "Việc đã lưu", desc: `${savedJobs.length} việc làm`, color: "bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/10" },
+                ].map((item) => (
+                  <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${item.color} group`}>
+                    {item.icon}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold leading-snug text-gray-900 dark:text-[#E0F2FE]">{job?.title || "N/A"}</p>
-                      <p className="text-xs text-gray-500 dark:text-[#94A3B8]">{company}</p>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        <span className="rounded-md bg-[#0d9488]/10 px-2 py-0.5 text-xs font-medium text-[#0d9488]">{jobTypeLabel(job?.jobType || "")}</span>
-                        <span className="rounded-md bg-[#0d9488]/10 px-2 py-0.5 text-xs font-medium text-[#0d9488]">{formatSalary(job?.salaryMin, job?.salaryMax)}</span>
-                      </div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-[#E0F2FE]">{item.title}</p>
+                      <p className="text-xs text-gray-500 dark:text-[#94A3B8]">{item.desc}</p>
                     </div>
-                    <span className="text-xs text-gray-400">{timeAgo(sj.createdAt)}</span>
+                    <ArrowRight className="size-4 text-gray-400 transition-colors group-hover:text-[#005a71] dark:group-hover:text-[#67E8F9]" />
                   </Link>
-                );
-              })}
-              {savedJobs.length === 0 && <p className="py-8 text-center text-sm text-gray-400">Chưa lưu việc làm nào</p>}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Notifications */}
-        <Card className="border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Thông báo</CardTitle>
-            {unreadNotifs > 0 && <Badge className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white border-transparent">{unreadNotifs} mới</Badge>}
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex flex-col gap-3">
-              {notifications.map((notif) => (
-                <div key={notif.id} className="flex items-start gap-3 rounded-xl p-3 hover:bg-gray-50 dark:hover:bg-[#1E5F74]/10">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800"><Circle className="size-4 text-gray-500" /></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-[#E0F2FE]">{notif.title}</p>
-                    <p className="mt-0.5 text-xs text-gray-500 dark:text-[#94A3B8] line-clamp-2">{notif.message}</p>
-                    <p className="mt-1 text-xs text-gray-400">{timeAgo(notif.createdAt)}</p>
+        {/* Recent Applications */}
+        <RecentApplications applications={applications} />
+
+        {/* Saved Jobs + Notifications */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Saved Jobs */}
+          <Card className="border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Việc làm đã lưu</CardTitle>
+              <Link href="/candidate/saved" className="text-xs font-semibold text-[#005a71] hover:opacity-80 dark:text-[#67E8F9]">Xem tất cả →</Link>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex flex-col gap-3">
+                {savedJobs.map((sj) => {
+                  const job = sj.job;
+                  const company = job?.company?.name || "N/A";
+                  return (
+                    <Link key={sj.id} href={`/jobs/${job?.id || ""}`} className="flex items-start gap-3 rounded-xl border border-[#e1efff] bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-[#1E5F74] dark:bg-[#0d2d42]">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#005a71]/10 text-sm font-bold text-[#005a71]">{companyInitials(company)}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold leading-snug text-gray-900 dark:text-[#E0F2FE]">{job?.title || "N/A"}</p>
+                        <p className="text-xs text-gray-500 dark:text-[#94A3B8]">{company}</p>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          <span className="rounded-md bg-[#0d9488]/10 px-2 py-0.5 text-xs font-medium text-[#0d9488]">{jobTypeLabel(job?.jobType || "")}</span>
+                          <span className="rounded-md bg-[#0d9488]/10 px-2 py-0.5 text-xs font-medium text-[#0d9488]">{formatSalary(job?.salaryMin, job?.salaryMax)}</span>
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-400">{timeAgo(sj.createdAt)}</span>
+                    </Link>
+                  );
+                })}
+                {savedJobs.length === 0 && <p className="py-8 text-center text-sm text-gray-400">Chưa lưu việc làm nào</p>}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notifications */}
+          <Card className="border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Thông báo</CardTitle>
+              {unreadNotifs > 0 && <Badge className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white border-transparent">{unreadNotifs} mới</Badge>}
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex flex-col gap-3">
+                {notifications.map((notif) => (
+                  <div key={notif.id} className="flex items-start gap-3 rounded-xl p-3 hover:bg-gray-50 dark:hover:bg-[#1E5F74]/10">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800"><Circle className="size-4 text-gray-500" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-[#E0F2FE]">{notif.title}</p>
+                      <p className="mt-0.5 text-xs text-gray-500 dark:text-[#94A3B8] line-clamp-2">{notif.message}</p>
+                      <p className="mt-1 text-xs text-gray-400">{timeAgo(notif.createdAt)}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {notifications.length === 0 && <p className="py-8 text-center text-sm text-gray-400">Không có thông báo</p>}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+                ))}
+                {notifications.length === 0 && <p className="py-8 text-center text-sm text-gray-400">Không có thông báo</p>}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="ai">
+        <CandidateDashboardAiTab
+          title="Career Co-worker"
+          initialMessage="Xin chào! Tôi là Career Co-worker. Tôi có thể xem nhanh hồ sơ, CV, đơn ứng tuyển và việc đã lưu để gợi ý bước tiếp theo cho bạn."
+          contextDescription="Candidate dashboard context: user, profile checklist, applications, saved jobs, resumes, notifications."
+          contextValue={{ user, profile, completionPct, checklist, applications, savedJobs, resumes, notifications }}
+        />
+      </TabsContent>
+    </Tabs>
   );
 }
