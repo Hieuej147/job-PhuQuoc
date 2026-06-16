@@ -151,7 +151,7 @@ export default function HomePageClient({
   );
 
   return (
-    <div className="min-h-screen bg-[#f7f9ff] flex flex-col antialiased text-slate-800">
+    <div className="min-h-screen bg-background text-foreground flex flex-col antialiased transition-colors duration-200">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
@@ -212,12 +212,12 @@ export default function HomePageClient({
             <a
               key={cat.id}
               href={`/jobs?category=${cat.slug}`}
-              className={`bg-white p-5 sm:p-6 rounded-2xl border border-[#E0F5FB] shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center group fade-up stagger-${(index % 4) + 1}`}
+              className={`bg-primary-foreground p-5 sm:p-6 rounded-2xl border border-primary shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center group fade-up stagger-${(index % 4) + 1}`}
             >
-              <div className="w-16 h-16 bg-[#005a71]/10 group-hover:bg-[#005a71]/20 rounded-full flex items-center justify-center mb-4 transition-colors">
+              <div className="w-16 h-16 bg-secondary group-hover:bg-[#005a71]/20 rounded-full flex items-center justify-center mb-4 transition-colors">
                 <span className="text-[2.25rem]">{cat.icon || "💼"}</span>
               </div>
-              <h3 className="font-bold text-slate-800 text-[13px] sm:text-[14px] mb-1 line-clamp-1">
+              <h3 className="font-bold text-primary text-[13px] sm:text-[14px] mb-1 line-clamp-1">
                 {cat.name}
               </h3>
             </a>
@@ -226,7 +226,7 @@ export default function HomePageClient({
       </section>
 
       {/* VIỆC LÀM NỔI BẬT */}
-      <section className="py-6 pb-24 bg-[#f0f7ff] border-y border-slate-200/50">
+      <section className="py-6 pb-24 bg-primary-foreground border-y border-slate-200/50">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="flex items-end justify-between mb-10 pt-10 fade-up">
             <div>
@@ -315,10 +315,10 @@ export default function HomePageClient({
       <section className="py-24 px-4 md:px-8 max-w-7xl mx-auto w-full">
         <div className="flex items-end justify-between mb-10 fade-up">
           <div>
-            <h2 className="text-[28px] md:text-[32px] font-bold text-[#005a71]">
+            <h2 className="text-[28px] md:text-[32px] font-bold text-primary">
               Cẩm nang nghề nghiệp
             </h2>
-            <p className="text-slate-400 text-[13px] mt-1.5">
+            <p className="text-secondary-foreground text-[13px] mt-1.5">
               Kinh nghiệm, bí quyết xin việc tại Phú Quốc
             </p>
           </div>

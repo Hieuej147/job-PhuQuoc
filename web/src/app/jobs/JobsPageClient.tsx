@@ -324,7 +324,7 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
   const mappedJobs = jobs.map(mapJobType);
 
   return (
-    <div className="min-h-screen bg-[#f7f9ff] dark:bg-[#071a2b] text-slate-800 dark:text-[#cbd5e1] transition-colors duration-200">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-200">
       <JobsHero
         totalJobs={totalJobs}
         categories={categories}

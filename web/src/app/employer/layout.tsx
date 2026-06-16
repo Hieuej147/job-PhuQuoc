@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Navbar } from "@/components/layout/navbar";
+import Header from "@/components/common/Header";
 import { EmployerSidebar } from "@/components/layout/employer-sidebar";
 import { getServerAuthUser } from "@/lib/server-auth";
 
@@ -24,7 +24,7 @@ export default async function EmployerLayout({ children }: { children: React.Rea
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar role="employer" />
+      <Header />
       <div className="flex">
         <EmployerSidebar />
         <main className="flex-1 min-w-0">{children}</main>

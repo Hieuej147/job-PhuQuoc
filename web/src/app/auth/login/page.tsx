@@ -18,10 +18,7 @@ import {
 } from "lucide-react";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { GoogleButton } from "@/components/auth/google-button";
-import {
-  signIn,
-  sendVerificationOtp,
-} from "@/lib/auth";
+import { signIn, sendVerificationOtp } from "@/lib/auth";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -45,10 +42,8 @@ function LoginForm() {
     const role = user.role;
     if (!role) router.replace("/auth/select-role");
     else if (redirect) router.replace(redirect);
-    else if (role === "EMPLOYER")
-      router.replace("/employer/dashboard");
-    else if (role === "ADMIN")
-      router.replace("/");
+    else if (role === "EMPLOYER") router.replace("/employer/dashboard");
+    else if (role === "ADMIN") router.replace("/");
     else router.replace("/candidate/dashboard");
   }, [router, user, searchParams]);
 
@@ -90,10 +85,8 @@ function LoginForm() {
       const redirect = searchParams.get("redirect");
       if (!role) router.push("/auth/select-role");
       else if (redirect) router.push(redirect);
-      else if (role === "EMPLOYER")
-        router.push("/employer/dashboard");
-      else if (role === "ADMIN")
-        router.push("/");
+      else if (role === "EMPLOYER") router.push("/employer/dashboard");
+      else if (role === "ADMIN") router.push("/");
       else router.push("/candidate/dashboard");
     } catch (err: unknown) {
       const msg = (err as Error).message || "";
@@ -132,7 +125,7 @@ function LoginForm() {
     <AuthLayout
       breadcrumb={[{ label: "Trang chủ", href: "/" }, { label: "Đăng nhập" }]}
     >
-      <div className="bg-white rounded-3xl border border-[#E0F5FB] shadow-xl p-8 animate-in delay-100">
+      <div className="bg-primary-foreground rounded-3xl border border-primary shadow-xl p-8 animate-in delay-100">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-[#0C4A6E] mb-1">
             Chào mừng trở lại! 👋
@@ -237,7 +230,7 @@ function LoginForm() {
 
           <Button
             type="submit"
-            className="w-full h-11 font-bold rounded-xl bg-[#0E7490] hover:bg-[#005a71] shadow-md transition-all active:scale-[.98]"
+            className="w-full h-11 font-bold rounded-xl bg-primary hover:bg-primary/80 shadow-md transition-all active:scale-[.98]"
             disabled={loading}
           >
             {loading ? "Đang đăng nhập..." : "Đăng nhập"}
