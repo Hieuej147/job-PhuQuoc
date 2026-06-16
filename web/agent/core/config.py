@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     
     # Agent
     agent_port: int = 8125
+
+    # Candidate CV MCP server. Python candidate-cv-agent connects directly.
+    cv_mcp_server_url: str = "http://127.0.0.1:3108/sse"
+    cv_mcp_timeout_seconds: int = 45
     
     class Config:
         env_file = str(Path(__file__).parent.parent.parent / ".env")

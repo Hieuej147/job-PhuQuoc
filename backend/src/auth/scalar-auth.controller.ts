@@ -2,7 +2,8 @@ import { Controller, Post, Body, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from './decorators/public.decorator';
 import { Response } from 'express';
-import { RegisterEmailUseCase } from './use-cases/register-email.usecase';
+import { AuthService } from './auth.service';
+import { RegisterEmailDto } from './dto/register-email.dto';
 
 @ApiTags('Auth')
 @Controller('scalar-auth')
@@ -10,7 +11,7 @@ export class ScalarAuthController {
   private readonly AUTH_URL = process.env.BETTER_AUTH_URL || 'http://localhost:3000';
   private readonly ORIGIN = process.env.FRONTEND_URL || this.AUTH_URL;
 
-  constructor(private readonly registerEmailUseCase: RegisterEmailUseCase) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   @Public()
@@ -55,10 +56,8 @@ export class ScalarAuthController {
   })
   @ApiResponse({ status: 200, description: 'Đăng ký thành công' })
   @ApiResponse({ status: 422, description: 'Email đã tồn tại' })
-  async register(
-    @Body() body: { name: string; email: string; password: string; role: 'CANDIDATE' | 'EMPLOYER'; phone?: string },
-  ) {
-    return this.registerEmailUseCase.execute(body);
+  async register(@Body() body: RegisterEmailDto) {
+    return this.authService.registerEmail(body);
   }
 
   @Post('logout')

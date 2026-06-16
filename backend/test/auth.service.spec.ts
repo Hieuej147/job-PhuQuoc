@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CustomAuthService } from '../src/auth/auth.service';
+import { AuthService } from '../src/auth/auth.service';
 
-describe('CustomAuthService', () => {
-  let service: CustomAuthService;
+describe('AuthService', () => {
+  let service: AuthService;
   let prismaMock: any;
 
   beforeEach(() => {
@@ -11,8 +11,12 @@ describe('CustomAuthService', () => {
         findUnique: vi.fn(),
         update: vi.fn(),
       },
+      account: {
+        findFirst: vi.fn(),
+        create: vi.fn(),
+      },
     };
-    service = new CustomAuthService(prismaMock as any);
+    service = new AuthService(prismaMock as any);
   });
 
   it('should be defined', () => {
@@ -87,6 +91,53 @@ describe('CustomAuthService', () => {
           role: true,
         }),
       });
+    });
+  });
+
+  describe('registerEmail', () => {
+    it('should sign up new user and return VERIFY_EMAIL', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      // mock the internal postJson via fetch
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({}),
+      } as any);
+
+      const result = await service.registerEmail({
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'password123',
+        role: 'CANDIDATE',
+      });
+
+      expect(result.status).toBe('VERIFY_EMAIL');
+      expect(result.email).toBe('test@example.com');
+    });
+  });
+
+  describe('requestPasswordReset', () => {
+    it('should return EMAIL_NOT_FOUND when user not found', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+
+      const result = await service.requestPasswordReset({
+        email: 'unknown@example.com',
+      });
+
+      expect(result.status).toBe('EMAIL_NOT_FOUND');
+    });
+
+    it('should return OAUTH_ONLY for oauth-only user', async () => {
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'cuid123',
+        emailVerified: true,
+      });
+      prismaMock.account.findFirst.mockResolvedValue(null);
+
+      const result = await service.requestPasswordReset({
+        email: 'oauth@example.com',
+      });
+
+      expect(result.status).toBe('OAUTH_ONLY');
     });
   });
 });

@@ -5,6 +5,9 @@
   "package_manager": "uv",
   "graphs": {
     "candidate_agent": "./graphs.py:candidate_graph",
+    "candidate_job_agent": "./graphs.py:candidate_job_graph",
+    "candidate_cv_agent": "./graphs.py:candidate_cv_graph",
+    "candidate_advisor_agent": "./graphs.py:candidate_advisor_graph",
     "recruiter_agent": "./graphs.py:recruiter_graph"
   },
   "env": "../.env"

@@ -24,9 +24,9 @@
 | Layer | Technology | Version |
 |-------|-----------|---------|
 | Frontend | Next.js + React + TailwindCSS + shadcn/ui | 16.1.6 / 19 / 4 |
-| Backend | NestJS + Prisma + PostgreSQL | 11 / 6 / 16 |
+| Backend | NestJS + Prisma + PostgreSQL (pgvector) | 11 / 6 / 16 |
 | Auth | better-auth (JWT + Session + Email OTP + Google OAuth) | 1.5 |
-| AI Agent | Python FastAPI + LangGraph + CopilotKit | — |
+| AI Agent | Python FastAPI + LangGraph + CopilotKit + Ollama | — |
 | Cache | Redis | 7 |
 | Events | Inngest | 4.4 |
 | Payment | Stripe | 22.2 |
@@ -132,14 +132,18 @@ pnpm db:up
 cp docker/.env.example backend/.env
 cp docker/.env.example web/.env
 
-# 5. Generate Prisma client + run migrations + seed data
+# 5. Generate Prisma client + sync schema + seed data
 cd backend
 npx prisma generate
-npx prisma migrate dev
+npx prisma db push
 npx prisma db seed
+npx ts-node scripts/sync-embeddings.ts   # (RAG) Tạo vector AI cho DB
 cd ..
 
-# 6. Start all services
+# 6. Chạy Ollama (Bắt buộc cho AI Semantic Search)
+ollama run nomic-embed-text
+
+# 7. Start all services
 pnpm dev
 ```
 
@@ -171,6 +175,8 @@ cp docker/.env.example web/.env
 | `BETTER_AUTH_URL` | ✅ | `http://localhost:3000` | Backend URL |
 | `FRONTEND_URL` | ✅ | `http://localhost:3001` | Frontend URL (cho CORS) |
 | `AGENT_URL` | ✅ | `http://localhost:8125` | Python AI agent URL |
+| `OLLAMA_URL` | Optional | `http://127.0.0.1:11434` | Ollama URL dùng sinh vector |
+| `EMBEDDING_MODEL` | Optional | `nomic-embed-text` | Model RAG mặc định của Ollama |
 | `INNGEST_DEV` | Optional | `1` | Bật Inngest dev mode |
 | `RESEND_API_KEY` | Optional | — | Resend email API key |
 | `EMAIL_FROM` | Optional | `onboarding@resend.dev` | Email sender |
@@ -188,11 +194,11 @@ cp docker/.env.example web/.env
 | `BACKEND_URL` | ✅ | `http://localhost:3000` | Backend URL (SSR calls) |
 | `AGENT_URL` | ✅ | `http://localhost:8125` | Python AI agent URL |
 | `OPENAI_API_KEY` | Cần AI | — | OpenAI API key (cho AI agent) |
-| `NEXT_PUBLIC_COPILOTKIT_API_KEY` | Optional | — | CopilotKit public key |
-| `COPILOTKIT_LICENSE_TOKEN` | Optional | — | CopilotKit license |
-| `INTELLIGENCE_API_KEY` | Optional | — | CopilotKit Intelligence key |
-| `INTELLIGENCE_API_URL` | Optional | — | Intelligence platform URL |
-| `INTELLIGENCE_GATEWAY_WS_URL` | Optional | — | Intelligence gateway WebSocket URL |
+| `NEXT_PUBLIC_COPILOTKIT_LICENSE_KEY` | Optional | — | CopilotKit public license key cho React provider |
+| `COPILOTKIT_LICENSE_TOKEN` | Optional | — | CopilotKit server license token nếu dashboard cấp |
+| `COPILOTKIT_INTELLIGENCE_API_KEY` | Optional | — | CopilotKit Intelligence API key; có đủ 3 biến Intelligence thì bật persistent threads |
+| `COPILOTKIT_INTELLIGENCE_API_URL` | Optional | — | Intelligence platform API URL |
+| `COPILOTKIT_INTELLIGENCE_WS_URL` | Optional | — | Intelligence platform WebSocket URL |
 
 ### Lưu ý
 
@@ -201,6 +207,7 @@ cp docker/.env.example web/.env
 - **`NEXT_PUBLIC_*`**: Các biến có prefix `NEXT_PUBLIC_` được expose ra browser.
 - **`BACKEND_URL`**: Dùng cho SSR calls từ Next.js server → Backend. Phải là URL mà server có thể truy cập được.
 - **`AGENT_URL`**: URL của Python AI agent. Phải match với port trong `scripts/run-agent.sh`.
+- **CopilotKit Threads**: Candidate/Employer dashboard dùng `useThreads` khi cấu hình đủ `COPILOTKIT_INTELLIGENCE_API_KEY`, `COPILOTKIT_INTELLIGENCE_API_URL`, `COPILOTKIT_INTELLIGENCE_WS_URL`; thiếu env thì runtime fallback về SSE và UI sẽ báo threads chưa sẵn sàng.
 - **Không commit `.env`** lên git — đã có trong `.gitignore`.
 - **Template**: Copy từ `docker/.env.example`: `cp docker/.env.example backend/.env && cp docker/.env.example web/.env`
 
@@ -795,6 +802,7 @@ erDiagram
 
     Company ||--o{ Job : "posts"
     Job ||--o{ JobApplication : "receives"
+    Job ||--o| JobEmbedding : "has vector"
     JobCategory ||--o{ Job : "categorizes"
     AddressWard ||--o{ Company : "located in"
     AddressWard ||--o{ Job : "located in"
@@ -882,6 +890,7 @@ erDiagram
 | 34 | POST | /api/v1/jobs | EMPLOYER | Tạo job (DRAFT) |
 | 35 | PATCH | /api/v1/jobs/:id | OWNER | Cập nhật job |
 | 36 | DELETE | /api/v1/jobs/:id | ADMIN | Xóa job |
+| 36b | POST | /api/v1/jobs/search-vector | Public | (RAG AI) Tìm semantic qua vector |
 
 #### Applications (7 endpoints)
 
@@ -1030,8 +1039,10 @@ Các nhóm đáng ưu tiên sau auth cleanup:
 
 ### Docker Compose
 
+> **Lưu ý RAG AI:** Chúng ta sử dụng image `pgvector/pgvector:pg16` để hỗ trợ extension AI (thay cho bản Postgres thường). Data Volume hoàn toàn tương thích và không bị mất dữ liệu khi đổi qua lại.
+
 ```bash
-docker compose -f docker/docker-compose.yml up -d     # Start
+docker compose -f docker/docker-compose.yml up -d     # Start (Sử dụng project name 'job-phuquoc' nếu có sẵn volume)
 docker compose -f docker/docker-compose.yml down       # Stop
 ```
 
