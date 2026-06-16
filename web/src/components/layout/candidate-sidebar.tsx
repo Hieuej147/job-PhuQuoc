@@ -75,7 +75,10 @@ export function CandidateSidebar() {
 
   const handleLogout = () => {
     fetch("/api/auth/sign-out", { method: "POST", credentials: "include" })
-      .then(() => { window.location.href = "/auth/login"; });
+      .then(() => {
+        sessionStorage.removeItem("savedCompanyIds");
+        window.location.href = "/auth/login";
+      });
   };
 
   return (

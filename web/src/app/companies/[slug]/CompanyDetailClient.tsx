@@ -4,6 +4,8 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { Share2 } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
+import { useRouter } from "next/navigation"
 
 const TYPE_MAP: Record<string, string> = {
   FULL_TIME: "Full-time", PART_TIME: "Part-time", REMOTE: "Remote",
@@ -54,6 +56,8 @@ interface Props { company: CompanyData; jobs?: JobData[] }
 
 export default function CompanyDetailClient({ company, jobs = [] }: Props) {
   useScrollAnimation()
+  const { user } = useAuth()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("overview")
   const [following, setFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
@@ -73,6 +77,10 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
   }, [company.id]);
 
   const handleToggleFollow = async () => {
+    if (!user) {
+      router.push(`/auth/login?redirect=/companies/${company.slug}`);
+      return;
+    }
     setFollowLoading(true);
     try {
       const res = await fetch(`/api/v1/saved/companies/${company.id}`, {

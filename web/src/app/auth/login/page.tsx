@@ -41,14 +41,16 @@ function LoginForm() {
 
   useEffect(() => {
     if (!user) return;
+    const redirect = searchParams.get("redirect");
     const role = user.role;
     if (!role) router.replace("/auth/select-role");
+    else if (redirect) router.replace(redirect);
     else if (role === "EMPLOYER")
       router.replace("/employer/dashboard");
     else if (role === "ADMIN")
       router.replace("/");
     else router.replace("/candidate/dashboard");
-  }, [router, user]);
+  }, [router, user, searchParams]);
 
   useEffect(() => {
     if (toastShownRef.current) return;
@@ -85,7 +87,9 @@ function LoginForm() {
       const role = session.user?.role;
       setUser(session.user);
       toast.success("Đăng nhập thành công!");
+      const redirect = searchParams.get("redirect");
       if (!role) router.push("/auth/select-role");
+      else if (redirect) router.push(redirect);
       else if (role === "EMPLOYER")
         router.push("/employer/dashboard");
       else if (role === "ADMIN")

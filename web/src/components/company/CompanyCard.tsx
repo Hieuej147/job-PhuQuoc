@@ -3,6 +3,8 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useAuth } from "@/components/auth/auth-provider"
+import { useRouter } from "next/navigation"
 
 interface Company {
   id: string
@@ -29,6 +31,8 @@ interface CompanyCardProps {
 }
 
 export default function CompanyCard({ company, index = 0, isFollowed = false }: CompanyCardProps) {
+  const { user } = useAuth()
+  const router = useRouter()
   const [followed, setFollowed] = useState(isFollowed)
 
   useEffect(() => {
@@ -38,24 +42,17 @@ export default function CompanyCard({ company, index = 0, isFollowed = false }: 
 
   const handleToggleFollow = async (e: React.MouseEvent) => {
     e.preventDefault();
+    if (!user) {
+      router.push(`/auth/login?redirect=/companies/${company.slug}`);
+      return;
+    }
     setFollowLoading(true);
     try {
       const res = await fetch(`/api/v1/saved/companies/${company.id}`, {
         method: "POST",
         credentials: "include",
       });
-      if (res.ok) {
-        setFollowed(prev => {
-          const newVal = !prev;
-          const cached = sessionStorage.getItem("savedCompanyIds");
-          const ids: string[] = cached ? JSON.parse(cached) : [];
-          const updated = newVal
-            ? [...ids, company.id]
-            : ids.filter(id => id !== company.id);
-          sessionStorage.setItem("savedCompanyIds", JSON.stringify(updated));
-          return newVal;
-        });
-      }
+      if (res.ok) setFollowed(prev => !prev);
     } catch (err) {
       console.error(err);
     } finally {
