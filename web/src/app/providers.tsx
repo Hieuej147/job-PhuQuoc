@@ -3,7 +3,7 @@
 import { CopilotKitProvider } from "@copilotkit/react-core/v2";
 //@ts-ignore
 import "@copilotkit/react-core/v2/styles.css";
-import { ThemeProvider } from "@/hooks/use-theme";
+import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/components/auth/auth-provider";
@@ -17,7 +17,7 @@ export function Providers({
   initialUser?: AuthUser | null;
 }) {
   return (
-    <ThemeProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <TooltipProvider>
         <AuthProvider initialUser={initialUser}>
           <CopilotKitProvider

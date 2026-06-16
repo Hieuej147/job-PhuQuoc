@@ -3,7 +3,11 @@ import Header from "@/components/common/Header";
 import { CandidateSidebar } from "@/components/layout/candidate-sidebar";
 import { getServerAuthUser } from "@/lib/server-auth";
 
-export default async function CandidateLayout({ children }: { children: React.ReactNode }) {
+export default async function CandidateLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const user = await getServerAuthUser();
   if (!user) redirect("/auth/login");
   if (!user.role) redirect("/auth/select-role");

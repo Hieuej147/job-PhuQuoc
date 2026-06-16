@@ -313,7 +313,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f9ff] dark:bg-[#071a2b] text-slate-800 dark:text-[#e0f2fe] pb-24 md:pb-0 transition-colors duration-200">
+    <div className="min-h-screen bg-background text-foreground pb-24 md:pb-0 transition-colors duration-200">
       <JobDetailHero job={mappedJob as any} onBookmark={toggleSave} isBookmarked={isSaved} />
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">

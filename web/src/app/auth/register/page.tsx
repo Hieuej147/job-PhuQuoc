@@ -125,7 +125,9 @@ export default function RegisterPage() {
         msg.toLowerCase().includes("already exists") ||
         msg.toLowerCase().includes("user already")
       ) {
-        toast.error("Email đã tồn tại. Vui lòng dùng email khác hoặc đăng nhập.");
+        toast.error(
+          "Email đã tồn tại. Vui lòng dùng email khác hoặc đăng nhập.",
+        );
       } else {
         toast.error(msg || "Đăng ký thất bại");
       }
@@ -183,11 +185,11 @@ export default function RegisterPage() {
       currentStep={step}
     >
       {/* Card */}
-      <div className="bg-white rounded-3xl border border-[#E0F5FB] shadow-xl p-8 animate-in delay-100">
+      <div className="bg-primary-foreground rounded-3xl border border-primary shadow-xl p-8 animate-in delay-100">
         <div className="flex flex-col gap-5">
           {/* Header */}
           <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-bold text-[#0C4A6E] mb-1">
+            <h1 className="text-2xl font-bold text-secondary-foreground mb-1">
               Tạo tài khoản mới 🚀
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -313,7 +315,7 @@ export default function RegisterPage() {
 
               <Button
                 onClick={goNext}
-                className="w-full h-11 font-bold rounded-xl bg-[#0E7490] hover:bg-[#005a71] shadow-md"
+                className="w-full h-11 font-bold rounded-xl text-secondary-foreground bg-[#0E7490] hover:bg-[#005a71] shadow-md"
               >
                 Tiếp tục →
               </Button>
@@ -398,7 +400,7 @@ export default function RegisterPage() {
                 </Button>
                 <Button
                   onClick={goNext}
-                  className="flex-1 h-11 font-bold rounded-xl bg-[#0E7490] hover:bg-[#005a71] shadow-md"
+                  className="flex-1 h-11 font-bold text-secondary-foreground rounded-xl bg-[#0E7490] hover:bg-[#005a71] shadow-md"
                 >
                   Tiếp tục →
                 </Button>

@@ -179,7 +179,7 @@ export function JobFilterSidebar({
   };
 
   return (
-    <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] shadow-sm overflow-hidden transition-colors duration-200">
+    <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] shadow-sm max-h-[calc(100vh-6rem)] overflow-y-auto transform-gpu">
 
       {/* Tiêu đề Header của thanh bộ lọc */}
       <div className="flex justify-between items-center px-5 py-4 border-b border-[#E0F5FB] dark:border-[#1a3d5c]">

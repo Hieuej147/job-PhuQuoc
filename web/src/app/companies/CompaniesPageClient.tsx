@@ -127,7 +127,7 @@ export default function CompaniesPageClient({
   }));
 
   return (
-    <div className="bg-[#f7f9ff] dark:bg-[#0a1929] min-h-screen">
+    <div className="bg-background text-foreground min-h-screen">
       {/* HERO */}
       <section className="pt-16 bg-linear-to-br from-[#0E7490] via-[#0D9488] to-[#005a71]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
@@ -199,7 +199,7 @@ export default function CompaniesPageClient({
       </section>
 
       {/* MAIN */}
-      <main className="bg-[#f7f9ff] dark:bg-[#0a1929] max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         {/* Industry tabs */}
         <div className="fade-up stagger-4 overflow-x-auto pb-2 mb-6 scrollbar-hide">
           <div className="flex gap-2 min-w-max">

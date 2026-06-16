@@ -172,7 +172,7 @@ export default function BlogPageClient({
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f9ff] text-[#001e30] dark:bg-[#0C2231] dark:text-[#E0F2FE] font-sans antialiased overflow-x-hidden">
+    <div className="min-h-screen bg-background text-foreground font-sans antialiased overflow-x-hidden transition-colors duration-200">
       <Header />
 
       {/* 1. HERO FEATURED POST */}
