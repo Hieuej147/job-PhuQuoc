@@ -59,7 +59,7 @@ export class ApplicationsService {
     const [items, total] = await Promise.all([
       this.prisma.jobApplication.findMany({
         where: { userId }, skip: (page - 1) * limit, take: limit,
-        include: { job: { include: { company: { select: { name: true, logo: true } } } } },
+        include: { job: { include: { company: { select: { name: true, logo: true } }, ward: { select: { name: true } } } } },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.jobApplication.count({ where: { userId } }),

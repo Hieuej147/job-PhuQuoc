@@ -1,9 +1,11 @@
 "use client"
 
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { Share2 } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
+import { useRouter } from "next/navigation"
 
 const TYPE_MAP: Record<string, string> = {
   FULL_TIME: "Full-time", PART_TIME: "Part-time", REMOTE: "Remote",
@@ -54,8 +56,44 @@ interface Props { company: CompanyData; jobs?: JobData[] }
 
 export default function CompanyDetailClient({ company, jobs = [] }: Props) {
   useScrollAnimation()
+  const { user } = useAuth()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("overview")
   const [following, setFollowing] = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/v1/saved/companies", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        const items = d.data?.items ?? d.data ?? [];
+        const isFollowing = items.some((s: any) =>
+          s.companyId === company.id || s.company?.id === company.id
+        );
+        setFollowing(isFollowing);
+      })
+      .catch(() => { });
+  }, [company.id]);
+
+  const handleToggleFollow = async () => {
+    if (!user) {
+      router.push(`/auth/login?redirect=/companies/${company.slug}`);
+      return;
+    }
+    setFollowLoading(true);
+    try {
+      const res = await fetch(`/api/v1/saved/companies/${company.id}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) setFollowing(prev => !prev);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const mappedJobs = useMemo(() => jobs.map(j => ({
     id: j.id, slug: j.slug, title: j.title,
@@ -79,12 +117,12 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
   ]
 
   return (
-    <div className="bg-[#f7f9ff] min-h-screen">
+    <div className="bg-[#f7f9ff] dark:bg-[#0a1929] min-h-screen">
       {/* HERO */}
       <div>
         <div className="h-52 md:h-64 relative overflow-hidden" style={{ background: "linear-gradient(135deg,#0E7490,#0D9488)" }}>
           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 50%,#67e8f9 0%,transparent 50%),radial-gradient(circle at 80% 20%,#fcd34d 0%,transparent 40%)" }} />
-          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#f7f9ff] to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#f7f9ff] dark:from-[#0a1929] to-transparent" />
           <div className="absolute top-4 left-4 md:left-8 flex items-center gap-2 text-xs text-white/70">
             <Link href="/" className="hover:text-white">Trang chủ</Link><span>›</span>
             <Link href="/companies" className="hover:text-white">Công ty</Link><span>›</span>
@@ -95,22 +133,29 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
         <div className="max-w-7xl mx-auto px-4 md:px-8 -mt-12 relative z-10">
           <div className="fade-up stagger-1 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
             <div className="flex items-end gap-4">
-              <div className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-2xl flex items-center justify-center shadow-xl border-2 border-white flex-shrink-0">
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-white dark:bg-[#0f2436] rounded-2xl flex items-center justify-center shadow-xl border-2 border-white dark:border-[#1e3a4f] flex-shrink-0">
                 <span className="text-2xl font-black text-[#0E7490]">{initials}</span>
               </div>
               <div className="pb-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl md:text-2xl font-bold text-[#001e30]">{company.name}</h1>
+                  <h1 className="text-xl md:text-2xl font-bold text-[#001e30] dark:text-white">{company.name}</h1>
                   {company.isApproved && <span className="bg-[#0d9488]/10 text-[#0d9488] text-xs font-bold px-2 py-0.5 rounded-full">✓ Đã xác minh</span>}
                 </div>
-                <p className="text-sm text-[#3f484c] mt-0.5">{company.industry || "—"} · {location}</p>
+                <p className="text-sm text-[#3f484c] dark:text-gray-400 mt-0.5">{company.industry || "—"} · {location}</p>
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setFollowing(!following)} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${following ? "bg-[#005a71] text-white" : "border border-[#005a71] text-[#005a71] hover:bg-[#005a71]/5"}`}>
-                {following ? "✓ Đang theo dõi" : "+ Theo dõi"}
+              <button
+                onClick={handleToggleFollow}
+                disabled={followLoading}
+                className={`px-5 py-2 rounded-full text-sm font-semibold transition-all disabled:opacity-60 ${following
+                  ? "bg-[#005a71] text-white"
+                  : "border border-[#005a71] text-[#005a71] hover:bg-[#005a71]/5"
+                  }`}
+              >
+                {followLoading ? "..." : following ? "✓ Đang theo dõi" : "+ Theo dõi"}
               </button>
-              <button className="p-2.5 rounded-full border border-[#bec8cd]/50 text-[#3f484c] hover:bg-[#e1efff] transition-colors">
+              <button className="p-2.5 rounded-full border border-[#bec8cd]/50 dark:border-gray-600 text-[#3f484c] dark:text-gray-300 hover:bg-[#e1efff] dark:hover:bg-[#1e3a4f] transition-colors">
                 <Share2 className="w-4 h-4" />
               </button>
             </div>
@@ -124,9 +169,9 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
               { value: company.industry || "—", label: "Ngành nghề", color: "text-[#F59E0B]" },
               { value: location, label: "Địa chỉ", color: "text-[#8b5cf6]" },
             ].map((stat) => (
-              <div key={stat.label} className="bg-white border border-[#E0F5FB] rounded-[0.875rem] p-5 text-center">
+              <div key={stat.label} className="bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-[0.875rem] p-5 text-center">
                 <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
-                <p className="text-xs text-[#3f484c] mt-0.5">{stat.label}</p>
+                <p className="text-xs text-[#3f484c] dark:text-gray-400 mt-0.5">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -135,7 +180,7 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
           <div className="fade-up stagger-3 mt-6 flex gap-2 overflow-x-auto pb-1">
             {tabs.map((tab) => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                className={`px-5 py-2.5 text-sm font-semibold rounded-full transition-all whitespace-nowrap ${activeTab === tab.key ? "bg-[#005a71] text-white" : "text-[#6f787d] hover:bg-[#005a71]/10 hover:text-[#005a71]"}`}>
+                className={`px-5 py-2.5 text-sm font-semibold rounded-full transition-all whitespace-nowrap ${activeTab === tab.key ? "bg-[#005a71] text-white" : "text-[#6f787d] dark:text-gray-400 hover:bg-[#005a71]/10 hover:text-[#005a71]"}`}>
                 {tab.label}
               </button>
             ))}
@@ -149,21 +194,21 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
           {/* LEFT */}
           <div className="flex-1 min-w-0">
             {activeTab === "overview" && (
-              <div className="bg-white border border-[#E0F5FB] rounded-2xl p-6">
+              <div className="bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-2xl p-6">
                 <h2 className="font-bold text-[#005a71] mb-4">Giới thiệu công ty</h2>
-                <p className="text-sm text-gray-700 leading-relaxed">{company.description || "Chưa có mô tả."}</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{company.description || "Chưa có mô tả."}</p>
               </div>
             )}
 
             {activeTab === "jobs" && (
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-[#001e30]">{mappedJobs.length} vị trí đang tuyển dụng</p>
+                <p className="text-sm font-semibold text-[#001e30] dark:text-white">{mappedJobs.length} vị trí đang tuyển dụng</p>
                 {mappedJobs.length === 0 && <p className="text-sm text-gray-500 text-center py-8">Chưa có vị trí tuyển dụng nào.</p>}
                 {mappedJobs.map((job) => (
                   <Link key={job.id} href={`/jobs/${job.slug}`}
-                    className="flex items-center justify-between gap-4 bg-white border border-[#E0F5FB] rounded-xl px-5 py-4 hover:shadow-md hover:translate-x-1 transition-all group">
+                    className="flex items-center justify-between gap-4 bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-xl px-5 py-4 hover:shadow-md hover:translate-x-1 transition-all group">
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-[#001e30] group-hover:text-[#005a71] transition-colors">{job.title}</p>
+                      <p className="font-bold text-sm text-[#001e30] dark:text-white group-hover:text-[#005a71] transition-colors">{job.title}</p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.type}</span>
                         <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.salary}</span>
@@ -171,7 +216,7 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-xs text-[#3f484c]">{job.daysAgo}</p>
+                      <p className="text-xs text-[#3f484c] dark:text-gray-400">{job.daysAgo}</p>
                       <p className="text-xs text-red-400 mt-1 font-semibold">HN: {job.deadline}</p>
                     </div>
                   </Link>
@@ -180,7 +225,7 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
             )}
 
             {activeTab === "reviews" && (
-              <div className="bg-white border border-[#E0F5FB] rounded-2xl p-6 text-center">
+              <div className="bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-2xl p-6 text-center">
                 <p className="text-5xl font-bold text-[#F59E0B] mb-2">—</p>
                 <p className="text-sm text-gray-500">Chưa có đánh giá. Chức năng đánh giá sẽ sớm được ra mắt.</p>
               </div>
@@ -189,7 +234,7 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
 
           {/* RIGHT SIDEBAR */}
           <div className="w-full lg:w-80 flex-shrink-0 space-y-5">
-            <div className="bg-white border border-[#E0F5FB] rounded-2xl p-5">
+            <div className="bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-2xl p-5">
               <h3 className="font-bold text-sm text-[#005a71] mb-4">Thông tin công ty</h3>
               <div className="space-y-3 text-sm">
                 {[
@@ -201,18 +246,18 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
                   <div key={info.label} className="flex items-start gap-3">
                     <span className="text-base mt-0.5">{info.icon}</span>
                     <div>
-                      <p className="text-xs text-[#3f484c]">{info.label}</p>
+                      <p className="text-xs text-[#3f484c] dark:text-gray-400">{info.label}</p>
                       {info.isLink && info.value !== "—" ? (
                         <a href={`https://${info.value}`} className="font-semibold text-[#005a71] hover:underline">{info.value}</a>
                       ) : (
-                        <p className="font-semibold text-[#001e30]">{info.value}</p>
+                        <p className="font-semibold text-[#001e30] dark:text-white">{info.value}</p>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="bg-white border border-[#E0F5FB] rounded-2xl p-5">
+            <div className="bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-2xl p-5">
               <h3 className="font-bold text-sm text-[#005a71] mb-4">Công ty tương tự</h3>
               <p className="text-sm text-gray-500">Sẽ sớm cập nhật.</p>
             </div>

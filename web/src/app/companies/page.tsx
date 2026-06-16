@@ -26,8 +26,25 @@ async function fetchCompanies() {
   } catch { return { items: [], total: 0 }; }
 }
 
+async function fetchJobsCount() {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/v1/jobs?limit=1`, { next: { revalidate: 60 } });
+    if (!res.ok) {
+      console.log("fetchJobsCount: res not ok", res.status);
+      return 0;
+    }
+    const data = await res.json();
+    console.log("fetchJobsCount data:", JSON.stringify(data));
+    return data.data?.total || 0;
+  } catch (e) {
+    console.log("fetchJobsCount error:", e);
+    return 0;
+  }
+}
+
 export default async function CompaniesPage() {
   const companiesData = await fetchCompanies();
+  const totalJobs = await fetchJobsCount();
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -48,6 +65,7 @@ export default async function CompaniesPage() {
       <CompaniesPageClient
         initialCompanies={companiesData.items || []}
         initialTotal={companiesData.total || 0}
+        totalJobs={totalJobs}
       />
     </>
   );

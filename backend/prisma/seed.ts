@@ -560,6 +560,22 @@ async function main() {
     },
   });
 
+  const employers2to8 = await Promise.all(
+    Array.from({ length: 99 }, (_, i) => {
+      const num = i + 2;
+      return prisma.user.create({
+        data: {
+          id: `cuid_employer_${String(num).padStart(3, '0')}`,
+          name: `Employer ${num}`,
+          email: `employer${num}@phuquoc.jobs`,
+          emailVerified: true,
+          role: Role.EMPLOYER,
+          phone: `0900000${String(num + 2).padStart(3, '0')}`,
+        },
+      });
+    })
+  );
+
   const candidate = await prisma.user.create({
     data: {
       id: 'cuid_candidate_001',
@@ -573,7 +589,7 @@ async function main() {
 
   console.log('Seeded users');
 
-  // ===== Company =====
+  // ===== Companies =====
   const company = await prisma.company.create({
     data: {
       id: 'company_001',
@@ -589,7 +605,152 @@ async function main() {
     },
   });
 
-  console.log('Seeded company');
+  await Promise.all([
+    prisma.company.create({
+      data: {
+        id: 'company_002',
+        name: 'Vinpearl Resort',
+        slug: 'vinpearl-resort',
+        description: 'Resort cao cấp',
+        wardId: wards[0].id,
+        addressDetail: '1 Bãi Dài',
+        size: 'SIZE_500_PLUS',
+        industry: 'Khách sạn & Resort',
+        ownerId: employers2to8[0].id,
+        isApproved: true,
+      },
+    }),
+    prisma.company.create({
+      data: {
+        id: 'company_003',
+        name: 'Sao Biển Restaurant',
+        slug: 'sao-bien-restaurant',
+        description: 'Nhà hàng hải sản',
+        wardId: wards[1].id,
+        addressDetail: '20 Trần Hưng Đạo',
+        size: 'SIZE_51_200',
+        industry: 'Nhà hàng & F&B',
+        ownerId: employers2to8[1].id,
+        isApproved: true,
+      },
+    }),
+    prisma.company.create({
+      data: {
+        id: 'company_004',
+        name: 'PQ Travel',
+        slug: 'pq-travel',
+        description: 'Công ty du lịch lữ hành',
+        wardId: wards[2].id,
+        addressDetail: '5 Nguyễn Trãi',
+        size: 'SIZE_1_50',
+        industry: 'Du lịch & Lữ hành',
+        ownerId: employers2to8[2].id,
+        isApproved: true,
+      },
+    }),
+    prisma.company.create({
+      data: {
+        id: 'company_005',
+        name: 'PQ Mart',
+        slug: 'pq-mart',
+        description: 'Chuỗi bán lẻ',
+        wardId: wards[3].id,
+        addressDetail: '10 Lê Lợi',
+        size: 'SIZE_201_500',
+        industry: 'Bán lẻ & Dịch vụ',
+        ownerId: employers2to8[3].id,
+        isApproved: true,
+      },
+    }),
+    prisma.company.create({
+      data: {
+        id: 'company_006',
+        name: 'PQ Tech',
+        slug: 'pq-tech',
+        description: 'Công ty công nghệ',
+        wardId: wards[0].id,
+        addressDetail: '99 Hùng Vương',
+        size: 'SIZE_1_50',
+        industry: 'IT & Công nghệ',
+        ownerId: employers2to8[4].id,
+        isApproved: true,
+      },
+    }),
+    prisma.company.create({
+      data: {
+        id: 'company_007',
+        name: 'PQ Construction',
+        slug: 'pq-construction',
+        description: 'Công ty xây dựng',
+        wardId: wards[1].id,
+        addressDetail: '7 Phạm Văn Đồng',
+        size: 'SIZE_51_200',
+        industry: 'Xây dựng',
+        ownerId: employers2to8[5].id,
+        isApproved: true,
+      },
+    }),
+    prisma.company.create({
+      data: {
+        id: 'company_008',
+        name: 'PQ Spa & Wellness',
+        slug: 'pq-spa-wellness',
+        description: 'Spa và chăm sóc sức khỏe',
+        wardId: wards[2].id,
+        addressDetail: '15 Trần Phú',
+        size: 'SIZE_1_50',
+        industry: 'Y tế & Spa',
+        ownerId: employers2to8[6].id,
+        isApproved: true,
+      },
+    }),
+  ]);
+
+  await Promise.all(
+    Array.from({ length: 12 }, (_, i) => {
+      const num = i + 9; // 9..20
+      const industries = ['Khách sạn & Resort', 'Nhà hàng & F&B', 'Du lịch & Lữ hành', 'Bán lẻ & Dịch vụ', 'IT & Công nghệ', 'Xây dựng', 'Y tế & Spa', 'Du lịch - Khách sạn'];
+      const sizes = ['SIZE_1_50', 'SIZE_51_200', 'SIZE_201_500', 'SIZE_500_PLUS'];
+      return prisma.company.create({
+        data: {
+          id: `company_${String(num).padStart(3, '0')}`,
+          name: `Công ty Demo ${num}`,
+          slug: `cong-ty-demo-${num}`,
+          description: `Mô tả công ty demo số ${num}`,
+          wardId: wards[i % 4].id,
+          addressDetail: `${num} Đường Demo`,
+          size: sizes[i % sizes.length] as any,
+          industry: industries[i % industries.length],
+          ownerId: employers2to8[i + 7].id, // employers index 7..18 = id 009..020
+          isApproved: true,
+        },
+      });
+    })
+  );
+
+  await Promise.all(
+    Array.from({ length: 80 }, (_, i) => {
+      const num = i + 21; // 21..100
+      const industries = ['Khách sạn & Resort', 'Nhà hàng & F&B', 'Du lịch & Lữ hành', 'Bán lẻ & Dịch vụ', 'IT & Công nghệ', 'Xây dựng', 'Y tế & Spa', 'Du lịch - Khách sạn'];
+      const sizes = ['SIZE_1_50', 'SIZE_51_200', 'SIZE_201_500', 'SIZE_500_PLUS'];
+      return prisma.company.create({
+        data: {
+          id: `company_${String(num).padStart(3, '0')}`,
+          name: `Công ty Demo ${num}`,
+          slug: `cong-ty-demo-${num}`,
+          description: `Mô tả công ty demo số ${num}`,
+          wardId: wards[i % 4].id,
+          addressDetail: `${num} Đường Demo`,
+          size: sizes[i % sizes.length] as any,
+          industry: industries[i % industries.length],
+          ownerId: employers2to8[i + 19].id, // index 19..98 = id 021..100
+          isApproved: true,
+        },
+      });
+    })
+  );
+
+  console.log('Seeded companies');
 
   // ===== Jobs =====
   await Promise.all([
