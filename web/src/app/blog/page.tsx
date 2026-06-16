@@ -1,3 +1,8 @@
+/**
+ * @file page.tsx (Blog)
+ * @description Trang chính của danh sách Blog/Cẩm nang.
+ * @note [HuynhhThanh] Trao đổi dữ liệu: Lấy danh sách bài viết (blogs) và danh mục (blog-categories) từ Backend API (/api/v1/blogs) và truyền xuống component con BlogPageClient.
+ */
 import type { Metadata } from 'next';
 import BlogPageClient from '@/components/blog/BlogPageClient';
 

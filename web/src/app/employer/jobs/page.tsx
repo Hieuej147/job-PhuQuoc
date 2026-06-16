@@ -1,3 +1,9 @@
+/**
+ * TÊN TRANG: Quản lý Tin Tuyển Dụng (Employer Jobs List)
+ * MÔ TẢ: Hiển thị toàn bộ danh sách các tin tuyển dụng (Job) mà nhà tuyển dụng này đã đăng, kèm theo trạng thái và số lượng ứng viên nộp hồ sơ.
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - Fetch `/api/v1/jobs/my`: Lấy danh sách việc làm liên kết với tài khoản nhà tuyển dụng hiện tại từ bảng `Job`, bao gồm tính toán gộp (aggregation) count của `Application` liên quan.
+ */
 "use client";
 
 import { useEffect, useState } from "react";

@@ -1,3 +1,8 @@
+/**
+ * @file blogs.controller.ts
+ * @description Controller xử lý các API liên quan đến Blog/Cẩm nang.
+ * @note [HuynhhThanh] Trao đổi dữ liệu: Trả về danh sách bài viết và chi tiết bài viết (chứa lượt xem thực tế) từ Database (PostgreSQL) cho Frontend (Next.js).
+ */
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BlogsService } from './blogs.service';

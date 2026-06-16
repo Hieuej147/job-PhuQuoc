@@ -1,3 +1,8 @@
+/**
+ * @file page.tsx (Blog Detail)
+ * @description Trang hiển thị chi tiết một bài viết Blog.
+ * @note [HuynhhThanh] Trao đổi dữ liệu: Nhận `slug` từ URL, gọi API Backend (`/api/v1/blogs/slug/:slug`) để lấy dữ liệu thực tế của bài viết, đồng thời gọi thêm API lấy danh sách bài viết liên quan và phổ biến.
+ */
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/common/Header";

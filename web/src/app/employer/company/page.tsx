@@ -1,3 +1,11 @@
+/**
+ * TÊN TRANG: Hồ sơ Công ty (Employer Company Profile)
+ * MÔ TẢ: Cho phép nhà tuyển dụng xem, cập nhật thông tin giới thiệu công ty.
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - Lấy thông tin (GET): Fetch `/api/v1/companies/my` để lấy thông tin công ty hiện tại từ bảng `Company`.
+ * - Tạo mới (POST): Fetch `/api/v1/companies` nếu nhà tuyển dụng chưa tạo profile công ty.
+ * - Cập nhật (PATCH): Fetch `/api/v1/companies/:id` để lưu thay đổi thông tin (tên, mô tả, website, lĩnh vực) vào Database.
+ */
 "use client";
 
 import { useEffect, useState } from "react";

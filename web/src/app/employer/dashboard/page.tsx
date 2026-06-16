@@ -1,3 +1,11 @@
+/**
+ * TÊN TRANG: Tổng quan Nhà tuyển dụng (Employer Dashboard)
+ * MÔ TẢ: Hiển thị các chỉ số thống kê, trạng thái tin tuyển dụng, danh sách hồ sơ ứng viên mới nhất và thông báo cho nhà tuyển dụng.
+ * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
+ * - Fetch `/api/v1/jobs/my`: Lấy danh sách tin tuyển dụng của công ty (kèm số lượng hồ sơ) từ bảng `Job`.
+ * - Fetch `/api/v1/applications/employer`: Lấy hồ sơ ứng viên mới nộp từ bảng `Application` và `User`.
+ * - Fetch `/api/v1/notifications`: Lấy thông báo hệ thống từ bảng `Notification`.
+ */
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -319,9 +327,11 @@ export default function EmployerDashboard() {
             <div className="w-10 h-10 rounded-xl bg-[#F59E0B]/10 flex items-center justify-center">
               <Briefcase className="w-5 h-5 text-[#F59E0B]" />
             </div>
-            <span className="text-xs font-medium text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
-              +1 mới
-            </span>
+            {jobs.some(j => j.newApplicationCount) && (
+              <span className="text-xs font-medium text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
+                Có cập nhật
+              </span>
+            )}
           </div>
           <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.activeJobs}</p>
           <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Tin đang tuyển</p>
@@ -333,11 +343,13 @@ export default function EmployerDashboard() {
             <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
               <FileText className="w-5 h-5 text-blue-600" />
             </div>
-            <span className="text-xs font-medium text-[#F59E0B] bg-[#F59E0B]/10 px-2 py-0.5 rounded-full">
-              12 mới
-            </span>
+            {stats.pendingCount > 0 && (
+              <span className="text-xs font-medium text-[#F59E0B] bg-[#F59E0B]/10 px-2 py-0.5 rounded-full">
+                {stats.pendingCount} mới
+              </span>
+            )}
           </div>
-          <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.totalApplicants || 47}</p>
+          <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.totalApplicants}</p>
           <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Tổng hồ sơ nhận</p>
         </div>
 
@@ -351,7 +363,7 @@ export default function EmployerDashboard() {
               Chờ duyệt
             </span>
           </div>
-          <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.pendingCount || 12}</p>
+          <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.pendingCount}</p>
           <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Cần xem xét</p>
         </div>
 
@@ -427,7 +439,7 @@ export default function EmployerDashboard() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">Xem hồ sơ</p>
-                <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">12 hồ sơ mới chờ</p>
+                <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">{stats.pendingCount} hồ sơ mới chờ</p>
               </div>
               <ArrowRight className="w-4 h-4 text-[#6f787d] group-hover:text-blue-600 transition-colors" />
             </Link>
@@ -609,7 +621,9 @@ export default function EmployerDashboard() {
         <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">Thông báo</h2>
-            <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">2 mới</span>
+            {notifications.length > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{notifications.length} mới</span>
+            )}
           </div>
           <div className="flex flex-col gap-3">
             {notifications.map((notif) => (

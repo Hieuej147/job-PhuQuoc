@@ -1,3 +1,8 @@
+/**
+ * @file BlogCard.tsx
+ * @description Component Card hiển thị tóm tắt một bài viết Blog.
+ * @note [HuynhhThanh] Trao đổi dữ liệu: Nhận các props (title, excerpt, views, date, author...) từ BlogPageClient, đây đều là dữ liệu thực tế từ Database.
+ */
 // components/blog/BlogCard.tsx
 import Link from "next/link";
 
@@ -101,9 +106,6 @@ export default function BlogCard({
                         <div className="flex items-center gap-3 blog-meta text-[11px] text-slate-400 dark:text-[#94A3B8]">
                             <span className="flex items-center gap-0.5">
                                 <span className="material-symbols-outlined text-[13px]">visibility</span> {formatViews(views)}
-                            </span>
-                            <span className="flex items-center gap-0.5">
-                                <span className="material-symbols-outlined text-[13px]">schedule</span> 8 phút
                             </span>
                         </div>
                     </div>

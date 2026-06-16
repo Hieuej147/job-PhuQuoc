@@ -1,8 +1,16 @@
+/**
+ * @file JobDetailClient.tsx
+ * @description Component hiển thị chi tiết công việc.
+ * @note [HuynhhThanh] Đã thêm logic kiểm tra đăng nhập (useAuth) khi nhấn "Ứng tuyển" và "Lưu việc làm". Tự động gọi API kiểm tra trạng thái lưu việc làm và yêu cầu người dùng đăng nhập để thao tác.
+ */
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { OverviewItem } from "@/types/job";
 import { Briefcase, Loader2, X, CheckCircle2 } from "lucide-react";
+
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth/auth-provider";
 
 import JobDetailHero from "@/components/jobs/JobDetailHero";
 import {
@@ -131,9 +139,43 @@ function getCompanyInitials(name: string): string {
 }
 
 export default function JobDetailClient({ job, relatedJobs }: JobDetailClientProps) {
+  const router = useRouter();
+  const { user } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
 
-  const toggleSave = useCallback(() => setIsSaved((prev) => !prev), []);
+  useEffect(() => {
+    if (!user) {
+      setIsSaved(false);
+      return;
+    }
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/v1/saved/jobs?limit=200", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const items = data.data?.items || data.items || [];
+        if (active) {
+          setIsSaved(items.some((item: any) => item.jobId === job.id));
+        }
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, [user, job.id]);
+
+  const toggleSave = useCallback(async () => {
+    if (!user) {
+      router.push(`/auth/login?redirect=/jobs/${job.slug}`);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/saved/jobs/${job.id}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) setIsSaved((prev) => !prev);
+    } catch {}
+  }, [user, router, job.id, job.slug]);
 
   const deadlinePercent = useMemo(() => {
     if (!job.deadline) return 0;
@@ -222,6 +264,10 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const openApplyModal = async () => {
+    if (!user) {
+      router.push(`/auth/login?redirect=/jobs/${job.slug}`);
+      return;
+    }
     setShowApplyModal(true);
     setApplyError(null);
     // Fetch user's resumes

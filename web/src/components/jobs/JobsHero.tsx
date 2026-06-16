@@ -3,6 +3,7 @@
 /**
  * @file JobsHero.tsx
  * @description Component banner tìm kiếm chính của trang danh sách việc làm.
+ * @note [HuynhhThanh] Đã loại bỏ các Quick Tags hardcode và thay bằng dữ liệu thực tế (categories) lấy từ cơ sở dữ liệu để đảm bảo tính đồng bộ và linh hoạt.
  * 
  * Các phân hệ chức năng:
  * 1. Tiêu đề & Thống kê: Tiêu đề động và thống kê số lượng bài đăng việc làm hiện có trên hệ thống.
@@ -27,16 +28,6 @@ interface JobsHeroProps {
   onSearch: (keyword: string, location: string, industry: string) => void; // Hàm callback kích hoạt khi nhấn Tìm kiếm
 }
 
-// Danh sách các thẻ từ khóa tìm nhanh hỗ trợ người dùng click chọn nhanh
-const QUICK_TAGS = [
-  "Lễ tân khách sạn",
-  "Bếp trưởng",
-  "Hướng dẫn viên",
-  "Kế toán",
-  "Marketing",
-  "Bảo vệ",
-  "Bartender",
-];
 
 export default function JobsHero({
   totalJobs,
@@ -178,13 +169,13 @@ export default function JobsHero({
           <span className="text-white/70 text-sm mr-1 self-center">
             Tìm nhanh:
           </span>
-          {QUICK_TAGS.map((tag) => (
+          {categories.slice(0, 7).map((cat) => (
             <button
-              key={tag}
-              onClick={() => handleQuickTag(tag)}
+              key={cat.id}
+              onClick={() => handleQuickTag(cat.name)}
               className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded-full transition-colors border border-white/30 cursor-pointer"
             >
-              {tag}
+              {cat.name}
             </button>
           ))}
         </div>
