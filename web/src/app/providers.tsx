@@ -1,6 +1,7 @@
 "use client";
 
 import { CopilotKitProvider } from "@copilotkit/react-core/v2";
+//@ts-ignore
 import "@copilotkit/react-core/v2/styles.css";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,6 +23,7 @@ export function Providers({
           <CopilotKitProvider
             runtimeUrl="/api/copilotkit"
             credentials="include"
+            publicLicenseKey={process.env.NEXT_PUBLIC_COPILOTKIT_LICENSE_KEY}
             showDevConsole={true}
           >
             {children}

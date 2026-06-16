@@ -10,14 +10,11 @@ describe('CustomAuthController', () => {
       getProfile: vi.fn(),
       updateProfile: vi.fn(),
       selectRole: vi.fn(),
+      registerEmail: vi.fn(),
+      completeEmailRegistration: vi.fn(),
+      requestPasswordReset: vi.fn(),
     };
-    controller = new CustomAuthController(authServiceMock as any, {
-      execute: vi.fn(),
-    } as any, {
-      execute: vi.fn(),
-    } as any, {
-      execute: vi.fn(),
-    } as any);
+    controller = new CustomAuthController(authServiceMock as any);
   });
 
   it('should be defined', () => {
@@ -95,27 +92,17 @@ describe('CustomAuthController', () => {
       });
 
       expect(result).toEqual({ user: mockUpdated });
-      expect(authServiceMock.selectRole).toHaveBeenCalledWith(
-        'cuid123',
-        'EMPLOYER',
-      );
+      expect(authServiceMock.selectRole).toHaveBeenCalledWith('cuid123', 'EMPLOYER');
     });
   });
 
   describe('registerEmail', () => {
-    it('should delegate register flow to use case', async () => {
-      const useCase = {
-        execute: vi.fn().mockResolvedValue({
-          status: 'VERIFY_EMAIL',
-          email: 'test@example.com',
-          role: 'CANDIDATE',
-        }),
-      };
-      controller = new CustomAuthController(authServiceMock as any, useCase as any, {
-        execute: vi.fn(),
-      } as any, {
-        execute: vi.fn(),
-      } as any);
+    it('should delegate register flow to service', async () => {
+      authServiceMock.registerEmail.mockResolvedValue({
+        status: 'VERIFY_EMAIL',
+        email: 'test@example.com',
+        role: 'CANDIDATE',
+      });
 
       const result = await controller.registerEmail({
         name: 'Test User',
@@ -129,7 +116,7 @@ describe('CustomAuthController', () => {
         email: 'test@example.com',
         role: 'CANDIDATE',
       });
-      expect(useCase.execute).toHaveBeenCalledWith({
+      expect(authServiceMock.registerEmail).toHaveBeenCalledWith({
         name: 'Test User',
         email: 'test@example.com',
         password: 'password123',
@@ -139,33 +126,8 @@ describe('CustomAuthController', () => {
   });
 
   describe('completeEmailRegistration', () => {
-    it('should delegate complete flow to use case', async () => {
-      const useCase = {
-        execute: vi.fn().mockResolvedValue({
-          user: {
-            id: 'cuid123',
-            name: 'Test User',
-            email: 'test@example.com',
-            emailVerified: true,
-            image: null,
-            role: 'CANDIDATE',
-            phone: null,
-          },
-        }),
-      };
-      controller = new CustomAuthController(authServiceMock as any, {
-        execute: vi.fn(),
-      } as any, useCase as any, {
-        execute: vi.fn(),
-      } as any);
-
-      const result = await controller.completeEmailRegistration({
-        email: 'test@example.com',
-        otp: '123456',
-        password: 'password123',
-      } as any);
-
-      expect(result).toEqual({
+    it('should delegate complete flow to service', async () => {
+      authServiceMock.completeEmailRegistration.mockResolvedValue({
         user: {
           id: 'cuid123',
           name: 'Test User',
@@ -176,7 +138,15 @@ describe('CustomAuthController', () => {
           phone: null,
         },
       });
-      expect(useCase.execute).toHaveBeenCalledWith({
+
+      const result = await controller.completeEmailRegistration({
+        email: 'test@example.com',
+        otp: '123456',
+        password: 'password123',
+      } as any);
+
+      expect(result.user.emailVerified).toBe(true);
+      expect(authServiceMock.completeEmailRegistration).toHaveBeenCalledWith({
         email: 'test@example.com',
         otp: '123456',
         password: 'password123',
@@ -185,23 +155,11 @@ describe('CustomAuthController', () => {
   });
 
   describe('requestPasswordReset', () => {
-    it('should delegate forgot password flow to use case', async () => {
-      const useCase = {
-        execute: vi.fn().mockResolvedValue({
-          status: 'RESET_OTP_SENT',
-          email: 'test@example.com',
-        }),
-      };
-      controller = new CustomAuthController(
-        authServiceMock as any,
-        {
-          execute: vi.fn(),
-        } as any,
-        {
-          execute: vi.fn(),
-        } as any,
-        useCase as any,
-      );
+    it('should delegate forgot password flow to service', async () => {
+      authServiceMock.requestPasswordReset.mockResolvedValue({
+        status: 'RESET_OTP_SENT',
+        email: 'test@example.com',
+      });
 
       const result = await controller.requestPasswordReset({
         email: 'test@example.com',
@@ -211,7 +169,7 @@ describe('CustomAuthController', () => {
         status: 'RESET_OTP_SENT',
         email: 'test@example.com',
       });
-      expect(useCase.execute).toHaveBeenCalledWith({
+      expect(authServiceMock.requestPasswordReset).toHaveBeenCalledWith({
         email: 'test@example.com',
       });
     });

@@ -1,13 +1,12 @@
 "use client";
 
-import { CopilotChat } from "@copilotkit/react-core/v2";
-import { useAgentContext } from "@copilotkit/react-core/v2";
+import { CopilotChat, useAgentContext } from "@copilotkit/react-core/v2";
 import { useMemo } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
-import { useJobSearchRenderer } from "@/components/ai/renderers/job-search-renderer";
 import { useTemplateRenderer } from "@/hooks/use-template-renderer";
-import { useExportPdfTool } from "@/components/cv/export-pdf-tool";
 import { createAgentProgressMessageView } from "@/components/ai/agent-progress-chat-message";
+
+const CV_AGENT_ID = "candidate-cv-agent";
 
 export default function AICVPage() {
   const { user } = useAuth();
@@ -19,13 +18,10 @@ export default function AICVPage() {
       : "Chưa đăng nhập",
   });
 
-  // Mount tool renderers
-  useJobSearchRenderer();
   useTemplateRenderer();
-  useExportPdfTool();
 
   const progressMessageView = useMemo(
-    () => createAgentProgressMessageView("candidate", "AI CV Assistant"),
+    () => createAgentProgressMessageView(CV_AGENT_ID, "AI CV Assistant"),
     [],
   );
 
@@ -33,11 +29,12 @@ export default function AICVPage() {
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="min-h-0 flex-1">
         <CopilotChat
-          agentId="candidate"
+          agentId={CV_AGENT_ID}
           messageView={progressMessageView}
           labels={{
             modalHeaderTitle: "AI CV Assistant",
-            welcomeMessageText: "Xin chào! Tôi là AI CV Assistant.\n\n🎨 Tạo CV — Mô tả vị trí muốn apply\n✏️ Chỉnh sửa CV — Thay đổi layout, màu sắc\n📄 Export PDF — Tải CV về máy\n🔍 Tìm việc — Tìm kiếm việc làm\n\nBạn muốn làm gì?",
+            welcomeMessageText:
+              "Xin chào! Tôi là AI CV Assistant. Phase này tôi chỉ thiết kế và preview template CV dynamic, chưa lưu DB hoặc export PDF. Bạn muốn mẫu CV theo phong cách nào?",
           }}
         />
       </div>

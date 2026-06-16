@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 // ============================================================
@@ -290,12 +292,22 @@ model Job {
   applications JobApplication[]
   savedJobs    SavedJob[]
   payments     Payment[]
+  embedding    JobEmbedding?
 
   @@index([categoryId])
   @@index([companyId])
   @@index([status])
   @@index([wardId])
   @@map("job")
+}
+
+model JobEmbedding {
+  id        String   @id @default(cuid())
+  jobId     String   @unique
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  embedding Unsupported("vector(768)")
+
+  @@map("job_embedding")
 }
 
 // ============================================================

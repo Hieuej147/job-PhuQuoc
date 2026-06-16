@@ -40,68 +40,66 @@ function CVPreviewInline({ html, css = "" }: { html: string; css?: string }) {
   );
 }
 
+function normalizeCvResult(result: unknown): { html: string; css?: string } | null {
+  if (!result) return null;
+
+  if (Array.isArray(result)) {
+    for (const item of result) {
+      if (item && typeof item === "object" && "type" in item && "text" in item) {
+        const normalized = normalizeCvResult((item as { text?: unknown }).text);
+        if (normalized) return normalized;
+      }
+    }
+    return null;
+  }
+
+  try {
+    const data = typeof result === "string" ? JSON.parse(result) : result;
+    if (data && typeof data === "object" && "html" in data) {
+      return data as { html: string; css?: string };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function renderCvToolResult(status: string, result: unknown, loadingText: string) {
+  if (status === "inProgress" || status === "executing") {
+    return <LoadingCard text={loadingText} />;
+  }
+
+  if (status === "complete" && result) {
+    const cv = normalizeCvResult(result);
+    if (cv) return <CVPreviewInline html={cv.html} css={cv.css || ""} />;
+  }
+
+  return <></>;
+}
+
 export function useTemplateRenderer() {
-  // generate_cv_template
   useRenderTool({
     name: "generate_cv_template",
-    parameters: z.object({ description: z.string() }),
-    render: ({ status, result }) => {
-      if (status === "inProgress") {
-        return <LoadingCard text="Đang chuẩn bị tạo CV..." />;
-      }
-
-      if (status === "executing") {
-        return <LoadingCard text="Đang tạo CV..." />;
-      }
-
-      if (status === "complete" && result) {
-        try {
-          const data = typeof result === "string" ? JSON.parse(result) : result;
-          if (data.html) {
-            return <CVPreviewInline html={data.html} css={data.css || ""} />;
-          }
-        } catch {
-          // result không phải JSON -> bỏ qua
-        }
-      }
-
-      return null;
-    },
+    parameters: z.object({ description: z.string().optional() }),
+    render: ({ status, result }) => renderCvToolResult(status, result, "Đang tạo CV..."),
   });
 
-  // adjust_cv_template
   useRenderTool({
     name: "adjust_cv_template",
-    parameters: z.object({ adjustment: z.string() }),
-    render: ({ status, result }) => {
-      if (status === "inProgress" || status === "executing") {
-        return <LoadingCard text="Đang chỉnh sửa CV..." />;
-      }
-
-      if (status === "complete" && result) {
-        try {
-          const data = typeof result === "string" ? JSON.parse(result) : result;
-          if (data.html) {
-            return <CVPreviewInline html={data.html} css={data.css || ""} />;
-          }
-        } catch {
-          // result không phải JSON -> bỏ qua
-        }
-      }
-
-      return null;
-    },
+    parameters: z.object({ adjustment: z.string().optional() }),
+    render: ({ status, result }) => renderCvToolResult(status, result, "Đang chỉnh sửa CV..."),
   });
 
-  // save_resume
   useRenderTool({
-    name: "save_resume",
-    parameters: z.object({ title: z.string().optional() }),
-    render: ({ status }) => {
-      if (status === "inProgress" || status === "executing") {
-        return <LoadingCard text="Đang lưu CV..." />;
-      }
-      return null;
-    },
+    name: "upsert_cv_template",
+    parameters: z.object({}).passthrough(),
+    render: ({ status, result }) => renderCvToolResult(status, result, "Đang thiết kế template CV..."),
+  });
+
+  useRenderTool({
+    name: "preview_cv",
+    parameters: z.object({}).passthrough(),
+    render: ({ status, result }) => renderCvToolResult(status, result, "Đang dựng preview CV..."),
   });
 }
