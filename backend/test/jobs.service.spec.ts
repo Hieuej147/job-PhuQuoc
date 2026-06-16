@@ -8,6 +8,7 @@ describe('JobsService', () => {
   let auditServiceMock: any;
   let cacheMock: any;
   let companyContractMock: any;
+  let embeddingServiceMock: any;
 
   beforeEach(() => {
     prismaMock = {
@@ -40,7 +41,10 @@ describe('JobsService', () => {
       findById: vi.fn(),
       findByOwnerId: vi.fn(),
     };
-    service = new JobsService(prismaMock as any, inngestMock, auditServiceMock, cacheMock as any, companyContractMock);
+    embeddingServiceMock = {
+      syncJobEmbedding: vi.fn().mockResolvedValue(undefined),
+    };
+    service = new JobsService(prismaMock as any, inngestMock, auditServiceMock, cacheMock as any, companyContractMock, embeddingServiceMock);
   });
 
   it('should be defined', () => {

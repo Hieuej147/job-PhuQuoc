@@ -11,13 +11,15 @@
     "dev:flush": "pm2 flush && pm2 restart all",
     "dev:backend": "pm2 logs backend --lines 30",
     "dev:frontend": "pm2 logs frontend --lines 30",
+    "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "clean": "turbo run clean",
     "db:up": "docker compose -f docker/docker-compose.yml up -d",
     "db:down": "docker compose -f docker/docker-compose.yml down",
     "db:reset": "cd backend && npx prisma migrate reset --force && npx prisma db seed",
-    "db:studio": "cd backend && npx prisma studio"
+    "db:studio": "cd backend && npx prisma studio",
+    "redis:ui": "pnpm dlx redis-commander --redis-host 127.0.0.1 --redis-port 6381"
   },
   "devDependencies": {
     "turbo": "^2.0.0"

@@ -76,3 +76,12 @@ AGENTS.md
 
 docs/AI_CO_WORKER_ARCHITECTURE.md
 docs/HOMEPAGE_JOBS_REVIEW.md
+docs/CV_MCP_SERVER_PLAN.md
+docs/rag-job-agent-architecture.md
+docs/COPILOTKIT_MULTI_AGENT_CANVAS_ANALYSIS.md
+docs/COPILOTKIT_THREADS_AND_AGENT_HOSTING.md
+backend/test_jwt.js
+docs/AGENT_LOCK_AND_MCP_ARCHITECTURE.md
+backend/check_sessions.js
+docs/AI_AGENT_ARCHITECTURE_PLAN.md
+backend/prisma/seed-patch-companies.ts

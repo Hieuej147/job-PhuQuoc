@@ -22,7 +22,8 @@ class SearchJobsTool(BaseTool):
     name = "search_jobs"
     description = (
         "Tìm kiếm việc làm phù hợp theo từ khóa, địa điểm và mức lương. "
-        "Dùng khi ứng viên muốn tìm việc hoặc xem gợi ý việc làm."
+        "Dùng khi ứng viên muốn tìm việc hoặc xem gợi ý việc làm. "
+        "TUYỆT ĐỐI KHÔNG DÙNG tool này nếu user yêu cầu 'thiết kế UI', 'tạo mẫu CV', 'làm template' hoặc 'code Tailwind'."
     )
     args_schema = SearchJobsInput
 
@@ -77,34 +78,55 @@ class SearchJobsTool(BaseTool):
         max_salary: Optional[int] = None,
         limit: int = 10,
     ) -> dict:
-        params = {
-            "search": keyword,
-            "status": "ACTIVE",
-            "limit": limit,
-        }
-        if location:
-            params["wardId"] = location
-        if min_salary:
-            params["salaryMin"] = min_salary
-        if max_salary:
-            params["salaryMax"] = max_salary
+        import os
+        import httpx
+
+        ollama_url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
+        model = os.environ.get("EMBEDDING_MODEL", "nomic-embed-text")
 
         try:
-            response = await self.api_client.get("/jobs", params=params)
-            jobs = response.get("items", [])
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{ollama_url}/api/embeddings",
+                    json={"model": model, "prompt": keyword},
+                    timeout=30.0
+                )
+                response.raise_for_status()
+                embedding = response.json().get("embedding")
+        except Exception as e:
+            return {"error": f"Failed to generate embedding: {str(e)}", "jobs": [], "total": 0}
+
+        if not embedding:
+            return {"error": "No embedding generated", "jobs": [], "total": 0}
+
+        payload = {
+            "embedding": embedding,
+            "limit": limit
+        }
+
+        if location:
+            payload["wardId"] = location
+        if min_salary:
+            payload["salaryMin"] = min_salary
+        if max_salary:
+            payload["salaryMax"] = max_salary
+
+        try:
+            jobs = await self.api_client.post("/jobs/search-vector", json=payload)
             return {
                 "jobs": [
                     {
                         "id": j.get("id"),
                         "title": j.get("title"),
-                        "company": j.get("company", {}).get("name"),
-                        "salary": f"{j.get('salaryMin', '?')}-{j.get('salaryMax', '?')}",
-                        "location": j.get("wardId"),
+                        "company": j.get("company"),
+                        "salary": j.get("salary"),
+                        "location": j.get("location"),
                         "type": j.get("type"),
+                        "similarity": j.get("similarity"),
                     }
                     for j in jobs
                 ],
-                "total": response.get("total", 0),
+                "total": len(jobs),
             }
         except Exception as e:
             return {"error": str(e), "jobs": [], "total": 0}

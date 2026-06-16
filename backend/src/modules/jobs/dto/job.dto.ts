@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, IsEnum, IsDateString, Min } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsEnum, IsDateString, Min, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
 
@@ -245,4 +245,15 @@ export class MyJobsQueryDto {
   @IsOptional()
   @IsString()
   status?: string;
+}
+
+export class VectorSearchDto {
+  @IsArray()
+  embedding: number[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
 }
