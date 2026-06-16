@@ -2,23 +2,47 @@
 
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Circle } from "lucide-react";
+import { CheckCircle2, Circle, Clock, AlertTriangle } from "lucide-react";
 import { timeAgo } from "@/lib/utils/date";
 import { companyInitials } from "@/lib/utils/format";
 
 interface Application {
   id: string;
-  job: { title: string; company: { name: string } };
+  job: {
+    title: string;
+    company: { name: string };
+    ward?: { name: string };
+  };
   createdAt: string;
   status: "PENDING" | "REVIEWING" | "ACCEPTED" | "REJECTED";
 }
 
 function StatusBadge({ status }: { status: Application["status"] }) {
   const styles: Record<string, { bg: string; text: string; icon: React.ReactNode; label: string }> = {
-    ACCEPTED: { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-400", icon: <CheckCircle2 className="size-3" />, label: "Chấp nhận" },
-    REVIEWING: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400", icon: <Circle className="size-3" />, label: "Đang xem xét" },
-    PENDING: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-400", icon: <Circle className="size-3" />, label: "Chờ phản hồi" },
-    REJECTED: { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-400", icon: <Circle className="size-3" />, label: "Từ chối" },
+    ACCEPTED: {
+      bg: "bg-[#D1FAE5] dark:bg-green-900/30",
+      text: "text-[#059669] dark:text-green-400",
+      icon: <CheckCircle2 className="size-3" />,
+      label: "Chấp nhận",
+    },
+    REVIEWING: {
+      bg: "bg-[#DBEAFE] dark:bg-blue-900/30",
+      text: "text-[#2563EB] dark:text-blue-400",
+      icon: <Circle className="size-3" />,
+      label: "Đang xem xét",
+    },
+    PENDING: {
+      bg: "bg-[#FEF3C7] dark:bg-amber-900/30",
+      text: "text-[#D97706] dark:text-amber-400",
+      icon: <Clock className="size-3" />,
+      label: "Chờ phản hồi",
+    },
+    REJECTED: {
+      bg: "bg-[#FEE2E2] dark:bg-red-900/30",
+      text: "text-[#DC2626] dark:text-red-400",
+      icon: <AlertTriangle className="size-3" />,
+      label: "Từ chối",
+    },
   };
   const s = styles[status] || styles.PENDING;
   return (
@@ -34,7 +58,7 @@ interface RecentApplicationsProps {
 
 export function RecentApplications({ applications }: RecentApplicationsProps) {
   return (
-    <Card className="border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
+    <Card className="border-[#e1efff] dark:border-[#1E5F74]/50 dark:bg-[#0d2d42] bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,90,113,0.06)]">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">
           Đơn ứng tuyển gần đây
@@ -59,10 +83,13 @@ export function RecentApplications({ applications }: RecentApplicationsProps) {
                 <tr key={app.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-[#1E5F74]/10">
                   <td className="py-3 pr-4">
                     <p className="font-semibold text-gray-900 dark:text-[#E0F2FE]">{app.job?.title || "N/A"}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {app.job?.ward?.name ? `${app.job.ward.name}, Phú Quốc` : "Phú Quốc"}
+                    </p>
                   </td>
                   <td className="py-3 pr-4">
                     <div className="flex items-center gap-2">
-                      <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#005a71]/10 text-xs font-bold text-[#005a71]">
+                      <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#005a71]/10 text-xs font-bold text-[#005a71] dark:text-[#67E8F9]">
                         {companyInitials(app.job?.company?.name || "N/A")}
                       </div>
                       <span className="text-gray-500 dark:text-[#94A3B8]">{app.job?.company?.name || "N/A"}</span>
@@ -84,3 +111,4 @@ export function RecentApplications({ applications }: RecentApplicationsProps) {
     </Card>
   );
 }
+

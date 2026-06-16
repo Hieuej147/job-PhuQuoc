@@ -1,11 +1,7 @@
 "use client";
 
-import { CopilotSidebar } from "@copilotkit/react-core/v2";
-import { useAgentContext } from "@copilotkit/react-core/v2";
+import { CopilotSidebar, useAgentContext } from "@copilotkit/react-core/v2";
 import { useAuth } from "@/components/auth/auth-provider";
-import { useJobSearchRenderer } from "@/components/ai/renderers/job-search-renderer";
-import { useTemplateRenderer } from "@/hooks/use-template-renderer";
-import { useExportPdfTool } from "@/components/cv/export-pdf-tool";
 
 function CandidateChatContent() {
   const { user } = useAuth();
@@ -17,14 +13,7 @@ function CandidateChatContent() {
       : "Chưa đăng nhập",
   });
 
-  // Mount tool renderers
-  useJobSearchRenderer();
-  useTemplateRenderer();
-
-  // Mount frontend tool for PDF export
-  useExportPdfTool();
-
-  return <CopilotSidebar defaultOpen={false} agentId="candidate" />;
+  return <CopilotSidebar defaultOpen={false} agentId="candidate-advisor-agent" />;
 }
 
 export function CandidateChatSidebar() {

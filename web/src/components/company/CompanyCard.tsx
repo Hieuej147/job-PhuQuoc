@@ -1,8 +1,10 @@
 // Võ Thành Phú
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useAuth } from "@/components/auth/auth-provider"
+import { useRouter } from "next/navigation"
 
 interface Company {
   id: string
@@ -25,10 +27,38 @@ interface Company {
 interface CompanyCardProps {
   company: Company
   index?: number
+  isFollowed?: boolean
 }
 
-export default function CompanyCard({ company, index = 0 }: CompanyCardProps) {
-  const [followed, setFollowed] = useState(false)
+export default function CompanyCard({ company, index = 0, isFollowed = false }: CompanyCardProps) {
+  const { user } = useAuth()
+  const router = useRouter()
+  const [followed, setFollowed] = useState(isFollowed)
+
+  useEffect(() => {
+    setFollowed(isFollowed);
+  }, [isFollowed]);
+  const [followLoading, setFollowLoading] = useState(false)
+
+  const handleToggleFollow = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!user) {
+      router.push(`/auth/login?redirect=/companies/${company.slug}`);
+      return;
+    }
+    setFollowLoading(true);
+    try {
+      const res = await fetch(`/api/v1/saved/companies/${company.id}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) setFollowed(prev => !prev);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const gradient = company.coverGradient || "linear-gradient(135deg,#0E7490,#0D9488)"
   const initials = company.initials || company.name.slice(0, 2).toUpperCase()
@@ -42,7 +72,7 @@ export default function CompanyCard({ company, index = 0 }: CompanyCardProps) {
   return (
     <Link
       href={`/companies/${company.slug}`}
-      className={`fade-up ${staggerClass} relative bg-white rounded-2xl border border-[#E0F5FB] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block cursor-pointer`}
+      className={`fade-up ${staggerClass} relative bg-white dark:bg-[#0f2436] rounded-2xl border border-[#E0F5FB] dark:border-[#1e3a4f] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block cursor-pointer`}
     >
       {/* Featured ribbon */}
       {isFeatured && (
@@ -69,7 +99,7 @@ export default function CompanyCard({ company, index = 0 }: CompanyCardProps) {
 
       {/* Logo */}
       <div className="px-5 -mt-7 mb-3 relative z-10">
-        <div className="w-14 h-14 bg-white rounded-xl border-2 border-white shadow-md flex items-center justify-center">
+        <div className="w-14 h-14 bg-white dark:bg-[#0a1929] rounded-xl border-2 border-white dark:border-[#1e3a4f] shadow-md flex items-center justify-center">
           {company.logo ? (
             <img src={company.logo} alt={company.name} className="w-10 h-10 object-contain rounded-lg" />
           ) : (
@@ -82,8 +112,8 @@ export default function CompanyCard({ company, index = 0 }: CompanyCardProps) {
 
       {/* Content */}
       <div className="px-5 pb-5">
-        <h3 className="font-bold text-[#0C4A6E] text-base mb-0.5 line-clamp-1">{company.name}</h3>
-        <p className="text-xs text-[#3f484c] mb-3">{company.industry}</p>
+        <h3 className="font-bold text-[#0C4A6E] dark:text-white text-base mb-0.5 line-clamp-1">{company.name}</h3>
+        <p className="text-xs text-[#3f484c] dark:text-gray-400 mb-3">{company.industry}</p>
 
         <div className="flex flex-wrap gap-1.5 mb-4">
           <span className="bg-[#0D9488]/10 text-[#0D9488] text-[11px] font-semibold px-2 py-0.5 rounded-md">
@@ -101,28 +131,25 @@ export default function CompanyCard({ company, index = 0 }: CompanyCardProps) {
         </div>
 
         <div className="flex items-center justify-between">
-  <div className="flex items-center gap-1 text-xs text-[#3f484c]">
-    📍 {location}
-  </div>
-  <div className="flex gap-2 flex-shrink-0">
-    <button
-      onClick={(e) => {
-        e.preventDefault()
-        setFollowed(!followed)
-      }}
-      className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all border whitespace-nowrap ${
-        followed
-          ? "bg-[#67E8F9] text-[#0C2231] border-[#67E8F9]"
-          : "border-[#bec8cd]/40 text-[#3f484c] hover:border-[#005a71] hover:text-[#005a71]"
-      }`}
-    >
-      {followed ? "✓ Đang theo" : "+ Theo dõi"}
-    </button>
-    <span className="text-[11px] font-semibold bg-[#005a71] text-white px-2.5 py-1 rounded-lg hover:bg-[#0e7490] transition-all whitespace-nowrap">
-      Xem
-    </span>
-  </div>
-</div>
+          <div className="flex items-center gap-1 text-xs text-[#3f484c] dark:text-gray-400">
+            📍 {location}
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={handleToggleFollow}
+              disabled={followLoading}
+              className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all border whitespace-nowrap disabled:opacity-60 ${followed
+                ? "bg-[#67E8F9] text-[#0C2231] border-[#67E8F9]"
+                : "border-[#bec8cd]/40 dark:border-gray-600 text-[#3f484c] dark:text-gray-300 hover:border-[#005a71] hover:text-[#005a71]"
+                }`}
+            >
+              {followLoading ? "..." : followed ? "✓ Đang theo" : "+ Theo dõi"}
+            </button>
+            <span className="text-[11px] font-semibold bg-[#005a71] text-white px-2.5 py-1 rounded-lg hover:bg-[#0e7490] transition-all whitespace-nowrap">
+              Xem
+            </span>
+          </div>
+        </div>
       </div>
     </Link>
   )

@@ -30,10 +30,10 @@ export function useJobSearchRenderer() {
           const data = typeof result === "string" ? JSON.parse(result) : result;
           return <JobListCard jobs={data.jobs || []} total={data.total || 0} />;
         } catch {
-          return null;
+          return <></>;
         }
       }
-      return null;
+      return <></>;
     },
   });
 }

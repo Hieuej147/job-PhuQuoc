@@ -1,18 +1,24 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, Bookmark, Building2 } from "lucide-react";
+import { Briefcase, Bookmark, Building2, FileText } from "lucide-react";
 
 interface StatsCardsProps {
   applicationsCount: number;
   savedJobsCount: number;
+  followedCompaniesCount: number;
   resumesCount: number;
 }
 
-export function StatsCards({ applicationsCount, savedJobsCount, resumesCount }: StatsCardsProps) {
+export function StatsCards({
+  applicationsCount,
+  savedJobsCount,
+  followedCompaniesCount,
+  resumesCount,
+}: StatsCardsProps) {
   const cards = [
     {
-      icon: <FileText className="size-5 text-[#005a71] dark:text-[#67E8F9]" />,
+      icon: <Briefcase className="size-5 text-[#005a71] dark:text-[#67E8F9]" />,
       iconBg: "bg-[#005a71]/10",
       value: applicationsCount,
       label: "Đơn ứng tuyển",
@@ -32,18 +38,18 @@ export function StatsCards({ applicationsCount, savedJobsCount, resumesCount }: 
     {
       icon: <Building2 className="size-5 text-[#0d9488] dark:text-[#2DD4BF]" />,
       iconBg: "bg-[#0d9488]/10",
-      value: 3,
+      value: followedCompaniesCount,
       label: "Công ty theo dõi",
-      badge: "3 công ty",
+      badge: `${followedCompaniesCount} công ty`,
       badgeBg: "bg-gray-100 dark:bg-[#1E5F74]/30",
       badgeText: "text-gray-500 dark:text-[#94A3B8]",
     },
     {
       icon: <FileText className="size-5 text-blue-600" />,
       iconBg: "bg-blue-50 dark:bg-blue-900/20",
-      value: resumesCount || 1,
+      value: resumesCount,
       label: "CV đã tạo",
-      badge: `${resumesCount || 1} CV`,
+      badge: `${resumesCount} CV`,
       badgeBg: "bg-gray-100 dark:bg-[#1E5F74]/30",
       badgeText: "text-gray-500 dark:text-[#94A3B8]",
     },
@@ -52,8 +58,11 @@ export function StatsCards({ applicationsCount, savedJobsCount, resumesCount }: 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((card) => (
-        <Card key={card.label} className="border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-5">
+        <Card
+          key={card.label}
+          className="border-[#e1efff] dark:border-[#1E5F74]/50 dark:bg-[#0d2d42] bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,90,113,0.06)] hover:shadow-[0_8px_24px_rgba(0,90,113,0.12)] hover:-translate-y-0.5 transition-all duration-200"
+        >
+          <CardContent className="p-5 md:p-6">
             <div className="flex items-center justify-between mb-3">
               <div className={`flex size-10 items-center justify-center rounded-xl ${card.iconBg}`}>
                 {card.icon}
@@ -63,10 +72,11 @@ export function StatsCards({ applicationsCount, savedJobsCount, resumesCount }: 
               </span>
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-[#E0F2FE]">{card.value}</p>
-            <p className="text-xs text-gray-500 dark:text-[#94A3B8] mt-0.5">{card.label}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{card.label}</p>
           </CardContent>
         </Card>
       ))}
     </div>
   );
 }
+

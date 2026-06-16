@@ -6,6 +6,7 @@ import { CacheService } from '../../common/cache/cache.service';
 import { CompanyContractService } from '../shared/contracts/company.contract';
 import { Prisma, JobStatus, JobType, ExperienceLevel, JobLevel } from '@prisma/client';
 import { CreateJobDto, JobQueryDto, MyJobsQueryDto, UpdateJobDto } from './dto/job.dto';
+import { EmbeddingService } from './services/embedding.service';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -29,6 +30,7 @@ export class JobsService {
     private readonly auditWriteContract: AuditWriteContractService,
     private readonly cache: CacheService,
     private readonly companyContract: CompanyContractService,
+    private readonly embeddingService: EmbeddingService,
   ) { }
 
   async findAll(query: JobQueryDto) {
@@ -222,6 +224,10 @@ export class JobsService {
       },
     });
     await this.invalidateCache();
+
+    // Sync embedding async without blocking response
+    this.embeddingService.syncJobEmbedding(job.id, job.title, job.description, job.benefits || undefined).catch(e => console.error(e));
+
     return job;
   }
 
@@ -231,6 +237,15 @@ export class JobsService {
     if (job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
     const updated = await this.prisma.job.update({ where: { id }, data: data as Prisma.JobUpdateInput });
     await this.invalidateCache();
+
+    // Sync embedding async without blocking response
+    this.embeddingService.syncJobEmbedding(
+      updated.id,
+      updated.title,
+      updated.description,
+      updated.benefits || undefined
+    ).catch(e => console.error(e));
+
     return updated;
   }
 
@@ -407,5 +422,34 @@ export class JobsService {
       this.cache.delPattern(`${this.CACHE_PREFIX}:*`),
       this.cache.delPattern(`categories:*`),
     ]);
+  }
+
+  async vectorSearch(embedding: number[], limit: number = 10) {
+    const vectorString = `[${embedding.join(',')}]`;
+
+    const results = await this.prisma.$queryRaw`
+      SELECT 
+        j.id, j.title, j.slug, j."salaryMin", j."salaryMax", j.type, j."wardId",
+        c.name as "companyName", c.logo as "companyLogo",
+        1 - (je.embedding <=> ${vectorString}::vector) as similarity
+      FROM "job" j
+      JOIN "job_embedding" je ON j.id = je."jobId"
+      JOIN "company" c ON j."companyId" = c.id
+      WHERE j.status = 'ACTIVE'
+      ORDER BY je.embedding <=> ${vectorString}::vector
+      LIMIT ${limit}
+    `;
+
+    return Array.isArray(results) ? results.map(r => ({
+      id: r.id,
+      title: r.title,
+      slug: r.slug,
+      company: r.companyName,
+      companyLogo: r.companyLogo,
+      salary: `${r.salaryMin || '?'} - ${r.salaryMax || '?'}`,
+      location: r.wardId,
+      type: r.type,
+      similarity: r.similarity
+    })) : [];
   }
 }

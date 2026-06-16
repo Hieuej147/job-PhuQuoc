@@ -11,7 +11,7 @@ import { JobsService } from './jobs.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { CreateJobDto, UpdateJobDto, JobQueryDto, MyJobsQueryDto } from './dto/job.dto';
+import { CreateJobDto, UpdateJobDto, JobQueryDto, MyJobsQueryDto, VectorSearchDto } from './dto/job.dto';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 
 @ApiTags('Jobs')
@@ -69,6 +69,14 @@ export class JobsController {
   @ApiResponse({ status: 200, description: 'Số liệu đếm theo loại hình, kinh nghiệm, cấp bậc, mức lương' })
   getFilterStats() {
     return this.jobsService.getFilterStats();
+  }
+
+  @Post('search-vector')
+  @Public()
+  @ApiOperation({ summary: 'Tìm kiếm job bằng AI vector', description: 'Agent Python gọi API này với vector nhúng để tìm kiếm semantic job.' })
+  @ApiResponse({ status: 200, description: 'Danh sách top jobs phù hợp' })
+  vectorSearch(@Body() body: VectorSearchDto) {
+    return this.jobsService.vectorSearch(body.embedding, body.limit || 10);
   }
 
   @Get(':id')

@@ -18,18 +18,18 @@ export class CompaniesService {
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
     private readonly auditWriteContract: AuditWriteContractService,
-  ) {}
+  ) { }
 
   async findAll(query: CompanyQueryDto) {
     const { search } = query;
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
-    
+
     const cacheKey = this.cache.generateKey(
       this.CACHE_PREFIX, 'list',
       String(page), String(limit), search || ''
     );
-    
+
     const cached = await this.cache.get(cacheKey);
     if (cached) return cached;
 
@@ -39,12 +39,15 @@ export class CompaniesService {
     const [items, total] = await Promise.all([
       this.prisma.company.findMany({
         where, skip: (page - 1) * limit, take: limit,
-        include: { ward: { include: { district: { include: { province: true } } } } },
+        include: {
+          ward: { include: { district: { include: { province: true } } } },
+          _count: { select: { jobs: true } },
+        },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.company.count({ where }),
     ]);
-    
+
     const result = { items, total, page, limit, totalPages: Math.ceil(total / limit) };
     await this.cache.set(cacheKey, result, this.CACHE_TTL);
     return result;
@@ -60,7 +63,7 @@ export class CompaniesService {
       include: { ward: { include: { district: { include: { province: true } } } }, jobs: { where: { status: 'ACTIVE' }, take: 5 } },
     });
     if (!company) throw new NotFoundException('Company not found');
-    
+
     await this.cache.set(cacheKey, company, this.CACHE_TTL);
     return company;
   }
@@ -84,7 +87,7 @@ export class CompaniesService {
       include: { ward: { include: { district: { include: { province: true } } } }, jobs: { where: { status: 'ACTIVE' } } },
     });
     if (!company) throw new NotFoundException('Company not found');
-    
+
     await this.cache.set(cacheKey, company, this.CACHE_TTL);
     return company;
   }
