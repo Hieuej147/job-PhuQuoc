@@ -26,6 +26,30 @@ export default function CompaniesPageClient({
   const [searchText, setSearchText] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("featured");
+  const [savedCompanyIds, setSavedCompanyIds] = useState<Set<string>>(new Set());
+
+  // Fetch saved companies 1 lần duy nhất
+  useEffect(() => {
+    // Kiểm tra cache trong sessionStorage trước
+    const cached = sessionStorage.getItem("savedCompanyIds");
+    if (cached) {
+      setSavedCompanyIds(new Set(JSON.parse(cached)));
+    }
+
+    // Luôn fetch mới để đồng bộ
+    fetch("/api/v1/saved/companies", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        const items = d.data?.items ?? d.data ?? [];
+        const ids = items
+          .map((s: any) => s.companyId ?? s.company?.id ?? "")
+          .filter(Boolean);
+        sessionStorage.setItem("savedCompanyIds", JSON.stringify(ids));
+        setSavedCompanyIds(new Set(ids));
+      })
+      .catch(() => { });
+  }, []);
 
   const industryTabs = useMemo(() => {
     const unique = [
@@ -76,7 +100,6 @@ export default function CompaniesPageClient({
     } else if (sortBy === "name") {
       sorted.sort((a, b) => a.name.localeCompare(b.name));
     }
-    // "featured" giữ thứ tự gốc
 
     return sorted;
   }, [initialCompanies, activeTab, searchText, sortBy]);
@@ -183,7 +206,7 @@ export default function CompaniesPageClient({
             {industryTabs.map((tab) => (
               <button
                 key={tab.value}
-                onClick={() => setActiveTab(tab.value)}
+                onClick={() => { setActiveTab(tab.value); setCurrentPage(1); }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold transition-all whitespace-nowrap ${activeTab === tab.value ? "border-[#005a71] bg-[#005a71] text-white" : "border-[#E0F5FB] dark:border-[#1e3a4f] bg-white dark:bg-[#0f2436] text-[#3f484c] dark:text-gray-300 hover:border-[#005a71] hover:text-[#005a71]"}`}
               >
                 {tab.label}
@@ -196,8 +219,7 @@ export default function CompaniesPageClient({
         <div className="fade-up stagger-5 bg-white dark:bg-[#0f2436] rounded-2xl border border-[#E0F5FB] dark:border-[#1e3a4f] px-5 py-3 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <span className="text-sm text-[#3f484c] dark:text-gray-300">
             Tìm thấy{" "}
-            <strong className="text-[#005a71] dark:text-cyan-400">{filtered.length}</strong> công
-            ty
+            <strong className="text-[#005a71] dark:text-cyan-400">{filtered.length}</strong> công ty
           </span>
           <div className="flex items-center gap-2">
             <span className="text-sm text-[#3f484c] dark:text-gray-300">Sắp xếp:</span>
@@ -216,7 +238,12 @@ export default function CompaniesPageClient({
         {/* Company grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {mappedCompanies.map((company, index) => (
-            <CompanyCard key={company.id} company={company} index={index} />
+            <CompanyCard
+              key={company.id}
+              company={company}
+              index={index}
+              isFollowed={savedCompanyIds.has(company.id)}
+            />
           ))}
           {filtered.length === 0 && (
             <div className="col-span-4 text-center py-16 text-[#3f484c] dark:text-gray-400">
@@ -235,10 +262,7 @@ export default function CompaniesPageClient({
             >
               ‹
             </button>
-            {Array.from(
-              { length: Math.min(totalPages, 5) },
-              (_, i) => i + 1,
-            ).map((page) => (
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <button
                 key={page}
                 onClick={() => setCurrentPage(page)}
@@ -248,9 +272,7 @@ export default function CompaniesPageClient({
               </button>
             ))}
             <button
-              onClick={() =>
-                setCurrentPage(Math.min(totalPages, currentPage + 1))
-              }
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
               className="w-10 h-10 rounded-lg border border-[#E0F5FB] dark:border-[#1e3a4f] bg-white dark:bg-[#0f2436] flex items-center justify-center text-[#3f484c] dark:text-gray-300 hover:border-[#005a71] hover:text-[#005a71] transition-all disabled:opacity-40"
             >
@@ -266,8 +288,7 @@ export default function CompaniesPageClient({
               Doanh nghiệp của bạn chưa có mặt?
             </h2>
             <p className="text-white/80 max-w-lg">
-              Đăng ký miễn phí, tiếp cận hơn 5,000 ứng viên chất lượng tại Phú
-              Quốc.
+              Đăng ký miễn phí, tiếp cận hơn 5,000 ứng viên chất lượng tại Phú Quốc.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">

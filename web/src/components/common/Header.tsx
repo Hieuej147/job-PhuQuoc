@@ -99,8 +99,7 @@ export default function Header() {
     <>
       <nav
         id="navbar"
-        className={`fixed top-0 w-full z-50 bg-white/90 dark:bg-[#0C2231]/90 backdrop-blur-md transition-all duration-300
-                    ${scrolled ? "shadow-md shadow-[#005a71]/8 border-b border-slate-200/70 dark:border-[#1E5F74]" : "border-b border-transparent"}`}
+        className="fixed top-0 w-full z-50 bg-white/90 dark:bg-[#0C2231]/90 backdrop-blur-md transition-all duration-300 border-b border-[#e1efff] dark:border-[#1E5F74] shadow-sm"
         style={{ fontFamily: "'Be Vietnam Pro', sans-serif" }}
       >
         <div className="flex justify-between items-center h-16 px-4 md:px-8 max-w-7xl mx-auto">
@@ -166,7 +165,7 @@ export default function Header() {
                 {/* User avatar */}
                 <Link
                   href={dashboardLink}
-                  className="flex items-center gap-2 ml-1 p-1 pr-3 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="flex items-center ml-1 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0E7490] to-[#0D9488] flex items-center justify-center text-white text-xs font-bold">
                     {profile?.image ? (
@@ -175,9 +174,6 @@ export default function Header() {
                       initials
                     )}
                   </div>
-                  <span className="hidden md:inline text-sm font-medium text-slate-700 dark:text-slate-300 max-w-[100px] truncate">
-                    {profile?.name}
-                  </span>
                 </Link>
               </>
             ) : (

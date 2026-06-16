@@ -1,7 +1,7 @@
 "use client"
 
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { Share2 } from "lucide-react"
 
@@ -56,6 +56,36 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
   useScrollAnimation()
   const [activeTab, setActiveTab] = useState("overview")
   const [following, setFollowing] = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/v1/saved/companies", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        const items = d.data?.items ?? d.data ?? [];
+        const isFollowing = items.some((s: any) =>
+          s.companyId === company.id || s.company?.id === company.id
+        );
+        setFollowing(isFollowing);
+      })
+      .catch(() => { });
+  }, [company.id]);
+
+  const handleToggleFollow = async () => {
+    setFollowLoading(true);
+    try {
+      const res = await fetch(`/api/v1/saved/companies/${company.id}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) setFollowing(prev => !prev);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const mappedJobs = useMemo(() => jobs.map(j => ({
     id: j.id, slug: j.slug, title: j.title,
@@ -107,8 +137,15 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setFollowing(!following)} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${following ? "bg-[#005a71] text-white" : "border border-[#005a71] text-[#005a71] hover:bg-[#005a71]/5"}`}>
-                {following ? "✓ Đang theo dõi" : "+ Theo dõi"}
+              <button
+                onClick={handleToggleFollow}
+                disabled={followLoading}
+                className={`px-5 py-2 rounded-full text-sm font-semibold transition-all disabled:opacity-60 ${following
+                  ? "bg-[#005a71] text-white"
+                  : "border border-[#005a71] text-[#005a71] hover:bg-[#005a71]/5"
+                  }`}
+              >
+                {followLoading ? "..." : following ? "✓ Đang theo dõi" : "+ Theo dõi"}
               </button>
               <button className="p-2.5 rounded-full border border-[#bec8cd]/50 dark:border-gray-600 text-[#3f484c] dark:text-gray-300 hover:bg-[#e1efff] dark:hover:bg-[#1e3a4f] transition-colors">
                 <Share2 className="w-4 h-4" />

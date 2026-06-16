@@ -37,6 +37,7 @@ export default function CandidateDashboard() {
   const { user } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
+  const [savedCompanies, setSavedCompanies] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [profile, setProfile] = useState<Record<string, unknown> | null>(user as Record<string, unknown> | null);
@@ -49,9 +50,10 @@ export default function CandidateDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [appsRes, savedRes, notifRes, resumesRes] = await Promise.allSettled([
+      const [appsRes, savedRes, companiesRes, notifRes, resumesRes] = await Promise.allSettled([
         fetch("/api/v1/applications/my?limit=5", { credentials: "include" }),
         fetch("/api/v1/saved/jobs?limit=3", { credentials: "include" }),
+        fetch("/api/v1/saved/companies", { credentials: "include" }),
         fetch("/api/v1/notifications?limit=4", { credentials: "include" }),
         fetch("/api/v1/resumes/my", { credentials: "include" }),
       ]);
@@ -59,6 +61,11 @@ export default function CandidateDashboard() {
       const errors: string[] = [];
       if (appsRes.status === "fulfilled" && appsRes.value.ok) { const d = await appsRes.value.json(); setApplications(d.data?.items ?? d.data ?? []); }
       if (savedRes.status === "fulfilled" && savedRes.value.ok) { const d = await savedRes.value.json(); setSavedJobs(d.data?.items ?? d.data ?? []); }
+      if (companiesRes.status === "fulfilled" && companiesRes.value.ok) {
+        const d = await companiesRes.value.json();
+        const items = d.data?.items ?? d.data ?? d ?? [];
+        setSavedCompanies(Array.isArray(items) ? items : []);
+      }
       if (notifRes.status === "fulfilled" && notifRes.value.ok) { const d = await notifRes.value.json(); setNotifications(d.data?.items ?? d.data ?? []); }
       if (resumesRes.status === "fulfilled" && resumesRes.value.ok) { const d = await resumesRes.value.json(); setResumes(d.data?.items ?? d.data ?? []); }
       if (errors.length > 0) setError(errors.join("; "));
@@ -102,11 +109,16 @@ export default function CandidateDashboard() {
 
       <TabsContent value="overview" className="space-y-6">
         {/* Stats */}
-        <StatsCards applicationsCount={applications.length} savedJobsCount={savedJobs.length} resumesCount={resumes.length} />
+        <StatsCards
+          applicationsCount={applications.length}
+          savedJobsCount={savedJobs.length}
+          followedCompaniesCount={savedCompanies.length}
+          resumesCount={resumes.length}
+        />
 
         {/* Profile + Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
+          <Card className="lg:col-span-2 border-[#e1efff] dark:border-[#1E5F74]/50 dark:bg-[#0d2d42] bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,90,113,0.06)]">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Hoàn thiện hồ sơ</CardTitle>
               <Link href="/candidate/profile" className="text-xs font-semibold text-[#005a71] hover:opacity-80 dark:text-[#67E8F9]">Chỉnh sửa →</Link>
@@ -118,7 +130,7 @@ export default function CandidateDashboard() {
                   <span className="font-bold text-[#005a71] dark:text-[#67E8F9]">{completionPct}%</span>
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-[#e1efff] dark:bg-[#1E5F74]">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#005a71] to-[#0e7490] transition-all duration-600" style={{ width: `${completionPct}%` }} />
+                  <div className="h-full rounded-full bg-gradient-to-r from-[#005a71] to-[#0e7490] transition-all duration-500" style={{ width: `${completionPct}%` }} />
                 </div>
               </div>
               <div className="flex flex-col gap-3">
@@ -141,15 +153,15 @@ export default function CandidateDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
+          <Card className="border-[#e1efff] dark:border-[#1E5F74]/50 dark:bg-[#0d2d42] bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,90,113,0.06)]">
             <CardHeader className="pb-2"><CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Thao tác nhanh</CardTitle></CardHeader>
             <CardContent className="pt-0">
               <div className="flex flex-col gap-3">
                 {[
-                  { href: "/jobs", icon: <Search className="size-5 text-[#005a71] dark:text-[#67E8F9]" />, title: "Tìm việc làm", desc: "1,200+ việc đang tuyển", color: "bg-[#005a71]/5 hover:bg-[#005a71]/10 dark:bg-[#005a71]/10" },
-                  { href: "/candidate/resumes", icon: <FileText className="size-5 text-[#F59E0B]" />, title: "Cập nhật CV", desc: "CV Builder online", color: "bg-[#F59E0B]/5 hover:bg-[#F59E0B]/10" },
-                  { href: "/candidate/applications", icon: <Briefcase className="size-5 text-[#0d9488] dark:text-[#2DD4BF]" />, title: "Đơn ứng tuyển", desc: `${applications.length} đơn đang xử lý`, color: "bg-[#0d9488]/5 hover:bg-[#0d9488]/10" },
-                  { href: "/candidate/saved", icon: <Bookmark className="size-5 text-blue-600" />, title: "Việc đã lưu", desc: `${savedJobs.length} việc làm`, color: "bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/10" },
+                  { href: "/jobs", icon: <Search className="size-5 text-[#005a71] dark:text-[#67E8F9]" />, title: "Tìm việc làm", desc: "1,200+ việc đang tuyển", color: "bg-[#005a71]/5 hover:bg-[#005a71]/10 dark:bg-[#005a71]/10 dark:hover:bg-[#005a71]/20" },
+                  { href: "/candidate/resumes", icon: <FileText className="size-5 text-[#F59E0B]" />, title: "Cập nhật CV", desc: "CV Builder online", color: "bg-[#F59E0B]/5 hover:bg-[#F59E0B]/10 dark:bg-[#F59E0B]/10 dark:hover:bg-[#F59E0B]/20" },
+                  { href: "/candidate/applications", icon: <Briefcase className="size-5 text-[#0d9488] dark:text-[#2DD4BF]" />, title: "Đơn ứng tuyển", desc: `${applications.length} đơn đang xử lý`, color: "bg-[#0d9488]/5 hover:bg-[#0d9488]/10 dark:bg-[#0d9488]/10 dark:hover:bg-[#0d9488]/20" },
+                  { href: "/candidate/saved", icon: <Bookmark className="size-5 text-blue-600" />, title: "Việc đã lưu", desc: `${savedJobs.length} việc làm`, color: "bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/10 dark:hover:bg-blue-900/20" },
                 ].map((item) => (
                   <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${item.color} group`}>
                     {item.icon}
@@ -171,7 +183,7 @@ export default function CandidateDashboard() {
         {/* Saved Jobs + Notifications */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Saved Jobs */}
-          <Card className="border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
+          <Card className="border-[#e1efff] dark:border-[#1E5F74]/50 dark:bg-[#0d2d42] bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,90,113,0.06)]">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Việc làm đã lưu</CardTitle>
               <Link href="/candidate/saved" className="text-xs font-semibold text-[#005a71] hover:opacity-80 dark:text-[#67E8F9]">Xem tất cả →</Link>
@@ -182,8 +194,8 @@ export default function CandidateDashboard() {
                   const job = sj.job;
                   const company = job?.company?.name || "N/A";
                   return (
-                    <Link key={sj.id} href={`/jobs/${job?.id || ""}`} className="flex items-start gap-3 rounded-xl border border-[#e1efff] bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-[#1E5F74] dark:bg-[#0d2d42]">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#005a71]/10 text-sm font-bold text-[#005a71]">{companyInitials(company)}</div>
+                    <Link key={sj.id} href={`/jobs/${job?.id || ""}`} className="flex items-start gap-3 rounded-xl border border-[#e1efff] dark:border-[#1E5F74]/50 bg-white dark:bg-[#0d2d42]/40 p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#005a71]/10 text-sm font-bold text-[#005a71] dark:text-[#67E8F9]">{companyInitials(company)}</div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold leading-snug text-gray-900 dark:text-[#E0F2FE]">{job?.title || "N/A"}</p>
                         <p className="text-xs text-gray-500 dark:text-[#94A3B8]">{company}</p>
@@ -202,7 +214,7 @@ export default function CandidateDashboard() {
           </Card>
 
           {/* Notifications */}
-          <Card className="border-[#e1efff] dark:border-[#1E5F74] dark:bg-[#0d2d42] rounded-xl">
+          <Card className="border-[#e1efff] dark:border-[#1E5F74]/50 dark:bg-[#0d2d42] bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,90,113,0.06)]">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-base font-bold text-gray-900 dark:text-[#E0F2FE]">Thông báo</CardTitle>
               {unreadNotifs > 0 && <Badge className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white border-transparent">{unreadNotifs} mới</Badge>}
@@ -210,7 +222,7 @@ export default function CandidateDashboard() {
             <CardContent className="pt-0">
               <div className="flex flex-col gap-3">
                 {notifications.map((notif) => (
-                  <div key={notif.id} className="flex items-start gap-3 rounded-xl p-3 hover:bg-gray-50 dark:hover:bg-[#1E5F74]/10">
+                  <div key={notif.id} className="flex items-start gap-3 rounded-xl p-3 hover:bg-gray-50 dark:hover:bg-[#1E5F74]/10 transition-colors">
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800"><Circle className="size-4 text-gray-500" /></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-[#E0F2FE]">{notif.title}</p>

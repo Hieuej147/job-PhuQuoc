@@ -561,7 +561,7 @@ async function main() {
   });
 
   const employers2to8 = await Promise.all(
-    Array.from({ length: 19 }, (_, i) => {
+    Array.from({ length: 99 }, (_, i) => {
       const num = i + 2;
       return prisma.user.create({
         data: {
@@ -722,6 +722,28 @@ async function main() {
           size: sizes[i % sizes.length] as any,
           industry: industries[i % industries.length],
           ownerId: employers2to8[i + 7].id, // employers index 7..18 = id 009..020
+          isApproved: true,
+        },
+      });
+    })
+  );
+
+  await Promise.all(
+    Array.from({ length: 80 }, (_, i) => {
+      const num = i + 21; // 21..100
+      const industries = ['Khách sạn & Resort', 'Nhà hàng & F&B', 'Du lịch & Lữ hành', 'Bán lẻ & Dịch vụ', 'IT & Công nghệ', 'Xây dựng', 'Y tế & Spa', 'Du lịch - Khách sạn'];
+      const sizes = ['SIZE_1_50', 'SIZE_51_200', 'SIZE_201_500', 'SIZE_500_PLUS'];
+      return prisma.company.create({
+        data: {
+          id: `company_${String(num).padStart(3, '0')}`,
+          name: `Công ty Demo ${num}`,
+          slug: `cong-ty-demo-${num}`,
+          description: `Mô tả công ty demo số ${num}`,
+          wardId: wards[i % 4].id,
+          addressDetail: `${num} Đường Demo`,
+          size: sizes[i % sizes.length] as any,
+          industry: industries[i % industries.length],
+          ownerId: employers2to8[i + 19].id, // index 19..98 = id 021..100
           isApproved: true,
         },
       });

@@ -1,7 +1,7 @@
 // Võ Thành Phú
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 
 interface Company {
@@ -25,10 +25,43 @@ interface Company {
 interface CompanyCardProps {
   company: Company
   index?: number
+  isFollowed?: boolean
 }
 
-export default function CompanyCard({ company, index = 0 }: CompanyCardProps) {
-  const [followed, setFollowed] = useState(false)
+export default function CompanyCard({ company, index = 0, isFollowed = false }: CompanyCardProps) {
+  const [followed, setFollowed] = useState(isFollowed)
+
+  useEffect(() => {
+    setFollowed(isFollowed);
+  }, [isFollowed]);
+  const [followLoading, setFollowLoading] = useState(false)
+
+  const handleToggleFollow = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setFollowLoading(true);
+    try {
+      const res = await fetch(`/api/v1/saved/companies/${company.id}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        setFollowed(prev => {
+          const newVal = !prev;
+          const cached = sessionStorage.getItem("savedCompanyIds");
+          const ids: string[] = cached ? JSON.parse(cached) : [];
+          const updated = newVal
+            ? [...ids, company.id]
+            : ids.filter(id => id !== company.id);
+          sessionStorage.setItem("savedCompanyIds", JSON.stringify(updated));
+          return newVal;
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const gradient = company.coverGradient || "linear-gradient(135deg,#0E7490,#0D9488)"
   const initials = company.initials || company.name.slice(0, 2).toUpperCase()
@@ -106,16 +139,14 @@ export default function CompanyCard({ company, index = 0 }: CompanyCardProps) {
           </div>
           <div className="flex gap-2 flex-shrink-0">
             <button
-              onClick={(e) => {
-                e.preventDefault()
-                setFollowed(!followed)
-              }}
-              className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all border whitespace-nowrap ${followed
+              onClick={handleToggleFollow}
+              disabled={followLoading}
+              className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all border whitespace-nowrap disabled:opacity-60 ${followed
                 ? "bg-[#67E8F9] text-[#0C2231] border-[#67E8F9]"
                 : "border-[#bec8cd]/40 dark:border-gray-600 text-[#3f484c] dark:text-gray-300 hover:border-[#005a71] hover:text-[#005a71]"
                 }`}
             >
-              {followed ? "✓ Đang theo" : "+ Theo dõi"}
+              {followLoading ? "..." : followed ? "✓ Đang theo" : "+ Theo dõi"}
             </button>
             <span className="text-[11px] font-semibold bg-[#005a71] text-white px-2.5 py-1 rounded-lg hover:bg-[#0e7490] transition-all whitespace-nowrap">
               Xem
