@@ -12,34 +12,24 @@ export class AddressService {
     private readonly cache: CacheService,
   ) {}
 
-  async getProvinces() {
-    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, 'provinces');
+  async getTree() {
+    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, 'tree');
     const cached = await this.cache.get(cacheKey);
     if (cached) return cached;
 
-    const provinces = await this.prisma.addressProvince.findMany({ orderBy: { name: 'asc' } });
+    const provinces = await this.prisma.addressProvince.findMany({
+      include: {
+        districts: {
+          include: {
+            wards: { orderBy: { name: 'asc' } },
+          },
+          orderBy: { name: 'asc' },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
     await this.cache.set(cacheKey, provinces, this.CACHE_TTL);
     return provinces;
-  }
-
-  async getDistricts(provinceId: string) {
-    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, 'districts', provinceId);
-    const cached = await this.cache.get(cacheKey);
-    if (cached) return cached;
-
-    const districts = await this.prisma.addressDistrict.findMany({ where: { provinceId }, orderBy: { name: 'asc' } });
-    await this.cache.set(cacheKey, districts, this.CACHE_TTL);
-    return districts;
-  }
-
-  async getWards(districtId: string) {
-    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, 'wards', districtId);
-    const cached = await this.cache.get(cacheKey);
-    if (cached) return cached;
-
-    const wards = await this.prisma.addressWard.findMany({ where: { districtId }, orderBy: { name: 'asc' } });
-    await this.cache.set(cacheKey, wards, this.CACHE_TTL);
-    return wards;
   }
 
   async getAllWards() {

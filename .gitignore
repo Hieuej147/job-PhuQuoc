@@ -88,4 +88,8 @@ docs/AGENT_LOCK_AND_MCP_ARCHITECTURE.md
 backend/check_sessions.js
 docs/AI_AGENT_ARCHITECTURE_PLAN.md
 backend/prisma/seed-patch-companies.ts
-
+docs/code_review_and_suggestions.md
+docs/PRODUCTION_SCALE_ARCHITECTURE.md
+docs/API_ENDPOINT_FE_USAGE_AUDIT.md
+docs/UNUSED_ENDPOINTS_USAGE.md
+docs/APPLICATIONS_BY_JOB_ENDPOINT_GUIDE.md

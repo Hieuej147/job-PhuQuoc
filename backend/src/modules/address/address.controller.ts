@@ -8,35 +8,17 @@ import { Public } from '../../auth/decorators/public.decorator';
 export class AddressController {
   constructor(private readonly addressService: AddressService) {}
 
-  @Get('provinces')
+  @Get('tree')
   @Public()
-  @ApiOperation({ summary: 'Tỉnh/thành', description: 'Lấy danh sách tỉnh/thành.' })
-  @ApiResponse({ status: 200, description: 'Danh sách provinces' })
-  getProvinces() {
-    return this.addressService.getProvinces();
-  }
-
-  @Get('provinces/:id/districts')
-  @Public()
-  @ApiOperation({ summary: 'Quận/huyện theo tỉnh' })
-  @ApiParam({ name: 'id', description: 'ID của province' })
-  @ApiResponse({ status: 200, description: 'Danh sách districts' })
-  getDistricts(@Param('id') id: string) {
-    return this.addressService.getDistricts(id);
-  }
-
-  @Get('districts/:id/wards')
-  @Public()
-  @ApiOperation({ summary: 'Phường/xã theo quận' })
-  @ApiParam({ name: 'id', description: 'ID của district' })
-  @ApiResponse({ status: 200, description: 'Danh sách wards' })
-  getWards(@Param('id') id: string) {
-    return this.addressService.getWards(id);
+  @ApiOperation({ summary: 'Cây địa chỉ', description: 'Lấy tỉnh/thành kèm quận/huyện và phường/xã để dùng cho form chọn địa chỉ phân cấp.' })
+  @ApiResponse({ status: 200, description: 'Danh sách tỉnh/thành kèm districts và wards' })
+  getTree() {
+    return this.addressService.getTree();
   }
 
   @Get('wards')
   @Public()
-  @ApiOperation({ summary: 'Tất cả phường/xã' })
+  @ApiOperation({ summary: 'Tất cả phường/xã', description: 'Danh sách phường/xã dạng phẳng, dùng cho search/filter nhanh.' })
   @ApiResponse({ status: 200, description: 'Danh sách tất cả wards' })
   getAllWards() {
     return this.addressService.getAllWards();

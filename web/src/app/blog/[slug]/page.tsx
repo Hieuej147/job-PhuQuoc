@@ -9,7 +9,6 @@ import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import { Eye, Calendar, ArrowLeft, User } from "lucide-react";
 import { Metadata } from "next";
-import { InteractiveTOC } from "@/components/blog/InteractiveTOC";
 import { LandingPageIframe } from "@/components/blog/LandingPageIframe";
 import BlogDetailClient from "@/components/blog/BlogDetailClient";
 import { articleJsonLd, breadcrumbJsonLd } from "@/lib/structured-data";
@@ -34,6 +33,7 @@ async function fetchBlog(slug: string) {
 }
 
 async function fetchRelatedBlogs(categoryId: string, currentId: string) {
+  // should search li,it and not hard code
   try {
     const res = await fetch(`${BACKEND_URL}/api/v1/blogs?limit=4`, {
       next: { revalidate: 60 },

@@ -283,6 +283,34 @@ sequenceDiagram
     BE-->>FE: {user: {id, name, role}}
 ```
 
+### Scale Stateful
+
+```mermaid
+flowchart LR
+    U[User Browser] --> FE[Next.js FE]
+    FE --> LB[Load Balancer / Reverse Proxy]
+    LB --> BE1[Backend Instance 1]
+    LB --> BE2[Backend Instance 2]
+    LB --> BE3[Backend Instance 3]
+
+    BE1 <-->|session cookie + auth/me| REDIS[(Redis Session Store)]
+    BE2 <-->|session cookie + auth/me| REDIS
+    BE3 <-->|session cookie + auth/me| REDIS
+
+    BE1 <-->|user/account/profile check| DB[(PostgreSQL)]
+    BE2 <-->|user/account/profile check| DB
+    BE3 <-->|user/account/profile check| DB
+
+    note1{{Session state dùng chung qua Redis,\nkhông cần sticky session nếu Redis dùng chung}}
+    REDIS --- note1
+```
+
+> Ý nghĩa:
+> - Cookie `better-auth.session_token` nằm ở browser.
+> - Redis lưu session/state dùng chung cho nhiều instance BE.
+> - PostgreSQL vẫn là nguồn dữ liệu chính cho user, role, account, profile.
+> - Scale ngang bằng cách tăng BE instance sau load balancer, không phụ thuộc sticky session nếu Redis dùng chung.
+
 ### Register Flow
 
 ```mermaid
@@ -936,7 +964,6 @@ erDiagram
 | # | Method | Path | Auth | Mô tả |
 |---|--------|------|------|-------|
 | 61 | GET | /api/v1/categories | Public | Danh mục nghề |
-| 62 | GET | /api/v1/categories/:id | Public | Chi tiết |
 | 63 | POST | /api/v1/categories | ADMIN | Tạo danh mục |
 | 64 | PATCH | /api/v1/categories/:id | ADMIN | Sửa danh mục |
 | 65 | DELETE | /api/v1/categories/:id | ADMIN | Xóa danh mục |
@@ -945,11 +972,9 @@ erDiagram
 
 | # | Method | Path | Auth | Mô tả |
 |---|--------|------|------|-------|
-| 66 | GET | /api/v1/address/provinces | Public | Tỉnh/thành |
-| 67 | GET | /api/v1/address/provinces/:id/districts | Public | Quận/huyện |
-| 68 | GET | /api/v1/address/districts/:id/wards | Public | Phường/xã |
-| 69 | GET | /api/v1/address/wards | Public | Tất cả phường/xã |
-| 70 | GET | /api/v1/address/wards/:id | Public | Địa chỉ đầy đủ |
+| 66 | GET | /api/v1/address/tree | Public | Tỉnh/thành + quận/huyện + phường/xã |
+| 67 | GET | /api/v1/address/wards | Public | Phường/xã dạng phẳng cho filter/search |
+| 68 | GET | /api/v1/address/wards/:id | Public | Địa chỉ đầy đủ |
 
 #### Blogs (5 endpoints)
 

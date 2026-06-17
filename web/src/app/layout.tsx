@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
+import { getServerAuthUser } from "@/lib/server-auth";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -39,7 +40,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const initialUser = await getServerAuthUser();
+
   return (
     <html lang="vi" suppressHydrationWarning>
       <head>
@@ -47,7 +50,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
       </head>
       <body className="antialiased min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary font-body">
-        <Providers>{children}</Providers>
+        <Providers initialUser={initialUser}>{children}</Providers>
       </body>
     </html>
   );
