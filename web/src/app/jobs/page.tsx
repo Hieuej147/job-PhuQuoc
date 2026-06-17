@@ -20,14 +20,14 @@ export const metadata: Metadata = {
   },
 };
 
-async function fetchJobs(query: { search?: string; wardId?: string; categoryId?: string } = {}) {
+async function fetchJobs(query: { search?: string; ward?: string; category?: string } = {}) {
   try {
     const params = new URLSearchParams();
     params.set("limit", "12");
     params.set("page", "1");
     if (query.search) params.set("search", query.search);
-    if (query.wardId) params.set("wardId", query.wardId);
-    if (query.categoryId) params.set("categoryId", query.categoryId);
+    if (query.ward) params.set("ward", query.ward);
+    if (query.category) params.set("category", query.category);
 
     const res = await fetch(`${BACKEND_URL}/api/v1/jobs?${params.toString()}`, {
       cache: "no-store",
@@ -69,21 +69,22 @@ async function fetchStats() {
 export default async function JobsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; wardId?: string; category?: string }>;
+  searchParams: Promise<{ search?: string; wardId?: string; ward?: string; category?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const [categories, stats] = await Promise.all([fetchCategories(), fetchStats()]);
 
-  let categoryId = "";
-  if (resolvedSearchParams.category) {
-    const cat = categories.find((c: any) => c.slug === resolvedSearchParams.category);
-    if (cat) categoryId = cat.id;
-  }
+  // Lấy giá trị category từ searchParams (slug)
+  const category = resolvedSearchParams.category || "";
+
+  // Lấy giá trị ward từ searchParams (chấp nhận cả wardId kiểu cũ hoặc ward slug kiểu mới)
+  const ward = resolvedSearchParams.ward || resolvedSearchParams.wardId || "";
+
   // should use slug and not use cateid for search params
   const jobsData = await fetchJobs({
     search: resolvedSearchParams.search,
-    wardId: resolvedSearchParams.wardId,
-    categoryId,
+    ward, // Truyền thẳng ward (slug/id) xuống API backend
+    category, // Truyền thẳng category (slug/id) xuống API backend
   });
 
   const jsonLd = {

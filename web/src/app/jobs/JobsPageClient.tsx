@@ -121,6 +121,18 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
   const [sortBy, setSortBy] = useState("newest");
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [wards, setWards] = useState<{ id: string; name: string; slug: string }[]>([]);
+
+  // Fetch wards dynamically from API
+  useEffect(() => {
+    fetch("/api/v1/address/wards?limit=50", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        const items = d.data?.items || d.data || [];
+        setWards(items);
+      })
+      .catch(() => { });
+  }, []);
 
   // Fetch saved job IDs from API on mount
   useEffect(() => {
@@ -147,7 +159,7 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
 
   const [filters, setFilters] = useState(() => {
     const search = searchParams.get("search") || "";
-    const wardId = searchParams.get("wardId") || "";
+    const wardSlug = searchParams.get("ward") || searchParams.get("wardId") || "";
     const category = searchParams.get("category") || "";
     const industries: string[] = [];
     if (category) {
@@ -156,7 +168,7 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
     }
     return {
       keyword: search,
-      location: wardId,
+      location: wardSlug,
       industries,
       contractTypes: [] as string[],
       salaryRanges: [] as string[],
@@ -200,14 +212,15 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
         if (mapped.length > 0) params.set("salaryRange", mapped.join(","));
       }
       if (f.industries.length > 0) {
-        const mappedIds = f.industries
-          .map(indName => categories.find(c => c.name === indName)?.id)
+        // Gửi tham số category (slug) trực tiếp lên backend thay vì ID
+        const mappedSlugs = f.industries
+          .map(indName => categories.find(c => c.name === indName)?.slug)
           .filter(Boolean);
-        if (mappedIds.length > 0) params.set("categoryId", mappedIds.join(","));
+        if (mappedSlugs.length > 0) params.set("category", mappedSlugs.join(","));
       }
+      // Gửi tham số ward (slug của phường xã) trực tiếp lên backend
       if (f.location) {
-        // should use slug and not use wardId for search params
-        params.set("wardId", f.location);
+        params.set("ward", f.location);
       }
       if (s === "salary_low") params.set("sort", "salary_asc");
       if (s === "salary_high") params.set("sort", "salary_desc");
@@ -225,16 +238,16 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
     } finally {
       setLoading(false);
     }
-  }, [categories]);
+  }, [categories, wards]);
 
   useEffect(() => {
     const search = searchParams.get("search") || "";
-    const wardId = searchParams.get("wardId") || "";
+    const wardSlug = searchParams.get("ward") || searchParams.get("wardId") || "";
     const category = searchParams.get("category") || "";
 
     const newFilters: any = {
       keyword: search,
-      location: wardId,
+      location: wardSlug,
       industries: [] as string[],
     };
     if (category) {
@@ -357,11 +370,12 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
               onOpenMobileFilter={() => setIsMobileFilterOpen(true)}
             />
 
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E7490]" />
-              </div>
-            ) : (
+            <div className={`relative min-h-[400px] transition-opacity duration-200 ${loading ? "opacity-75" : ""}`}>
+              {loading && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/50 dark:bg-slate-900/30 backdrop-blur-[1px] rounded-2xl">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E7490]" />
+                </div>
+              )}
               <JobList
                 jobs={mappedJobs}
                 totalPages={totalPages}
@@ -370,7 +384,7 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
                 bookmarkedIds={bookmarkedIds}
                 onBookmark={toggleBookmark}
               />
-            )}
+            </div>
           </div>
         </div>
       </main>
