@@ -3,10 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import BlogCard from "@/components/common/BlogCard";
+import BlogCard, { HomeBlogItem } from "@/components/common/BlogCard";
 
 interface HomeBlogsProps {
-  blogs: any[];
+  blogs: HomeBlogItem[];
 }
 
 export default function HomeBlogs({ blogs = [] }: HomeBlogsProps) {

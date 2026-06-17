@@ -3,10 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import JobCard from "@/components/common/JobCard";
+import JobCard, { HomeJobItem } from "@/components/common/JobCard";
 
 interface HomeFeaturedJobsProps {
-  jobs: any[];
+  jobs: HomeJobItem[];
 }
 
 export default function HomeFeaturedJobs({ jobs = [] }: HomeFeaturedJobsProps) {

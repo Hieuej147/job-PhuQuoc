@@ -7,25 +7,27 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth/auth-provider";
 
-interface JobCardProps {
-  job: {
-    id: string;
-    title: string;
-    slug: string;
-    companyLogo: string;
-    companyName: string;
-    companySlug: string;
-    companyInitials?: string;
-    categorySlug: string;
-    categoryName?: string;
-    categoryIcon?: string;
-    location: string;
-    uiTagText: string;
-    uiTagStyle: string;
-    uiLogoBg: string;
-    labels: string[];
-    CreateAt?: string;
-  };
+export interface HomeJobItem {
+  id: string;
+  title: string;
+  slug: string;
+  companyLogo: string;
+  companyName: string;
+  companySlug: string;
+  companyInitials?: string;
+  categorySlug: string;
+  categoryName?: string;
+  categoryIcon?: string;
+  location: string;
+  uiTagText: string;
+  uiTagStyle: string;
+  uiLogoBg: string;
+  labels: string[];
+  CreateAt?: string;
+}
+
+export interface JobCardProps {
+  job: HomeJobItem;
 }
 
 const savedJobIdsPromiseByUser = new Map<string, Promise<string[]>>();
