@@ -63,6 +63,11 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
   const [followLoading, setFollowLoading] = useState(false)
 
   useEffect(() => {
+    if (!user) {
+      setFollowing(false);
+      return;
+    }
+
     fetch("/api/v1/saved/companies", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
@@ -74,7 +79,7 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
         setFollowing(isFollowing);
       })
       .catch(() => { });
-  }, [company.id]);
+  }, [company.id, user]);
 
   const handleToggleFollow = async () => {
     if (!user) {

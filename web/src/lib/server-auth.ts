@@ -1,3 +1,4 @@
+"use server";
 import { cookies } from "next/headers";
 import type { AuthUser } from "@/lib/auth";
 

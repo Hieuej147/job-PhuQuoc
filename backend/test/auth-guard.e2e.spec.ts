@@ -32,8 +32,8 @@ describe.skipIf(!canRunE2E)('Auth Guard E2E Tests (against running server)', () 
       expect(res.status).toBe(200);
     });
 
-    it('GET /api/v1/address/provinces → 200', async () => {
-      const res = await api('GET', '/api/v1/address/provinces');
+    it('GET /api/v1/address/tree → 200', async () => {
+      const res = await api('GET', '/api/v1/address/tree');
       expect(res.status).toBe(200);
     });
 

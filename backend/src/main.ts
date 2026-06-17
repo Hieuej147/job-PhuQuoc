@@ -65,7 +65,9 @@ async function bootstrap() {
     .addTag("Audit", "Nhật ký hệ thống")
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config, {
+    deepScanRoutes: true,
+  });
 
   // Scalar API Reference
   app.use(

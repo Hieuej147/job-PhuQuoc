@@ -103,7 +103,10 @@ export class JobsController {
 
   @Patch(':id')
   @ApiBearerAuth('better-auth.session_token')
-  @ApiOperation({ summary: 'Cập nhật job', description: 'Chỉ owner của công ty mới được sửa.' })
+  // Reserved for future draft-edit flow only. Current FE does not call this endpoint.
+  // Do not use it to edit paid/ACTIVE jobs because payment tracking, public listing,
+  // Inngest expiry scheduling, and applicant expectations depend on the activated job data.
+  @ApiOperation({ summary: 'Cập nhật job', description: 'Dự phòng cho flow sửa DRAFT trước thanh toán. Không dùng để sửa job đã ACTIVE.' })
   @ApiParam({ name: 'id', description: 'ID của job' })
   @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
   @ApiResponse({ status: 403, description: 'Không phải owner' })

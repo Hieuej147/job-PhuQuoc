@@ -30,6 +30,7 @@ interface BlogDetailClientProps {
   };
   categoryName: string;
   authorName: string;
+  // don'y should use any
   relatedBlogs: any[];
   popularBlogs: any[];
 }

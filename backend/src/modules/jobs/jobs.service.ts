@@ -235,6 +235,9 @@ export class JobsService {
     const job = await this.prisma.job.findUnique({ where: { id }, include: { company: true } });
     if (!job) throw new NotFoundException('Job not found');
     if (job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
+    // Reserved for a future "edit draft before checkout" flow.
+    // Paid/ACTIVE jobs should not be edited through this path because payment,
+    // public listing, Inngest expiry events, and applications are already tied to the activated job.
     const updated = await this.prisma.job.update({ where: { id }, data: data as Prisma.JobUpdateInput });
     await this.invalidateCache();
 

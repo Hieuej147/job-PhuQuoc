@@ -894,9 +894,7 @@ Payment ── N:1 ──► PricingPackage (packageId)
 
 | Method | Path | Auth | Mô tả |
 |--------|------|------|-------|
-| GET | /api/v1/address/provinces | PUBLIC | Tỉnh/thành |
-| GET | /api/v1/address/provinces/:id/districts | PUBLIC | Quận/huyện |
-| GET | /api/v1/address/districts/:id/wards | PUBLIC | Phường/xã |
+| GET | /api/v1/address/tree | PUBLIC | Tỉnh/thành + quận/huyện + phường/xã |
 | GET | /api/v1/address/wards | PUBLIC | Tất cả phường/xã |
 | GET | /api/v1/address/wards/:id | PUBLIC | Địa chỉ đầy đủ |
 

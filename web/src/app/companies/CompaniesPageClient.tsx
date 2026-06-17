@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import CompanyCard from "@/components/company/CompanyCard";
+import { useAuth } from "@/components/auth/auth-provider";
 
 const SIZE_LABELS: Record<string, string> = {
   SIZE_1_50: "1-50",
@@ -22,21 +23,26 @@ export default function CompaniesPageClient({
   initialTotal,
   totalJobs,
 }: CompaniesPageClientProps) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("");
   const [searchText, setSearchText] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("featured");
   const [savedCompanyIds, setSavedCompanyIds] = useState<Set<string>>(new Set());
 
-  // Fetch saved companies 1 lần duy nhất
+  // Fetch saved companies only when the user is logged in.
   useEffect(() => {
-    // Kiểm tra cache trong sessionStorage trước
-    const cached = sessionStorage.getItem("savedCompanyIds");
+    if (!user) {
+      setSavedCompanyIds(new Set());
+      return;
+    }
+
+    const cacheKey = `savedCompanyIds:${user.id}`;
+    const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       setSavedCompanyIds(new Set(JSON.parse(cached)));
     }
 
-    // Luôn fetch mới để đồng bộ
     fetch("/api/v1/saved/companies", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
@@ -45,11 +51,11 @@ export default function CompaniesPageClient({
         const ids = items
           .map((s: any) => s.companyId ?? s.company?.id ?? "")
           .filter(Boolean);
-        sessionStorage.setItem("savedCompanyIds", JSON.stringify(ids));
+        sessionStorage.setItem(cacheKey, JSON.stringify(ids));
         setSavedCompanyIds(new Set(ids));
       })
       .catch(() => { });
-  }, []);
+  }, [user]);
 
   const industryTabs = useMemo(() => {
     const unique = [
