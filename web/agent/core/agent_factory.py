@@ -1,7 +1,7 @@
 from langchain_openai import ChatOpenAI
 from core.config import get_settings
 from core.context import AgentContext
-from agents.candidate_agent import CandidateAdvisorAgent, CandidateCvAgent, CandidateJobAgent
+from agents.candidate_agent import CandidateAgent
 from agents.recruiter_agent import RecruiterAgent
 
 
@@ -18,21 +18,8 @@ def _candidate_context():
     )
 
 
-def create_candidate_job_graph():
-    return CandidateJobAgent(llm=_llm(), context=_candidate_context()).graph
-
-
-def create_candidate_cv_graph():
-    return CandidateCvAgent(llm=_llm(), context=_candidate_context()).graph
-
-
-def create_candidate_advisor_graph():
-    return CandidateAdvisorAgent(llm=_llm(), context=_candidate_context()).graph
-
-
 def create_candidate_graph():
-    """Compatibility alias: old /candidate now behaves as advisor."""
-    return create_candidate_advisor_graph()
+    return CandidateAgent(llm=_llm(), context=_candidate_context()).graph
 
 
 def create_recruiter_graph():

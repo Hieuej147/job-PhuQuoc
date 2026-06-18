@@ -13,7 +13,7 @@ function CandidateChatContent() {
       : "Chưa đăng nhập",
   });
 
-  return <CopilotSidebar defaultOpen={false} agentId="candidate-advisor-agent" />;
+  return <CopilotSidebar defaultOpen={false} agentId="candidate" />;
 }
 
 export function CandidateChatSidebar() {
