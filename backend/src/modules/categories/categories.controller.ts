@@ -18,15 +18,6 @@ export class CategoriesController {
     return this.categoriesService.findAll(query);
   }
 
-  @Get(':id')
-  @Public()
-  @ApiOperation({ summary: 'Chi tiết danh mục' })
-  @ApiParam({ name: 'id', description: 'ID của category' })
-  @ApiResponse({ status: 200, description: 'Chi tiết category' })
-  @ApiResponse({ status: 404, description: 'Không tìm thấy' })
-  findOne(@Param('id') id: string) {
-    return this.categoriesService.findById(id);
-  }
 
   @Post()
   @Roles('ADMIN')

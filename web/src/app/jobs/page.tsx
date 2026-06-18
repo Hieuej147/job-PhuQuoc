@@ -79,7 +79,7 @@ export default async function JobsPage({
     const cat = categories.find((c: any) => c.slug === resolvedSearchParams.category);
     if (cat) categoryId = cat.id;
   }
-
+  // should use slug and not use cateid for search params
   const jobsData = await fetchJobs({
     search: resolvedSearchParams.search,
     wardId: resolvedSearchParams.wardId,

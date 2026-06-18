@@ -33,52 +33,53 @@ describe('AddressService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('getProvinces', () => {
-    it('should return all provinces ordered by name', async () => {
-      const mockProvinces = [
-        { id: '1', name: 'Kiên Giang', slug: 'kien-giang' },
+  describe('getTree', () => {
+    it('should return nested provinces with districts and wards', async () => {
+      const mockTree = [
+        {
+          id: 'province-1',
+          name: 'Kiên Giang',
+          districts: [
+            {
+              id: 'district-1',
+              name: 'Phú Quốc',
+              provinceId: 'province-1',
+              wards: [{ id: 'ward-1', name: 'Dương Đông', districtId: 'district-1' }],
+            },
+          ],
+        },
       ];
-      prismaMock.addressProvince.findMany.mockResolvedValue(mockProvinces);
+      prismaMock.addressProvince.findMany.mockResolvedValue(mockTree);
 
-      const result = await service.getProvinces();
-      expect(result).toEqual(mockProvinces);
+      const result = await service.getTree();
+      expect(result).toEqual(mockTree);
       expect(prismaMock.addressProvince.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
+          include: expect.objectContaining({
+            districts: expect.objectContaining({
+              include: expect.objectContaining({
+                wards: expect.objectContaining({ orderBy: { name: 'asc' } }),
+              }),
+            }),
+          }),
           orderBy: { name: 'asc' },
         }),
       );
     });
   });
 
-  describe('getDistricts', () => {
-    it('should return districts for province', async () => {
-      const mockDistricts = [
-        { id: '1', name: 'Phú Quốc', slug: 'phu-quoc' },
-      ];
-      prismaMock.addressDistrict.findMany.mockResolvedValue(mockDistricts);
-
-      const result = await service.getDistricts('province1');
-      expect(result).toEqual(mockDistricts);
-      expect(prismaMock.addressDistrict.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { provinceId: 'province1' },
-        }),
-      );
-    });
-  });
-
-  describe('getWards', () => {
-    it('should return wards for district', async () => {
+  describe('getAllWards', () => {
+    it('should return all wards ordered by name', async () => {
       const mockWards = [
         { id: '1', name: 'Dương Đông', slug: 'duong-dong' },
       ];
       prismaMock.addressWard.findMany.mockResolvedValue(mockWards);
 
-      const result = await service.getWards('district1');
+      const result = await service.getAllWards();
       expect(result).toEqual(mockWards);
       expect(prismaMock.addressWard.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { districtId: 'district1' },
+          orderBy: { name: 'asc' },
         }),
       );
     });

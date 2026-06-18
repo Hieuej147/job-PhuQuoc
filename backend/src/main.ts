@@ -37,7 +37,7 @@ async function bootstrap() {
     exclude: ["api/auth/(.*)", "api/inngest"],
   });
 
-  // Swagger/OpenAPI config
+// OpenAPI config for Scalar API docs
   const config = new DocumentBuilder()
     .setTitle("Phú Quốc Jobs API")
     .setDescription("Backend API cho website tìm việc làm tại Phú Quốc")
@@ -65,7 +65,9 @@ async function bootstrap() {
     .addTag("Audit", "Nhật ký hệ thống")
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config, {
+    deepScanRoutes: true,
+  });
 
   // Scalar API Reference
   app.use(

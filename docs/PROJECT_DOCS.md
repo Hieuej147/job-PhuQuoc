@@ -527,7 +527,6 @@ CompanyQueryDto:
 | Method | Path | Auth | Roles | Body | Mô tả |
 |--------|------|------|-------|------|--------|
 | `GET` | `/categories` | `@Public()` | - | - | Tất cả danh mục |
-| `GET` | `/categories/:id` | `@Public()` | - | - | Danh mục theo ID |
 | `POST` | `/categories` | Có | ADMIN | `CreateCategoryDto` | Tạo danh mục |
 | `PATCH` | `/categories/:id` | Có | ADMIN | `UpdateCategoryDto` | Cập nhật danh mục |
 | `DELETE` | `/categories/:id` | Có | ADMIN | - | Xóa danh mục (kiểm tra có job liên kết) |
@@ -550,9 +549,7 @@ UpdateCategoryDto:
 
 | Method | Path | Auth | Roles | Mô tả |
 |--------|------|------|-------|--------|
-| `GET` | `/address/provinces` | `@Public()` | - | Tất cả tỉnh/thành |
-| `GET` | `/address/provinces/:id/districts` | `@Public()` | - | Quận/huyện theo tỉnh |
-| `GET` | `/address/districts/:id/wards` | `@Public()` | - | Phường/xã theo quận |
+| `GET` | `/address/tree` | `@Public()` | - | Tỉnh/thành + quận/huyện + phường/xã |
 | `GET` | `/address/wards` | `@Public()` | - | Tất cả phường/xã (kèm district+province) |
 | `GET` | `/address/wards/:id` | `@Public()` | - | Địa chỉ đầy đủ (ward → district → province) |
 

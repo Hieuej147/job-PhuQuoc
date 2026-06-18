@@ -206,12 +206,13 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
         if (mappedIds.length > 0) params.set("categoryId", mappedIds.join(","));
       }
       if (f.location) {
+        // should use slug and not use wardId for search params
         params.set("wardId", f.location);
       }
       if (s === "salary_low") params.set("sort", "salary_asc");
       if (s === "salary_high") params.set("sort", "salary_desc");
       if (s === "expiring_soon") params.set("sort", "expiring_soon");
-
+      // should use slug and not use cateid for search params
       const res = await fetch(`/api/v1/jobs?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();

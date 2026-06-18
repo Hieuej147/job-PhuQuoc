@@ -1,12 +1,26 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CacheService } from '../../common/cache/cache.service';
 import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { Prisma, CompanySize } from '@prisma/client';
 import { CompanyQueryDto, CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
+import { createId } from '@paralleldrive/cuid2';
 
 function slugify(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const slug = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
+  return slug || 'company';
+}
+
+function createCompanySlug(name: string): string {
+  return `${slugify(name)}-${createId().slice(0, 6)}`;
 }
 
 @Injectable()
@@ -93,10 +107,32 @@ export class CompaniesService {
   }
 
   async create(ownerId: string, data: CreateCompanyDto) {
-    const slug = slugify(data.name) + '-' + Date.now().toString(36);
-    const company = await this.prisma.company.create({
-      data: { ...data, slug, ownerId, size: data.size as CompanySize, isApproved: true },
-    });
+    let company: Awaited<ReturnType<typeof this.prisma.company.create>> | null = null;
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const slug = createCompanySlug(data.name);
+
+      try {
+        company = await this.prisma.company.create({
+          data: { ...data, slug, ownerId, size: data.size as CompanySize, isApproved: true },
+        });
+        break;
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002' &&
+          Array.isArray(error.meta?.target) &&
+          error.meta.target.includes('slug')
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    if (!company) {
+      throw new ConflictException('Could not generate unique company slug');
+    }
 
     // Emit audit event
     await this.auditWriteContract.log({

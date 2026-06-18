@@ -6,7 +6,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTemplateRenderer } from "@/hooks/use-template-renderer";
 import { createAgentProgressMessageView } from "@/components/ai/agent-progress-chat-message";
 
-const CV_AGENT_ID = "candidate-cv-agent";
+const CV_AGENT_ID = "candidate";
 
 export default function AICVPage() {
   const { user } = useAuth();

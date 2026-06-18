@@ -29,6 +29,7 @@ export const metadata: Metadata = {
 };
 
 async function fetchBlogs() {
+    // should search  limit and not hard code
     try {
         const res = await fetch(`${BACKEND_URL}/api/v1/blogs?limit=50`, { next: { revalidate: 60 } });
         if (!res.ok) return [];

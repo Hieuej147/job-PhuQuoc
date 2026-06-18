@@ -1,6 +1,3 @@
-#!/bin/bash
-cd "$(dirname "$0")/../agent" || exit 1
-set -a
-[ -f ../.env ] && source ../.env
-set +a
-exec .venv/bin/uvicorn main:app --host 0.0.0.0 --port 8125
+#!/bin/sh
+cd "$(dirname "$0")/.." || exit 1
+exec node ./scripts/run-agent.js
