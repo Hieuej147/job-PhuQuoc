@@ -15,10 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 from agents.custom_agent import CustomLangGraphAGUIAgent
 from core.agent_factory import (
-    create_candidate_advisor_graph,
-    create_candidate_cv_graph,
     create_candidate_graph,
-    create_candidate_job_graph,
     create_recruiter_graph,
 )
 from core.config import get_settings
@@ -34,49 +31,16 @@ app.add_middleware(
 )
 
 candidate_graph = create_candidate_graph()
-candidate_job_graph = create_candidate_job_graph()
-candidate_cv_graph = create_candidate_cv_graph()
-candidate_advisor_graph = create_candidate_advisor_graph()
 recruiter_graph = create_recruiter_graph()
 
 add_langgraph_fastapi_endpoint(
     app=app,
     agent=CustomLangGraphAGUIAgent(
         name="candidate_agent",
-        description="AI trợ lý candidate mặc định, alias về advisor",
+        description="AI trợ lý candidate duy nhất: tư vấn, tìm việc và thiết kế CV",
         graph=candidate_graph,
     ),
     path="/candidate",
-)
-
-add_langgraph_fastapi_endpoint(
-    app=app,
-    agent=CustomLangGraphAGUIAgent(
-        name="candidate_job_agent",
-        description="AI tìm việc cho ứng viên",
-        graph=candidate_job_graph,
-    ),
-    path="/candidate/job",
-)
-
-add_langgraph_fastapi_endpoint(
-    app=app,
-    agent=CustomLangGraphAGUIAgent(
-        name="candidate_cv_agent",
-        description="AI thiết kế CV cho ứng viên qua MCP server",
-        graph=candidate_cv_graph,
-    ),
-    path="/candidate/cv",
-)
-
-add_langgraph_fastapi_endpoint(
-    app=app,
-    agent=CustomLangGraphAGUIAgent(
-        name="candidate_advisor_agent",
-        description="AI tư vấn dashboard cho ứng viên",
-        graph=candidate_advisor_graph,
-    ),
-    path="/candidate/advisor",
 )
 
 add_langgraph_fastapi_endpoint(
@@ -96,9 +60,6 @@ async def health():
         "status": "ok",
         "agents": [
             "candidate_agent",
-            "candidate_job_agent",
-            "candidate_cv_agent",
-            "candidate_advisor_agent",
             "recruiter_agent",
         ],
     }

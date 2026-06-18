@@ -1,4 +1,5 @@
 from copilotkit import CopilotKitState
+from pydantic import Field
 from typing import Optional, List, Any, Dict
 
 
@@ -15,18 +16,10 @@ class CandidateBaseState(CopilotKitState):
     step: str = ""
 
 
-class CandidateJobState(CandidateBaseState):
-    activeWorker: Optional[str] = "job_searcher"
+class CandidateState(CandidateBaseState):
+    activeWorker: Optional[str] = None
     job_search: Optional[Dict[str, Any]] = None
-
-
-class CandidateAdvisorState(CandidateBaseState):
-    activeWorker: Optional[str] = "career_advisor"
     dashboard_analysis: Optional[Dict[str, Any]] = None
-
-
-class CandidateCvState(CandidateBaseState):
-    activeWorker: Optional[str] = "cv_designer"
     cv_flow: str = "idle"  # idle, collecting, generating, preview, editing, done, error
 
     # User info collected during conversation
@@ -35,17 +28,13 @@ class CandidateCvState(CandidateBaseState):
     user_phone: Optional[str] = None
     user_address: Optional[str] = None
     user_summary: Optional[str] = None
-    user_skills: List[str] = []
-    user_education: List[Dict[str, Any]] = []
-    user_experience: List[Dict[str, Any]] = []
-    user_projects: List[Dict[str, Any]] = []
-    user_languages: List[str] = []
+    user_skills: List[str] = Field(default_factory=list)
+    user_education: List[Dict[str, Any]] = Field(default_factory=list)
+    user_experience: List[Dict[str, Any]] = Field(default_factory=list)
+    user_projects: List[Dict[str, Any]] = Field(default_factory=list)
+    user_languages: List[str] = Field(default_factory=list)
 
     # Template preview synced to FE state
     current_template_name: Optional[str] = None
     current_template_html: Optional[str] = None
     current_template_css: Optional[str] = None
-
-
-# Compatibility alias for old imports. /candidate now points to advisor.
-CandidateState = CandidateAdvisorState
