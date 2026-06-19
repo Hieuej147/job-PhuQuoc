@@ -3,20 +3,22 @@ import { Eye, Clock, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 // Định nghĩa Interface khớp 100% với cấu trúc dữ liệu trả về từ selector mockHomeBlogs
-interface BlogCardProps {
-  blog: {
-    id: string;
-    title: string;
-    slug: string;
-    excerpt: string;
-    views: string;
-    date: string;
-    categoryName: string;
-    categorySlug: string;
-    authorName: string;
-    uiIconName: string;
-    uiCatBg: string;
-  };
+export interface HomeBlogItem {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  views: string;
+  date: string;
+  categoryName: string;
+  categorySlug: string;
+  authorName: string;
+  uiIconName: string;
+  uiCatBg: string;
+}
+
+export interface BlogCardProps {
+  blog: HomeBlogItem;
 }
 
 export default function BlogCard({ blog }: BlogCardProps) {

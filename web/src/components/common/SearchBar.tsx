@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Search, MapPin, ChevronDown, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-const ALL_LOCATION = { id: "", name: "Tất cả khu vực" };
+const ALL_LOCATION = { id: "", name: "Tất cả khu vực", slug: "" };
 
 interface Ward {
   id: string;
@@ -35,7 +35,7 @@ export default function SearchBar() {
       .catch(() => { });
   }, []);
 
-  const options = [ALL_LOCATION, ...wards.map(w => ({ id: w.id, name: w.name }))];
+  const options = [ALL_LOCATION, ...wards.map(w => ({ id: w.id, name: w.name, slug: w.slug }))];
 
   const calcPosition = useCallback(() => {
     if (!triggerRef.current) return;
@@ -79,7 +79,7 @@ export default function SearchBar() {
   const handleSearch = () => {
     const params = new URLSearchParams();
     if (keyword) params.set("search", keyword);
-    if (selected.id) params.set("wardId", selected.id);
+    if (selected.slug) params.set("ward", selected.slug);
     router.push(`/jobs?${params.toString()}`);
   };
 
@@ -124,6 +124,12 @@ export default function SearchBar() {
           type="text"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
+          onKeyDown={(e) => {
+            // enter thì search lun không cần đợi nhắn nút
+            if (e.key === "Enter") {
+              handleSearch();
+            }
+          }}
           placeholder="Tên công việc, kỹ năng..."
           className="w-full bg-transparent text-[14px] text-slate-700 outline-none py-3 placeholder:text-slate-400"
         />

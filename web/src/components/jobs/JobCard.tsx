@@ -33,6 +33,9 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
       className="group bg-white dark:bg-[#0d2137] rounded-2xl p-5 border border-[#E0F5FB] dark:border-[#1a3d5c] shadow-sm hover:shadow-lg transition-all duration-300 relative overflow-hidden"
       id={`job-card-${job.id}`}
     >
+      {/* Absolute overlay link covering the entire card */}
+      <Link href={`/jobs/${job.slug}`} className="absolute inset-0 z-0" aria-label={`Xem chi tiết ${job.title}`} />
+
       {/* 1. Nhãn "NỔI BẬT" - Chỉ hiển thị khi thuộc tính isFeatured là true */}
       {job.isFeatured && (
         <div className="absolute top-0 left-0 bg-[#F59E0B] text-white text-[10px] font-bold px-3 py-1 rounded-br-xl z-10">
@@ -54,12 +57,10 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start gap-2">
             <div className="min-w-0">
-              {/* Tiêu đề công việc - Click để chuyển sang trang chi tiết /jobs/[id] */}
-              <Link href={`/jobs/${job.slug}`}>
-                <h3 className="job-title font-bold text-[#0C4A6E] dark:text-[#e0f2fe] text-base mb-0.5 group-hover:text-[#005a71] dark:group-hover:text-[#67e8f9] transition-colors line-clamp-2 cursor-pointer">
-                  {job.title}
-                </h3>
-              </Link>
+              {/* Tiêu đề công việc */}
+              <h3 className="job-title font-bold text-[#0C4A6E] dark:text-[#e0f2fe] text-base mb-0.5 group-hover:text-[#005a71] dark:group-hover:text-[#67e8f9] transition-colors line-clamp-2">
+                {job.title}
+              </h3>
               {/* Tên công ty tuyển dụng */}
               <p className="text-sm text-gray-500 dark:text-[#cbd5e1]/70">{job.company}</p>
             </div>
@@ -67,7 +68,7 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
             {/* Nút lưu tin tuyển dụng (Bookmark) */}
             <button
               onClick={() => onBookmark(job.id)}
-              className={`flex-shrink-0 p-1.5 rounded-full transition-colors flex items-center justify-center cursor-pointer ${isBookmarked
+              className={`flex-shrink-0 p-1.5 rounded-full transition-colors flex items-center justify-center cursor-pointer relative z-10 ${isBookmarked
                 ? 'text-[#F59E0B] bg-[#F59E0B]/10 dark:bg-[#F59E0B]/20'
                 : 'text-gray-400 dark:text-gray-500 hover:text-[#F59E0B] hover:bg-[#F59E0B]/10 dark:hover:bg-[#F59E0B]/20'
                 }`}
@@ -131,7 +132,7 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
             {/* Nút ứng tuyển nhanh - Chỉ hiển thị trên thiết bị máy tính */}
             <Link
               href={`/jobs/${job.slug}`}
-              className="hidden sm:block bg-[#005a71] dark:bg-[#0e7490] hover:bg-[#0E7490] dark:hover:bg-[#0d9488] text-white font-semibold px-4 py-2 rounded-lg text-xs transition-colors"
+              className="hidden sm:block bg-[#005a71] dark:bg-[#0e7490] hover:bg-[#0E7490] dark:hover:bg-[#0d9488] text-white font-semibold px-4 py-2 rounded-lg text-xs transition-colors relative z-10"
               id={`apply-${job.id}`}
             >
               Ứng tuyển
@@ -143,7 +144,7 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
       {/* 6. Nút Ứng tuyển di động - Chỉ hiển thị ở dưới cùng trên thiết bị màn hình nhỏ */}
       <Link
         href={`/jobs/${job.slug}`}
-        className="sm:hidden mt-3 block w-full text-center bg-[#005a71] dark:bg-[#0e7490] text-white font-semibold py-2.5 rounded-xl text-sm transition-colors hover:bg-[#0E7490] dark:hover:bg-[#0d9488]"
+        className="sm:hidden mt-3 block w-full text-center bg-[#005a71] dark:bg-[#0e7490] text-white font-semibold py-2.5 rounded-xl text-sm transition-colors hover:bg-[#0E7490] dark:hover:bg-[#0d9488] relative z-10"
       >
         Ứng tuyển ngay
       </Link>
