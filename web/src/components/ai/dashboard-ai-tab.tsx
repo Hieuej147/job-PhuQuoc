@@ -1,16 +1,12 @@
 "use client";
-
 import { CopilotChat, useAgentContext } from "@copilotkit/react-core/v2";
-import { useMemo, useState } from "react";
-import { BriefcaseBusiness, FileText, Lightbulb } from "lucide-react";
+import { useMemo } from "react";
 import { AgentProgressPanel } from "@/components/ai/agent-progress-panel";
 import { createAgentProgressMessageView } from "@/components/ai/agent-progress-chat-message";
 import { useJobSearchRenderer } from "@/components/ai/renderers/job-search-renderer";
 import { useTemplateRenderer } from "@/hooks/use-template-renderer";
 
-export type DashboardAgentId =
-  | "candidate"
-  | "recruiter";
+export type DashboardAgentId = "candidate" | "recruiter";
 
 interface DashboardAiTabProps {
   agentId: DashboardAgentId;
@@ -19,30 +15,6 @@ interface DashboardAiTabProps {
   contextDescription: string;
   contextValue: unknown;
 }
-
-const candidateModes = [
-  {
-    id: "advisor" as const,
-    label: "Tư vấn",
-    icon: Lightbulb,
-    title: "Candidate Advisor",
-    welcome: "Xin chào! Tôi sẽ phân tích dashboard và gợi ý bước tiếp theo cho bạn.",
-  },
-  {
-    id: "job" as const,
-    label: "Tìm việc",
-    icon: BriefcaseBusiness,
-    title: "Job Search Agent",
-    welcome: "Bạn muốn tìm việc theo vị trí, kỹ năng, địa điểm hoặc mức lương nào?",
-  },
-  {
-    id: "cv" as const,
-    label: "CV",
-    icon: FileText,
-    title: "CV Designer Agent",
-    welcome: "Mô tả mẫu CV bạn muốn thiết kế. Phase này tôi chỉ tạo preview template, chưa lưu DB hoặc export PDF.",
-  },
-];
 
 function DashboardAiChat({
   agentId,
@@ -66,7 +38,6 @@ function DashboardAiChat({
       <AgentProgressPanel agentId={agentId} title={title} />
       <div className="h-[760px] min-h-[620px]">
         <CopilotChat
-          key={agentId}
           agentId={agentId}
           messageView={progressMessageView}
           labels={{
@@ -79,47 +50,16 @@ function DashboardAiChat({
   );
 }
 
-export function CandidateDashboardAiTab(props: Omit<DashboardAiTabProps, "agentId">) {
-  const [activeModeId, setActiveModeId] = useState<(typeof candidateModes)[number]["id"]>("advisor");
-  const activeMode = candidateModes.find((mode) => mode.id === activeModeId) ?? candidateModes[0];
-
+export function CandidateDashboardAiTab(
+  props: Omit<DashboardAiTabProps, "agentId">,
+) {
   useJobSearchRenderer();
   useTemplateRenderer();
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2 rounded-xl border border-[#e1efff] bg-white p-2 shadow-sm dark:border-[#1E5F74] dark:bg-[#0d2d42]">
-        {candidateModes.map((mode) => {
-          const Icon = mode.icon;
-          const active = activeModeId === mode.id;
-          return (
-            <button
-              key={mode.id}
-              type="button"
-              onClick={() => setActiveModeId(mode.id)}
-              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                active
-                  ? "bg-[#005a71] text-white dark:bg-[#67E8F9] dark:text-[#082f49]"
-                  : "text-gray-600 hover:bg-[#e1efff]/70 dark:text-[#CBD5E1] dark:hover:bg-[#1E5F74]"
-              }`}
-            >
-              <Icon className="size-4" />
-              {mode.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <DashboardAiChat
-        {...props}
-        agentId="candidate"
-        title={activeMode.title}
-        initialMessage={activeMode.welcome}
-      />
-    </div>
-  );
+  return <DashboardAiChat {...props} agentId="candidate" />;
 }
 
-export function EmployerDashboardAiTab(props: Omit<DashboardAiTabProps, "agentId">) {
+export function EmployerDashboardAiTab(
+  props: Omit<DashboardAiTabProps, "agentId">,
+) {
   return <DashboardAiChat {...props} agentId="recruiter" />;
 }
