@@ -5,18 +5,22 @@ const { spawn, spawnSync } = require("child_process");
 const root = path.resolve(__dirname, "..");
 const agentDir = path.join(root, "agent");
 
+// Load .env từ web/
+const envFile = path.join(root, ".env");
+if (fs.existsSync(envFile)) {
+  fs.readFileSync(envFile, "utf-8")
+    .split("\n")
+    .forEach((line) => {
+      const match = line.match(/^\s*([^#][^=]*?)\s*=\s*(.*)\s*$/);
+      if (match) process.env[match[1]] = match[2].replace(/^["']|["']$/g, "");
+    });
+}
+
 function pickPython() {
-  const candidates = process.platform === "win32"
-    ? [
-        path.join(agentDir, ".venv", "Scripts", "python.exe"),
-        "py",
-        "python",
-      ]
-    : [
-        path.join(agentDir, ".venv", "bin", "python"),
-        "python3",
-        "python",
-      ];
+  const candidates =
+    process.platform === "win32"
+      ? [path.join(agentDir, ".venv", "Scripts", "python.exe"), "py", "python"]
+      : [path.join(agentDir, ".venv", "bin", "python"), "python3", "python"];
 
   for (const candidate of candidates) {
     if (path.isAbsolute(candidate) && fs.existsSync(candidate)) {
@@ -40,14 +44,23 @@ function pickPython() {
   if (!spawnSync("python", ["--version"], { stdio: "ignore" }).error) {
     return { command: "python", args: [] };
   }
-
   return { command: "python3", args: [] };
 }
 
 const python = pickPython();
+
 const child = spawn(
   python.command,
-  [...python.args, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8125"],
+  [
+    ...python.args,
+    "-m",
+    "uvicorn",
+    "main:app",
+    "--host",
+    "0.0.0.0",
+    "--port",
+    "8125",
+  ],
   {
     cwd: agentDir,
     env: {
