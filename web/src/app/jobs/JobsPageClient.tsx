@@ -124,6 +124,7 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
   const [wards, setWards] = useState<{ id: string; name: string; slug: string }[]>([]);
 
   // Fetch wards dynamically from API
+  // should be click to fetch, but for now we fetch on mount
   useEffect(() => {
     fetch("/api/v1/address/wards?limit=50", { credentials: "include" })
       .then((r) => r.json())
@@ -159,7 +160,7 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
 
   const [filters, setFilters] = useState(() => {
     const search = searchParams.get("search") || "";
-    const wardSlug = searchParams.get("ward") || searchParams.get("wardId") || "";
+    const wardSlug = searchParams.get("ward") || "";
     const category = searchParams.get("category") || "";
     const industries: string[] = [];
     if (category) {
@@ -212,20 +213,17 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
         if (mapped.length > 0) params.set("salaryRange", mapped.join(","));
       }
       if (f.industries.length > 0) {
-        // Gửi tham số category (slug) trực tiếp lên backend thay vì ID
         const mappedSlugs = f.industries
           .map(indName => categories.find(c => c.name === indName)?.slug)
           .filter(Boolean);
         if (mappedSlugs.length > 0) params.set("category", mappedSlugs.join(","));
       }
-      // Gửi tham số ward (slug của phường xã) trực tiếp lên backend
       if (f.location) {
         params.set("ward", f.location);
       }
       if (s === "salary_low") params.set("sort", "salary_asc");
       if (s === "salary_high") params.set("sort", "salary_desc");
       if (s === "expiring_soon") params.set("sort", "expiring_soon");
-      // should use slug and not use cateid for search params
       const res = await fetch(`/api/v1/jobs?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
@@ -242,7 +240,7 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
 
   useEffect(() => {
     const search = searchParams.get("search") || "";
-    const wardSlug = searchParams.get("ward") || searchParams.get("wardId") || "";
+    const wardSlug = searchParams.get("ward") || "";
     const category = searchParams.get("category") || "";
 
     const newFilters: any = {

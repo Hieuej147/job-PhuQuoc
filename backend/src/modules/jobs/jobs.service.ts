@@ -54,15 +54,9 @@ export class JobsService {
     if (status) where.status = status as JobStatus;
     else where.status = JobStatus.ACTIVE; // Default: chỉ trả job ACTIVE cho public queries
 
-    // Lọc theo Danh mục nghề nghiệp (Category): Hỗ trợ lọc theo cả ID hoặc Slug của Category
     if (category) {
-      const ids = category.split(',');
-      where.category = {
-        OR: [
-          { id: ids.length > 1 ? { in: ids } : ids[0] },
-          { slug: ids.length > 1 ? { in: ids } : ids[0] }
-        ]
-      };
+      const slugs = category.split(',');
+      where.category = slugs.length > 1 ? { slug: { in: slugs } } : { slug: slugs[0] };
     }
     if (type) {
       const types = type.split(',') as JobType[];
@@ -76,15 +70,9 @@ export class JobsService {
       const lvls = level.split(',') as JobLevel[];
       where.level = lvls.length > 1 ? { in: lvls } : lvls[0];
     }
-    // Lọc theo Phường/Xã (Ward): Hỗ trợ lọc theo cả ID hoặc Slug của Ward
     if (ward) {
-      const ids = ward.split(',');
-      where.ward = {
-        OR: [
-          { id: ids.length > 1 ? { in: ids } : ids[0] },
-          { slug: ids.length > 1 ? { in: ids } : ids[0] }
-        ]
-      };
+      const slugs = ward.split(',');
+      where.ward = slugs.length > 1 ? { slug: { in: slugs } } : { slug: slugs[0] };
     }
     if (salaryMin) where.salaryMin = { gte: Number(salaryMin) };
     if (salaryMax) where.salaryMax = { lte: Number(salaryMax) };

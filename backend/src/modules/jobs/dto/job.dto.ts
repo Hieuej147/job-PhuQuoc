@@ -172,7 +172,7 @@ export class JobQueryDto {
 
   @IsOptional()
   @IsString()
-  category?: string; // Hỗ trợ lọc theo ID hoặc Slug của Danh mục ngành nghề
+  category?: string; // Slug danh mục nghề (hoặc nhiều slug cách nhau bằng dấu phẩy)
 
 
   @IsOptional()
@@ -215,7 +215,7 @@ export class JobQueryDto {
 
   @IsOptional()
   @IsString()
-  ward?: string; // Hỗ trợ lọc theo ID hoặc Slug của Phường/Xã
+  ward?: string; // Slug phường/xã (hoặc nhiều slug cách nhau bằng dấu phẩy)
 
   @IsOptional()
   @IsString()

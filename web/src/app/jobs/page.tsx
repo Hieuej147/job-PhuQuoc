@@ -69,22 +69,19 @@ async function fetchStats() {
 export default async function JobsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; wardId?: string; ward?: string; category?: string }>;
+  searchParams: Promise<{ search?: string; ward?: string; category?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const [categories, stats] = await Promise.all([fetchCategories(), fetchStats()]);
 
-  // Lấy giá trị category từ searchParams (slug)
   const category = resolvedSearchParams.category || "";
 
-  // Lấy giá trị ward từ searchParams (chấp nhận cả wardId kiểu cũ hoặc ward slug kiểu mới)
-  const ward = resolvedSearchParams.ward || resolvedSearchParams.wardId || "";
+  const ward = resolvedSearchParams.ward || "";
 
-  // should use slug and not use cateid for search params
   const jobsData = await fetchJobs({
     search: resolvedSearchParams.search,
-    ward, // Truyền thẳng ward (slug/id) xuống API backend
-    category, // Truyền thẳng category (slug/id) xuống API backend
+    ward,
+    category,
   });
 
   const jsonLd = {

@@ -23,10 +23,10 @@ async function fetchJob(slug: string) {
   }
 }
 
-async function fetchRelatedJobs(categoryId: string, currentId: string) {
+async function fetchRelatedJobs(categorySlug: string, currentId: string) {
   try {
     const res = await fetch(
-      `${BACKEND_URL}/api/v1/jobs?categoryId=${categoryId}&limit=4`,
+      `${BACKEND_URL}/api/v1/jobs?category=${categorySlug}&limit=4`,
       { next: { revalidate: 300 } },
     );
     if (!res.ok) return [];
@@ -93,8 +93,8 @@ export default async function JobDetailPage({ params }: PageProps) {
     );
   }
 
-  const relatedJobs = job.categoryId
-    ? await fetchRelatedJobs(job.categoryId, job.id)
+  const relatedJobs = job.category?.slug
+    ? await fetchRelatedJobs(job.category.slug, job.id)
     : [];
 
   const jsonLd = jobPostingJsonLd({
