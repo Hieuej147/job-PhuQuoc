@@ -34,16 +34,16 @@ export class JobsService {
   ) { }
 
   async findAll(query: JobQueryDto) {
-    const { search, categoryId, type, experience, level, status, salaryMin, salaryMax, salaryRange, wardId, companyId, sort } = query;
+    const { search, category, type, experience, level, status, salaryMin, salaryMax, salaryRange, ward, companyId, sort } = query;
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
 
     // Generate cache key from query parameters
     const cacheKey = this.cache.generateKey(
       this.CACHE_PREFIX, 'list',
-      String(page), String(limit), search || '', categoryId || '',
+      String(page), String(limit), search || '', category || '',
       type || '', experience || '', level || '', status || 'ACTIVE',
-      String(salaryMin || ''), String(salaryMax || ''), salaryRange || '', wardId || '', companyId || '', sort || ''
+      String(salaryMin || ''), String(salaryMax || ''), salaryRange || '', ward || '', companyId || '', sort || ''
     );
 
     const cached = await this.cache.get(cacheKey);
@@ -54,9 +54,9 @@ export class JobsService {
     if (status) where.status = status as JobStatus;
     else where.status = JobStatus.ACTIVE; // Default: chỉ trả job ACTIVE cho public queries
 
-    if (categoryId) {
-      const ids = categoryId.split(',');
-      where.categoryId = ids.length > 1 ? { in: ids } : ids[0];
+    if (category) {
+      const slugs = category.split(',');
+      where.category = slugs.length > 1 ? { slug: { in: slugs } } : { slug: slugs[0] };
     }
     if (type) {
       const types = type.split(',') as JobType[];
@@ -70,9 +70,9 @@ export class JobsService {
       const lvls = level.split(',') as JobLevel[];
       where.level = lvls.length > 1 ? { in: lvls } : lvls[0];
     }
-    if (wardId) {
-      const ids = wardId.split(',');
-      where.wardId = ids.length > 1 ? { in: ids } : ids[0];
+    if (ward) {
+      const slugs = ward.split(',');
+      where.ward = slugs.length > 1 ? { slug: { in: slugs } } : { slug: slugs[0] };
     }
     if (salaryMin) where.salaryMin = { gte: Number(salaryMin) };
     if (salaryMax) where.salaryMax = { lte: Number(salaryMax) };

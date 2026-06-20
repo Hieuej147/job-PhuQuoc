@@ -41,7 +41,7 @@ export default function JobsHero({
   const [keyword, setKeyword] = useState(initialKeyword);
   const [location, setLocation] = useState(initialLocation);
   const [industry, setIndustry] = useState(initialIndustry);
-  const [wards, setWards] = useState<{ id: string; name: string }[]>([]);
+  const [wards, setWards] = useState<{ id: string; name: string; slug: string }[]>([]);
 
   // Đồng bộ hóa khi props thay đổi
   useEffect(() => {
@@ -123,12 +123,16 @@ export default function JobsHero({
             <select
               className="w-full border-none outline-none text-gray-800 dark:text-[#cbd5e1] bg-transparent py-3 text-sm cursor-pointer focus:ring-0 focus:outline-none"
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setLocation(val);
+                onSearch(keyword, val, industry);
+              }}
               id="search-location"
             >
               <option value="" className="dark:bg-[#0d2137]">Tất cả khu vực</option>
               {wards.map((loc) => (
-                <option key={loc.id} value={loc.id} className="dark:bg-[#0d2137]">
+                <option key={loc.id} value={loc.slug} className="dark:bg-[#0d2137]">
                   {loc.name}
                 </option>
               ))}
@@ -141,7 +145,11 @@ export default function JobsHero({
             <select
               className="w-full border-none outline-none text-gray-800 dark:text-[#cbd5e1] bg-transparent py-3 text-sm cursor-pointer focus:ring-0 focus:outline-none"
               value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setIndustry(val);
+                onSearch(keyword, location, val);
+              }}
               id="search-industry"
             >
               <option value="" className="dark:bg-[#0d2137]">Tất cả ngành</option>
