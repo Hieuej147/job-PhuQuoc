@@ -11,7 +11,7 @@ interface BlogCardProps {
     title: string;
     slug: string;
     excerpt: string;
-    thumbnail?: string;
+    thumbnail?: string | null;
     date: string;
     views: string | number;
     categoryName: string;

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
-import Header from "@/components/common/Header";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -21,7 +20,6 @@ export function AuthLayout({
 }: AuthLayoutProps) {
   return (
     <>
-      <Header />
       <div className="h-[calc(100vh-4rem)] flex overflow-hidden">
         {/* LEFT: Form */}
         <div className="flex-1 flex items-center justify-center px-4 py-10 overflow-y-auto">

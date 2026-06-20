@@ -88,5 +88,9 @@ export class BlogQueryDto {
 
   @IsOptional()
   @IsString()
-  categoryId?: string;
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  orderBy?: string;
 }

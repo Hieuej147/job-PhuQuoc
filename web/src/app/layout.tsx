@@ -40,6 +40,8 @@ export const metadata: Metadata = {
   },
 };
 
+import Header from "@/components/common/Header";
+
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const initialUser = await getServerAuthUser();
 
@@ -50,7 +52,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
       </head>
       <body className="antialiased min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary font-body">
-        <Providers initialUser={initialUser}>{children}</Providers>
+        <Providers initialUser={initialUser}>
+          <Header />
+          {children}
+        </Providers>
       </body>
     </html>
   );

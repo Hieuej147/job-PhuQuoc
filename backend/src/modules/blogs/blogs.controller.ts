@@ -23,7 +23,8 @@ export class BlogsController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'search', required: false })
-  @ApiQuery({ name: 'categoryId', required: false })
+  @ApiQuery({ name: 'category', required: false, description: 'Slug của danh mục' })
+  @ApiQuery({ name: 'orderBy', required: false, description: 'Sắp xếp (views, newest, oldest)' })
   @ApiResponse({ status: 200, description: 'Danh sách blogs phân trang' })
   findAll(@Query() query: BlogQueryDto) {
     return this.blogsService.findAll(query);
