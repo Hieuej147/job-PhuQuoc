@@ -1,6 +1,6 @@
 # Phú Quốc Jobs — Tài liệu cho Team FE
 
-*Cập nhật: 2026-06-09*
+*Cập nhật: 2026-06-20*
 
 ---
 
@@ -104,9 +104,18 @@ job-phuquoc/
 ├── web/                        # Next.js Frontend
 │   ├── src/
 │   │   ├── app/               # App Router pages
-│   │   ├── components/        # React components
+│   │   │   ├── layout.tsx     # Root layout (chứa <Providers> & <Header>)
+│   │   │   ├── (main)/        # Route Group cho trang public (có <Footer>)
+│   │   │   │   ├── about/
+│   │   │   │   ├── blog/
+│   │   │   │   ├── companies/
+│   │   │   │   └── jobs/
+│   │   │   ├── candidate/     # Dashboard ứng viên (không Footer)
+│   │   │   └── employer/      # Dashboard nhà tuyển dụng (không Footer)
+│   │   ├── components/        # React components (tách nhỏ Hero, List, Filter)
 │   │   ├── hooks/             # Custom hooks
 │   │   ├── lib/               # Utilities
+│   │   ├── types/             # Định nghĩa Type/Interface dùng chung
 │   │   └── middleware.ts      # Route protection
 │   └── agent/                 # Python AI Agent
 ├── docker/                     # Docker compose
@@ -114,6 +123,11 @@ job-phuquoc/
 ├── docs/                       # Documentation
 └── ecosystem.config.js         # PM2 config
 ```
+
+### Component Architecture
+- **Tách Component:** Các trang lớn (`PageClient`) cần được tách thành các sub-components (như `Hero`, `FilterBar`, `List`) và đặt trong thư mục riêng thuộc `components/` để dễ bảo trì.
+- **Type Safety:** Hạn chế tối đa việc sử dụng `any`. Cần định nghĩa rõ các interface/type dùng chung tại thư mục `src/types/`.
+- **Layout Management:** Sử dụng Route Groups của Next.js App Router (như `(main)`) để tránh việc Unmount Context Providers khi điều hướng và tránh hiển thị Layout Header/Footer sai vị trí.
 
 ### Cài đặt
 

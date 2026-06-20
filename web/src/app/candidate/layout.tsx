@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Header from "@/components/common/Header";
 import { CandidateSidebar } from "@/components/layout/candidate-sidebar";
 import { getServerAuthUser } from "@/lib/server-auth";
 
@@ -16,7 +15,6 @@ export default async function CandidateLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <div className="flex">
         <CandidateSidebar />
         <main className="flex-1 min-w-0 lg:ml-72 px-4 md:px-8 py-8">

@@ -6,23 +6,7 @@ import Link from "next/link"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
 
-interface Company {
-  id: string
-  name: string
-  slug: string
-  logo?: string | null
-  industry: string
-  size: string
-  wardId?: string
-  isApproved?: boolean
-  jobCount?: number
-  isHot?: boolean
-  isFeatured?: boolean
-  coverGradient?: string
-  initials?: string
-  logoColor?: string
-  location?: string
-}
+import { Company } from "@/types/company"
 
 interface CompanyCardProps {
   company: Company

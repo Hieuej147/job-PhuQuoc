@@ -10,29 +10,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
 import { toast } from "sonner";
-import Header from "@/components/common/Header";
-import Footer from "@/components/common/Footer";
 import { RichContent } from "@/components/ui/rich-content";
+import { Blog } from "@/types/blog";
 
 interface BlogDetailClientProps {
-  blog: {
-    id: string;
-    title: string;
-    slug: string;
-    type: "NORMAL" | "LANDING_PAGE";
-    content: string | null;
-    thumbnail: string;
-    excerpt: string;
-    categoryId: string;
-    authorId: string;
-    views: number;
-    createdAt: string;
-  };
+  blog: Blog;
   categoryName: string;
   authorName: string;
-  // don'y should use any
-  relatedBlogs: any[];
-  popularBlogs: any[];
+  relatedBlogs: Blog[];
+  popularBlogs: Blog[];
 }
 
 export default function BlogDetailClient({
@@ -175,8 +161,6 @@ export default function BlogDetailClient({
         className="fixed top-16 left-0 right-0 h-[3px] bg-gradient-to-r from-[#0e7490] to-[#0d9488] z-40 origin-left transition-transform duration-100"
         style={{ transform: "scaleX(0)" }}
       />
-
-      <Header />
 
       {/* HERO */}
       <div className="pt-0">
@@ -530,8 +514,6 @@ export default function BlogDetailClient({
           </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 }
