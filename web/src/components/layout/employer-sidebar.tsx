@@ -2,103 +2,186 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Building2,
-  PlusCircle,
-  Briefcase,
-  Users,
-  Bell,
-  Settings,
-  LogOut,
-} from "lucide-react";
 import { useEffect, useState } from "react";
+
+interface WardData {
+  name?: string;
+  district?: { name?: string; province?: { name?: string } };
+}
+
+interface CompanyData {
+  name?: string;
+  industry?: string;
+  addressDetail?: string;
+  logo?: string;
+  description?: string;
+  website?: string;
+  isApproved?: boolean;
+  ward?: WardData;
+}
 
 export function EmployerSidebar() {
   const pathname = usePathname();
-  const [companyName, setCompanyName] = useState("Công ty");
+  const [company, setCompany] = useState<CompanyData | null>(null);
+  const [jobsCount, setJobsCount] = useState(0);
+  const [applicantsCount, setApplicantsCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    fetch("/api/v1/companies/my", { credentials: "include" })
-      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
-      .then((d) => { if (d.data?.name) setCompanyName(d.data.name); })
-      .catch(() => { /* dùng tên mặc định */ });
+    Promise.allSettled([
+      fetch("/api/v1/companies/my", { credentials: "include" }),
+      fetch("/api/v1/jobs/my?limit=1", { credentials: "include" }),
+      fetch("/api/v1/applications/employer?limit=1", { credentials: "include" }),
+      fetch("/api/v1/notifications/unread-count", { credentials: "include" }),
+    ]).then(async ([companyRes, jobsRes, appsRes, unreadRes]) => {
+      if (companyRes.status === "fulfilled" && companyRes.value.ok) {
+        const d = await companyRes.value.json();
+        if (d.data) setCompany(d.data);
+      }
+      if (jobsRes.status === "fulfilled" && jobsRes.value.ok) {
+        const d = await jobsRes.value.json();
+        setJobsCount(d.data?.total ?? d.total ?? 0);
+      }
+      if (appsRes.status === "fulfilled" && appsRes.value.ok) {
+        const d = await appsRes.value.json();
+        setApplicantsCount(d.data?.total ?? d.total ?? 0);
+      }
+      if (unreadRes.status === "fulfilled" && unreadRes.value.ok) {
+        const d = await unreadRes.value.json();
+        setUnreadCount(d.data?.count ?? d.count ?? 0);
+      }
+    }).catch(() => { });
   }, []);
+
+  const companyName = company?.name || "Công ty";
+  const initials = companyName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+
+  const locationLabel = company?.ward
+    ? [company.ward.name, company.ward.district?.name].filter(Boolean).join(", ")
+    : null;
+
+  // Profile completion theo field thật
+  const checklist = [
+    { done: Boolean(company?.name) },
+    { done: Boolean(company?.industry) },
+    { done: Boolean(company?.ward) },
+    { done: Boolean(company?.logo) },
+    { done: Boolean(company?.description) },
+    { done: Boolean(company?.website) },
+  ];
+  const completionPct = company
+    ? Math.round((checklist.filter((c) => c.done).length / checklist.length) * 100)
+    : 0;
 
   const navGroups = [
     {
       label: "Tổng quan",
       items: [
-        { icon: LayoutDashboard, label: "Dashboard", href: "/employer/dashboard" },
-        { icon: Building2, label: "Hồ sơ công ty", href: "/employer/company" },
+        { icon: "dashboard", label: "Dashboard", href: "/employer/dashboard" },
+        { icon: "apartment", label: "Hồ sơ công ty", href: "/employer/company" },
       ],
     },
     {
       label: "Tuyển dụng",
       items: [
-        { icon: PlusCircle, label: "Đăng tin mới", href: "/employer/jobs/create" },
-        { icon: Briefcase, label: "Quản lý tin đăng", href: "/employer/jobs" },
-        { icon: Users, label: "Hồ sơ ứng viên", href: "/employer/applications" },
+        { icon: "post_add", label: "Đăng tin mới", href: "/employer/jobs/create" },
+        { icon: "work", label: "Quản lý tin đăng", href: "/employer/jobs", badge: jobsCount, badgeClass: "bg-[#005a71] text-white" },
+        { icon: "group", label: "Hồ sơ ứng viên", href: "/employer/applications", badge: applicantsCount, badgeClass: "bg-[#F59E0B] text-white" },
       ],
     },
     {
       label: "Hệ thống",
       items: [
-        { icon: Bell, label: "Thông báo", href: "/employer/notifications" },
-        { icon: Settings, label: "Cài đặt", href: "/employer/settings" },
+        { icon: "notifications", label: "Thông báo", href: "/employer/notifications", badge: unreadCount, badgeClass: "bg-red-500 text-white" },
+        { icon: "settings", label: "Cài đặt", href: "/employer/settings" },
       ],
     },
   ];
 
+  const handleLogout = () => {
+    fetch("/api/auth/sign-out", { method: "POST", credentials: "include" }).then(() => {
+      sessionStorage.removeItem("savedCompanyIds");
+      window.location.href = "/auth/login";
+    });
+  };
+
   return (
-    <aside className="hidden lg:flex w-64 flex-col border-r border-border bg-card h-[calc(100vh-3.5rem)] sticky top-14 overflow-y-auto">
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-            {companyName.charAt(0)}
+    <aside className="hidden lg:flex flex-col w-72 fixed left-0 top-16 bottom-0 bg-white dark:bg-[#0F3347] border-r border-[#e1efff] dark:border-[#1E5F74]/50 px-3 py-6 overflow-y-auto z-40">
+
+      {/* Profile Summary */}
+      <div className="flex flex-col items-center text-center mb-6 pb-6 border-b border-[#e1efff] dark:border-[#1E5F74]/50">
+        <div className="w-20 h-20 rounded-2xl border-[3px] border-[#F59E0B] bg-[#FEF3C7] overflow-hidden text-[#D97706] font-bold text-2xl flex items-center justify-center mb-3">
+          {company?.logo ? (
+            <img src={company.logo} alt="" className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
+        </div>
+        <p className="font-bold text-[#001e30] dark:text-[#E0F2FE] text-sm">{companyName}</p>
+        <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">
+          {[company?.industry, locationLabel].filter(Boolean).join(" • ") || "Nhà tuyển dụng"}
+        </p>
+
+        {company?.isApproved && (
+          <span className="inline-flex items-center gap-1 mt-2 text-[11px] font-bold bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-full">
+            <span className="material-symbols-outlined text-[12px]">verified</span>
+            Đã xác minh
+          </span>
+        )}
+
+        <div className="w-full mt-3">
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-[#3f484c] dark:text-[#94A3B8]">Hồ sơ công ty</span>
+            <span className="font-semibold text-[#F59E0B]">{completionPct}%</span>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">{companyName}</p>
-            <p className="text-xs text-muted-foreground">Nhà tuyển dụng</p>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-[#e1efff] dark:bg-[#1E5F74]">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] transition-all duration-500"
+              style={{ width: `${completionPct}%` }}
+            />
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-4">
+      {/* Nav */}
+      <nav className="flex flex-col gap-1 flex-1">
         {navGroups.map((group) => (
-          <div key={group.label}>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-3 mb-1.5">{group.label}</p>
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          <div key={group.label} className="mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#6f787d] px-3 mb-2">
+              {group.label}
+            </p>
+            {group.items.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold tracking-wide transition-all mb-0.5 ${isActive
+                    ? "bg-[#F59E0B] text-white"
+                    : "text-[#3f484c] dark:text-[#94A3B8] hover:bg-[#FEF3C7] dark:hover:bg-[#1E5F74] hover:text-[#D97706] dark:hover:text-[#67E8F9]"
                     }`}
-                  >
-                    <item.icon className="size-4 shrink-0" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
+                >
+                  <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.badgeClass}`}>
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         ))}
       </nav>
 
-      <div className="p-3 border-t border-border">
+      {/* Logout */}
+      <div className="pt-4 border-t border-[#e1efff] dark:border-[#1E5F74]/50">
         <button
-          onClick={() => {
-            fetch("/api/auth/sign-out", { method: "POST", credentials: "include" }).then(() => {
-              window.location.href = "/auth/login";
-            });
-          }}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors w-full"
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-colors w-full"
         >
-          <LogOut className="size-4" />
+          <span className="material-symbols-outlined text-[20px]">logout</span>
           Đăng xuất
         </button>
       </div>

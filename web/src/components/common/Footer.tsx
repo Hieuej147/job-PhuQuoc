@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Globe, Link2 } from "lucide-react";
+
 export default function Footer() {
   return (
     <footer className="bg-[#e6f0fa] dark:bg-[#1E5F74] text-slate-600 dark:text-[#94A3B8] text-[12px]">
@@ -23,27 +25,27 @@ export default function Footer() {
         <div>
           <h5 className="font-bold text-[#025a70] dark:text-[#67E8F9] mb-3 text-[13px]">Về PQJobs</h5>
           <ul className="space-y-2 text-slate-500 dark:text-[#94A3B8] text-[12px]">
-            <li className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Giới thiệu</li>
-            <li className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Liên hệ</li>
-            <li className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Bảo mật thông tin</li>
-            <li className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Quy định sử dụng</li>
+            <li><Link href="/about" className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Giới thiệu</Link></li>
+            <li><Link href="/contact" className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Liên hệ</Link></li>
+            <li><Link href="/privacy" className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Bảo mật thông tin</Link></li>
+            <li><Link href="/terms" className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Quy định sử dụng</Link></li>
           </ul>
         </div>
         <div>
           <h5 className="font-bold text-[#025a70] dark:text-[#67E8F9] mb-3 text-[13px]">Ứng viên</h5>
           <ul className="space-y-2 text-slate-500 dark:text-[#94A3B8] text-[12px]">
-            <li className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Tìm việc làm</li>
-            <li className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Tạo CV online</li>
-            <li className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Công ty nổi bật</li>
-            <li className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Blog cẩm nang</li>
+            <li><Link href="/jobs" className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Tìm việc làm</Link></li>
+            <li><Link href="/candidate/resumes" className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Tạo CV online</Link></li>
+            <li><Link href="/companies" className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Công ty nổi bật</Link></li>
+            <li><Link href="/blog" className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Blog cẩm nang</Link></li>
           </ul>
         </div>
         <div>
           <h5 className="font-bold text-[#025a70] dark:text-[#67E8F9] mb-3 text-[13px]">Nhà tuyển dụng</h5>
           <ul className="space-y-2 text-slate-500 dark:text-[#94A3B8] text-[12px]">
-            <li className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Đăng tin tuyển dụng</li>
-            <li className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Tìm kiếm hồ sơ</li>
-            <li className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Bảng giá dịch vụ</li>
+            <li><Link href="/employer/jobs/create" className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Đăng tin tuyển dụng</Link></li>
+            <li><Link href="/employer/applications" className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Tìm kiếm hồ sơ</Link></li>
+            <li><Link href="/contact" className="hover:text-[#0891b2] dark:hover:text-[#67E8F9] cursor-pointer">Bảng giá dịch vụ</Link></li>
           </ul>
         </div>
       </div>
