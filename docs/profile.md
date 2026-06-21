@@ -70,13 +70,14 @@ Trang `/candidate/profile` đã được tái cấu trúc thành một trang qu�
 
 ## Chi tiết kỹ thuật & Tích hợp API
 
-### Đồng bộ hóa giữa User Profile và Default Resume
+### Tách biệt dữ liệu Hồ sơ cá nhân với danh sách CV (`PROFILE_MASTER`)
 
-Do thiết kế cơ sở dữ liệu tách biệt giữa thông tin người dùng (`user`) và hồ sơ ứng viên (`CandidateResume`):
+Để lưu giữ dữ liệu Hồ sơ cá nhân tách biệt và không bị hiển thị chồng chéo với danh sách CV của ứng viên, hệ thống sử dụng cơ chế định danh ẩn:
 1. **Thông tin tài khoản:** `name`, `phone`, `image` được lưu thông qua endpoint `PATCH /api/v1/auth/me`.
-2. **Thông tin chi tiết CV:** `address`, `degree`, `languages`, `summary`, `experience`, `education`, `projects`, `socialLinks` được lưu vào bản ghi **hồ sơ mặc định (isDefault: true)** của candidate thông qua API `/api/v1/resumes`.
-   - Nếu candidate đã có hồ sơ, hệ thống thực hiện `PATCH /api/v1/resumes/:id`.
-   - Nếu candidate chưa có hồ sơ nào, hệ thống tự động tìm template khả dụng đầu tiên và gửi yêu cầu `POST /api/v1/resumes` để tạo mới một hồ sơ mặc định rồi lưu các thay đổi vào đó.
+2. **Thông tin chi tiết Hồ sơ:** `address`, `degree`, `languages`, `summary`, `experience`, `education`, `projects`, `socialLinks` được lưu vào một bản ghi CV đặc biệt có tiêu đề `title: "PROFILE_MASTER"`.
+   - Trang **Hồ sơ cá nhân** (`/candidate/profile`) sẽ luôn tìm và cập nhật đúng bản ghi này.
+   - Trang **Danh sách CV của tôi** (`/candidate/resumes`) và **Form ứng tuyển nhanh** khi nộp hồ sơ đều được bộ lọc (`filter`) loại bỏ các bản ghi có tiêu đề `PROFILE_MASTER`.
+   - Nhờ vậy, người dùng sẽ có một bộ thông tin Hồ sơ cá nhân độc lập mà không sợ làm ảnh hưởng hay hiển thị nhầm lẫn với các file CV thiết kế riêng lẻ.
 
 ### Quản lý Trạng thái & Giao diện
 - Toàn bộ UI được thiết kế hỗ trợ Responsive và tự động đồng bộ theo Theme màu (Light/Dark/System) của ứng dụng PQJobs.

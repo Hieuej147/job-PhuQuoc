@@ -270,12 +270,11 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
     }
     setShowApplyModal(true);
     setApplyError(null);
-    // Fetch user's resumes
     try {
       const res = await fetch("/api/v1/resumes/my", { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
-        const list = d.data?.items || d.data || [];
+        const list = (d.data?.items || d.data || []).filter((r: any) => r.title !== "PROFILE_MASTER");
         setResumes(list);
         const defaultResume = list.find((r: any) => r.isDefault);
         if (defaultResume) setSelectedResumeId(defaultResume.id);

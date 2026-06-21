@@ -29,7 +29,10 @@ export default function ResumesPage() {
   const fetchResumes = () => {
     fetch("/api/v1/resumes/my", { credentials: "include" })
       .then((r) => r.json())
-      .then((d) => setItems(d.data?.data ?? d.data ?? []))
+      .then((d) => {
+        const rawItems = d.data?.data ?? d.data ?? [];
+        setItems(rawItems.filter((r: Resume) => r.title !== "PROFILE_MASTER"));
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   };

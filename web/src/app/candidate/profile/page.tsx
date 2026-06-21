@@ -47,21 +47,21 @@ export default function ProfilePage() {
         const result = await res.json();
         const resumes = result.data?.data ?? result.data ?? [];
         
-        // Find default or first resume
-        const defaultResume = resumes.find((r: any) => r.isDefault) || resumes[0];
+        // Find PROFILE_MASTER resume
+        const masterResume = resumes.find((r: any) => r.title === "PROFILE_MASTER");
         
-        if (defaultResume) {
-          setResumeId(defaultResume.id);
+        if (masterResume) {
+          setResumeId(masterResume.id);
           setResumeData({
-            address: defaultResume.address || "",
-            degree: defaultResume.degree || "Đại học",
-            languages: defaultResume.languages || "",
-            summary: defaultResume.summary || "",
-            experience: defaultResume.experience || [],
-            education: defaultResume.education || [],
-            projects: defaultResume.projects || [],
-            socialLinks: defaultResume.socialLinks || [],
-            templateId: defaultResume.templateId || "",
+            address: masterResume.address || "",
+            degree: masterResume.degree || "Đại học",
+            languages: masterResume.languages || "",
+            summary: masterResume.summary || "",
+            experience: masterResume.experience || [],
+            education: masterResume.education || [],
+            projects: masterResume.projects || [],
+            socialLinks: masterResume.socialLinks || [],
+            templateId: masterResume.templateId || "",
           });
         } else {
           // If no resume, fetch templates to have a fallback templateId when creating
@@ -147,8 +147,8 @@ export default function ProfilePage() {
         const method = resumeId ? "PATCH" : "POST";
         
         const resumeBody = {
-          title: "Hồ sơ của tôi",
-          isDefault: true,
+          title: "PROFILE_MASTER",
+          isDefault: false,
           templateId: resumeData.templateId,
           address: updates.address !== undefined ? updates.address : resumeData.address,
           degree: updates.degree !== undefined ? updates.degree : resumeData.degree,
