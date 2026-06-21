@@ -29,7 +29,10 @@ export class ResumesService {
   async findById(id: string, userId?: string) {
     const resume = await this.prisma.candidateResume.findUnique({
       where: { id },
-      include: { template: { select: { id: true, name: true, description: true, previewUrl: true, htmlTemplate: true, cssTemplate: true, isPublic: true } } },
+      include: {
+        template: { select: { id: true, name: true, description: true, previewUrl: true, htmlTemplate: true, cssTemplate: true, isPublic: true } },
+        user: { select: { id: true, name: true, email: true, phone: true, image: true } }
+      },
     });
     if (!resume) throw new NotFoundException('Resume not found');
     if (userId && resume.userId !== userId) throw new ForbiddenException('Not your resume');

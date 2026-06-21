@@ -23,7 +23,7 @@ export class AuthGuard implements CanActivate {
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -120,7 +120,7 @@ export class AuthGuard implements CanActivate {
       const jwksUrl = new URL(
         "/api/auth/jwks",
         this.configService.get<string>("BETTER_AUTH_URL") ||
-          "http://localhost:3000",
+        "http://localhost:3000",
       );
 
       if (!this.JWKS) {

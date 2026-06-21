@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FileText, Plus, Eye, Star } from "lucide-react";
+import { toast } from "sonner";
+import { FileText, Plus, Eye, Star, Trash2 } from "lucide-react";
+
 
 interface Resume {
   id: string;
@@ -43,6 +45,24 @@ export default function ResumesPage() {
     });
     fetchResumes();
   };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Xác nhận xóa hồ sơ này?")) return;
+    try {
+      const res = await fetch(`/api/v1/resumes/${id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) {
+        const body = await res.text();
+        toast.error(`Xóa thất bại (${res.status}): ${body}`);
+        return;
+      }
+      toast.success("Đã xóa hồ sơ");
+      fetchResumes();
+    } catch (err) {
+      toast.error(`Lỗi: ${String(err)}`);
+    }
+  };
+
+
 
   if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
 
@@ -89,6 +109,9 @@ export default function ResumesPage() {
                       <Star className="size-3.5 mr-1" /> Đặt mặc định
                     </Button>
                   )}
+                  <Button size="sm" variant="destructive" onClick={() => handleDelete(r.id)}>
+                    <Trash2 className="size-3.5 mr-1" /> Xóa
+                  </Button>
                 </div>
               </CardContent>
             </Card>

@@ -161,6 +161,7 @@ export class ResumesController {
   }
 
   @Delete(':id')
+  @Roles('CANDIDATE')
   @ApiBearerAuth('better-auth.session_token')
   @ApiOperation({ summary: 'Xóa CV', description: 'Chỉ owner mới được xóa.' })
   @ApiParam({ name: 'id', description: 'ID của resume' })

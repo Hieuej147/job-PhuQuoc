@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:3000";
 
 async function proxyRequest(request: NextRequest, slug: string[]) {
   const path = slug ? `/${slug.join("/")}` : "";
@@ -18,20 +18,28 @@ async function proxyRequest(request: NextRequest, slug: string[]) {
     const fetchOptions: RequestInit = {
       method: request.method,
       headers,
-      credentials: "include",
     };
 
-    if (request.method !== "GET" && request.method !== "HEAD") {
+    if (["POST", "PUT", "PATCH"].includes(request.method)) {
       fetchOptions.body = await request.text();
     }
 
+    console.log(`[Proxy] ${request.method} ${backendUrl}`);
     const response = await fetch(backendUrl, fetchOptions);
     const data = await response.text();
+
+    if (!response.ok) {
+      console.error(`[Proxy] ${request.method} ${backendUrl} -> ${response.status}: ${data}`);
+    }
 
     const nextResponse = new NextResponse(data, {
       status: response.status,
       statusText: response.statusText,
     });
+
+    // Forward content-type from backend
+    const contentType = response.headers.get("content-type");
+    if (contentType) nextResponse.headers.set("content-type", contentType);
 
     // Forward Set-Cookie headers
     const setCookies = response.headers.getSetCookie();
@@ -41,8 +49,8 @@ async function proxyRequest(request: NextRequest, slug: string[]) {
 
     return nextResponse;
   } catch (error) {
-    console.error("API proxy error:", error);
-    return NextResponse.json({ error: "Proxy error" }, { status: 502 });
+    console.error("[Proxy] Fetch error:", error);
+    return NextResponse.json({ error: "Proxy error", detail: String(error) }, { status: 502 });
   }
 }
 

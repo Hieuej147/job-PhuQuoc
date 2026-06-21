@@ -3,11 +3,14 @@
 import type { TemplateProps, UserData, ResumeData } from "./index";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 /**
  * TemplateFuturistic — Phong cách tương lai, tối tân (Tech/Dark Mode), sử dụng Google Material Symbols
  */
-export default function TemplateFuturistic({ user = {} as Partial<UserData>, resume = {} as Partial<ResumeData> }: TemplateProps) {
+export default function TemplateFuturistic({ user = {} as Partial<UserData>, resume = {} as Partial<ResumeData>, resumeId }: TemplateProps) {
+    const router = useRouter();
     const [userData, setUserData] = useState({
         name: user.name || "Họ và Tên",
         email: user.email || "",
@@ -28,9 +31,42 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
 
     const [showSaveToast, setShowSaveToast] = useState(false);
 
-    const handleSave = () => {
-        setShowSaveToast(true);
-        setTimeout(() => setShowSaveToast(false), 2500);
+    const handleSave = async () => {
+        const isNew = !resumeId;
+        const url = isNew ? "/api/v1/resumes" : `/api/v1/resumes/${resumeId}`;
+        const method = isNew ? "POST" : "PATCH";
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: resume.title || "CV của tôi",
+                    templateId: "tpl-dev-05",
+                    name: userData.name,
+                    email: userData.email,
+                    phone: userData.phone,
+                    avatar: userData.avatar,
+                    address: resumeData.address,
+                    summary: resumeData.summary,
+                    skills: resume.skills || "",
+                    degree: resumeData.degree,
+                    languages: resumeData.languages,
+                    socialLinks: resumeData.socialLinks,
+                    education: resumeData.education,
+                    experience: resumeData.experience,
+                    projects: resumeData.projects,
+                }),
+            });
+            if (response.ok) {
+                toast.success(isNew ? "Tạo CV thành công!" : "Lưu CV thành công!");
+                router.push("/candidate/resumes");
+            } else {
+                toast.error("Lưu CV thất bại!");
+            }
+        } catch (err) {
+            toast.error("Lỗi khi lưu dữ liệu CV");
+        }
     };
 
     const handleUserChange = (field: string, value: string) => {
@@ -163,8 +199,11 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
                                 onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
-                                        const url = URL.createObjectURL(file);
-                                        handleUserChange("avatar", url);
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                            handleUserChange("avatar", reader.result as string);
+                                        };
+                                        reader.readAsDataURL(file);
                                     }
                                 }}
                                 className="hidden"
