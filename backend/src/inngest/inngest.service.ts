@@ -28,8 +28,8 @@ export class InngestService {
       });
       this.logger.debug(`Event sent: ${event.name}`, 'InngestService');
     } catch (error) {
-      this.logger.error(`Failed to send event ${event.name}: ${(error as Error).message}`, undefined, 'InngestService');
-      throw error;
+      // Non-fatal: chỉ log warning, không throw — tránh crash request khi Inngest offline
+      this.logger.warn(`Failed to send event ${event.name}: ${(error as Error).message}`, 'InngestService');
     }
   }
 
@@ -45,8 +45,8 @@ export class InngestService {
       );
       this.logger.debug(`Batch sent: ${events.length} events`, 'InngestService');
     } catch (error) {
-      this.logger.error(`Failed to send batch: ${(error as Error).message}`, undefined, 'InngestService');
-      throw error;
+      // Non-fatal: chỉ log warning, không throw — tránh crash request khi Inngest offline
+      this.logger.warn(`Failed to send batch: ${(error as Error).message}`, 'InngestService');
     }
   }
 }

@@ -142,7 +142,10 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
   const router = useRouter();
   const { user } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
+  const [appliedApplicationId, setAppliedApplicationId] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
 
+  // Check nếu user đã lưu job
   useEffect(() => {
     if (!user) {
       setIsSaved(false);
@@ -154,11 +157,35 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         const res = await fetch("/api/v1/saved/jobs?limit=200", { credentials: "include" });
         if (!res.ok) return;
         const data = await res.json();
-        const items = data.data?.items || data.items || [];
+        const payload = data.data?.data ?? data.data ?? data;
+        const items = payload?.items ?? [];
         if (active) {
           setIsSaved(items.some((item: any) => item.jobId === job.id));
         }
-      } catch {}
+      } catch { }
+    })();
+    return () => { active = false; };
+  }, [user, job.id]);
+
+  // Check nếu user đã ứng tuyển job này
+  useEffect(() => {
+    if (!user) {
+      setAppliedApplicationId(null);
+      return;
+    }
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/v1/applications/my?limit=100", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const payload = data.data?.data ?? data.data ?? data;
+        const items = Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : [];
+        if (active) {
+          const found = items.find((a: any) => a.jobId === job.id);
+          setAppliedApplicationId(found ? found.id : null);
+        }
+      } catch { }
     })();
     return () => { active = false; };
   }, [user, job.id]);
@@ -174,8 +201,23 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         credentials: "include",
       });
       if (res.ok) setIsSaved((prev) => !prev);
-    } catch {}
+    } catch { }
   }, [user, router, job.id, job.slug]);
+
+  const handleWithdraw = useCallback(async () => {
+    if (!appliedApplicationId) return;
+    setWithdrawing(true);
+    try {
+      const res = await fetch(`/api/v1/applications/${appliedApplicationId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        setAppliedApplicationId(null);
+      }
+    } catch { }
+    finally { setWithdrawing(false); }
+  }, [appliedApplicationId]);
 
   const deadlinePercent = useMemo(() => {
     if (!job.deadline) return 0;
@@ -274,22 +316,54 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       const res = await fetch("/api/v1/resumes/my", { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
-        const list = (d.data?.items || d.data || []).filter((r: any) => r.title !== "PROFILE_MASTER");
+        // ResponseTransformInterceptor wrap thêm 1 lớp: { data: { data: [...] }, timestamp }
+        // Hoặc controller trả thẳng array: { data: [...] }
+        const rawData = d.data?.data ?? d.data ?? d;
+        const list = (Array.isArray(rawData) ? rawData : []).filter((r: any) => r.title !== "PROFILE_MASTER");
         setResumes(list);
         const defaultResume = list.find((r: any) => r.isDefault);
         if (defaultResume) setSelectedResumeId(defaultResume.id);
         else if (list.length > 0) setSelectedResumeId(list[0].id);
       }
-    } catch {}
+    } catch { }
   };
 
   const handleApply = async () => {
     setApplying(true);
     setApplyError(null);
     try {
+      let cvUrl = "";
+      if (applyTab === "upload") {
+        if (!uploadedFile) {
+          throw new Error("Vui lòng chọn file PDF để tải lên.");
+        }
+
+        const formData = new FormData();
+        formData.append("file", uploadedFile);
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json();
+          throw new Error(errData.error || "Không thể tải lên file CV PDF.");
+        }
+
+        const uploadResult = await uploadRes.json();
+        cvUrl = uploadResult.url;
+      }
+
       const body: Record<string, unknown> = { jobId: job.id };
       if (coverLetter) body.coverLetter = coverLetter;
-      if (applyTab === "select" && selectedResumeId) body.resumeId = selectedResumeId;
+
+      if (applyTab === "select") {
+        if (!selectedResumeId) throw new Error("Vui lòng chọn một CV đã lưu.");
+        body.resumeId = selectedResumeId;
+      } else if (applyTab === "upload" && cvUrl) {
+        body.cvUrl = cvUrl;
+      }
 
       const res = await fetch("/api/v1/applications", {
         method: "POST",
@@ -297,19 +371,25 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         credentials: "include",
         body: JSON.stringify(body),
       });
+      // Đọc body 1 lần duy nhất, tránh "body already consumed"
+      const result = await res.json();
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || `HTTP ${res.status}`);
+        throw new Error(result.message || result.error || `HTTP ${res.status}`);
       }
+      // Set appliedApplicationId sau khi ứng tuyển thành công
+      const appData = result.data?.data ?? result.data ?? result;
+      if (appData?.id) setAppliedApplicationId(appData.id);
       setApplySuccess(true);
       setShowApplyModal(false);
       setCoverLetter("");
+      setUploadedFile(null);
     } catch (e) {
       setApplyError(e instanceof Error ? e.message : "Ứng tuyển thất bại");
     } finally {
       setApplying(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24 md:pb-0 transition-colors duration-200">
@@ -326,7 +406,14 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
           </div>
 
           <div className="space-y-5">
-            <JobApplySidebar onApply={openApplyModal} onSave={toggleSave} isSaved={isSaved} />
+            <JobApplySidebar
+              onApply={openApplyModal}
+              onSave={toggleSave}
+              onWithdraw={handleWithdraw}
+              isSaved={isSaved}
+              isApplied={!!appliedApplicationId}
+              withdrawing={withdrawing}
+            />
             <JobOverviewSidebar items={overviewItems} />
             <JobCompanySidebar
               companyInitials={companyInitials}
@@ -345,7 +432,11 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         <RelatedJobs jobs={mappedRelated} />
       </div>
 
-      <JobStickyBarMobile onApply={() => setShowApplyModal(true)} onBookmark={toggleSave} isBookmarked={isSaved} />
+      <JobStickyBarMobile
+        onApply={appliedApplicationId ? handleWithdraw : () => setShowApplyModal(true)}
+        onBookmark={toggleSave}
+        isBookmarked={isSaved}
+      />
 
       {/* Apply Modal */}
       {showApplyModal && (
