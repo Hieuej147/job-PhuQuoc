@@ -115,13 +115,13 @@ export class ApplicationsService {
     return { data: { items, total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async getResumePdfForEmployer(applicationId: string, employerId: string): Promise<Buffer | { url: string }> {
+  async getResumePdfForEmployer(applicationId: string, employerId?: string): Promise<Buffer | { url: string }> {
     const app = await this.prisma.jobApplication.findUnique({
       where: { id: applicationId },
       include: { job: { include: { company: true } } },
     });
     if (!app) throw new NotFoundException('Application not found');
-    if (app.job.company.ownerId !== employerId) throw new ForbiddenException('Not company owner');
+    if (employerId && app.job.company.ownerId !== employerId) throw new ForbiddenException('Not company owner');
 
     // Nếu là file PDF upload → trả URL public
     if (app.cvUrl) {

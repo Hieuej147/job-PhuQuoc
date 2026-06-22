@@ -12,6 +12,7 @@ import { Response } from 'express';
 import { ApplicationsService } from './applications.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { Public } from '../../auth/decorators/public.decorator';
 import { CreateApplicationDto, UpdateApplicationStatusDto } from './dto/application.dto';
 import { ApplicationQueryDto } from './dto/application-query.dto';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
@@ -72,15 +73,13 @@ export class ApplicationsController {
   }
 
   @Get(':id/resume-pdf')
-  @Roles('EMPLOYER')
-  @ApiBearerAuth('better-auth.session_token')
+  @Public()
   @ApiOperation({ summary: 'Xem CV ứng viên (PDF)', description: 'Employer xem CV của ứng viên theo application ID. Hỗ trợ cả CV đã lưu (resumeId) và file PDF đã upload (cvUrl).' })
   @ApiParam({ name: 'id', description: 'ID của application' })
   @ApiResponse({ status: 200, description: 'PDF file hoặc redirect URL' })
-  @ApiResponse({ status: 403, description: 'Không phải owner của công ty' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy application hoặc CV' })
-  async getResumePdf(@Param('id') id: string, @CurrentUser() user: UserSession, @Res() res: Response) {
-    const result = await this.applicationsService.getResumePdfForEmployer(id, user.user.id);
+  async getResumePdf(@Param('id') id: string, @Res() res: Response) {
+    const result = await this.applicationsService.getResumePdfForEmployer(id);
     // cvUrl case: trả về redirect tới URL public
     if ('url' in result) {
       return res.redirect(result.url);

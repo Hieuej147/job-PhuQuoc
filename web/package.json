@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm run dev:ui",
-    "dev:ui": "next dev --turbopack",
+    "dev:ui": "next dev --turbopack -p 3001",
     "dev:agent": "node ./scripts/run-agent.js",
     "build": "next build",
     "start": "next start",

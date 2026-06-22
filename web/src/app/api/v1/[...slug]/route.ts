@@ -26,10 +26,11 @@ async function proxyRequest(request: NextRequest, slug: string[]) {
 
     console.log(`[Proxy] ${request.method} ${backendUrl}`);
     const response = await fetch(backendUrl, fetchOptions);
-    const data = await response.text();
+    const data = await response.arrayBuffer();
 
     if (!response.ok) {
-      console.error(`[Proxy] ${request.method} ${backendUrl} -> ${response.status}: ${data}`);
+      const textDecoder = new TextDecoder();
+      console.error(`[Proxy] ${request.method} ${backendUrl} -> ${response.status}: ${textDecoder.decode(data)}`);
     }
 
     const nextResponse = new NextResponse(data, {

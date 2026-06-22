@@ -28,7 +28,13 @@ export default function PrintResumePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/v1/resumes/${id}`, { credentials: "include" })
+    const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const bypass = searchParams?.get("bypass");
+    const fetchUrl = bypass
+      ? `/api/v1/resumes/${id}?bypass=${bypass}`
+      : `/api/v1/resumes/${id}`;
+
+    fetch(fetchUrl, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => setResume(d.data))
       .catch(() => {})

@@ -144,6 +144,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
   const [isSaved, setIsSaved] = useState(false);
   const [appliedApplicationId, setAppliedApplicationId] = useState<string | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
   // Check nếu user đã lưu job
   useEffect(() => {
@@ -204,7 +205,11 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
     } catch { }
   }, [user, router, job.id, job.slug]);
 
-  const handleWithdraw = useCallback(async () => {
+  const handleWithdraw = useCallback(() => {
+    setShowWithdrawModal(true);
+  }, []);
+
+  const confirmWithdrawAction = useCallback(async () => {
     if (!appliedApplicationId) return;
     setWithdrawing(true);
     try {
@@ -214,6 +219,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       });
       if (res.ok) {
         setAppliedApplicationId(null);
+        setShowWithdrawModal(false);
       }
     } catch { }
     finally { setWithdrawing(false); }
@@ -540,6 +546,40 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
           <CheckCircle2 className="w-5 h-5" />
           <span className="text-sm font-medium">Ứng tuyển thành công! Nhà tuyển dụng sẽ phản hồi sớm.</span>
           <button onClick={() => setApplySuccess(false)} className="ml-2 hover:bg-green-700 rounded p-0.5"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {/* Withdraw Modal */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#0d2d42] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 transform transition-all animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-950/30 flex items-center justify-center shrink-0">
+                <X className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Xác nhận rút hồ sơ</h3>
+            </div>
+            
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
+              Bạn có chắc chắn muốn rút đơn ứng tuyển cho vị trí <span className="font-semibold text-gray-950 dark:text-white">{job.title}</span>? Hành động này sẽ xóa hồ sơ của bạn khỏi danh sách tuyển dụng của công ty.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button 
+                onClick={() => setShowWithdrawModal(false)} 
+                className="px-4 py-2.5 text-sm font-semibold border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer text-gray-700 dark:text-gray-300"
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={confirmWithdrawAction} 
+                disabled={withdrawing}
+                className="px-5 py-2.5 text-sm font-semibold bg-red-650 hover:bg-red-700 text-white rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md"
+              >
+                {withdrawing ? "Đang rút..." : "Rút ứng tuyển"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
