@@ -162,4 +162,88 @@ sequenceDiagram
         Note over Employer: Sau khi F5 trang, hồ sơ rút ứng tuyển biến mất
     end
 ```
+    end
+```
+
+---
+
+## 5. Quy trình Khởi tạo & Tạo mới CV (Create CV Flow)
+
+Dưới đây mô tả chi tiết luồng xử lý và dữ liệu trao đổi khi ứng viên (Candidate) bắt đầu tạo một CV mới từ kho mẫu thiết kế cho đến khi lưu trữ thành công vào Cơ sở dữ liệu:
+
+### 5.1. Chi tiết luồng xử lý
+
+* **Bước 1: Lựa chọn Mẫu CV (Template Selection)**
+  * Người dùng truy cập trang danh sách Template CV tại đường dẫn `/candidate/resumes/templates` (file [templates/page.tsx](file:///c:/Users/ngoan/Documents/thuctapsinh/job-PhuQuoc/web/src/app/candidate/resumes/templates/page.tsx)).
+  * Khi chọn mẫu mong muốn, hệ thống sẽ chuyển hướng người dùng sang trang tạo mới kèm tham số ID của mẫu: `/candidate/resumes/new?templateId=tpl-...`.
+
+* **Bước 2: Tải thông tin tài khoản & Khởi tạo dữ liệu mẫu (Pre-fill Profile & Client Init)**
+  * Trang `/candidate/resumes/new` (file [new/page.tsx](file:///c:/Users/ngoan/Documents/thuctapsinh/job-PhuQuoc/web/src/app/candidate/resumes/new/page.tsx)) khi được tải sẽ tự động thực hiện:
+    1. Gọi API `GET /api/v1/auth/me` để lấy thông tin cá nhân hiện tại của tài khoản (Họ tên, email, điện thoại, avatar mặc định).
+    2. Khởi tạo một đối tượng dữ liệu CV mẫu (`defaultResume`) chứa các thông tin học vấn, kinh nghiệm và dự án cơ bản để hiển thị trực quan.
+    3. Kết xuất (Render) component template tương ứng (ví dụ: [TemplateClassic.tsx](file:///c:/Users/ngoan/Documents/thuctapsinh/job-PhuQuoc/web/src/template/TemplateClassic.tsx)). *Lưu ý: Lúc này chưa có bản ghi nào được lưu trữ xuống Database.*
+
+* **Bước 3: Chỉnh sửa trực quan trên Client (Visual Editing)**
+  * Ứng viên thực hiện chỉnh sửa trực tiếp dữ liệu cá nhân, thông tin liên hệ, học vấn, kinh nghiệm trên giao diện trực quan.
+  * Nếu đổi ảnh đại diện, file ảnh được đọc thông qua `FileReader` để chuyển sang dạng **Base64 Data URL** lưu trữ trực tiếp vào trường `avatar` của bảng ghi CV (không lưu chung và ghi đè ảnh tài khoản chính).
+
+* **Bước 4: Gửi yêu cầu Tạo mới CV (Create Request)**
+  * Khi người dùng nhấn nút **Lưu thay đổi**, hệ thống kiểm tra sự tồn tại của `resumeId`. Vì đây là lần đầu tạo mới (`resumeId` chưa tồn tại), Front-end sẽ gửi một request `POST /api/v1/resumes` (file template xử lý lưu dữ liệu).
+  * Payload truyền đi bao gồm toàn bộ thông tin CV độc lập cùng `templateId` tương ứng.
+
+* **Bước 5: Xử lý ở Backend & Lưu Cơ sở Dữ liệu (Backend Storage)**
+  * NestJS Controller (file [resumes.controller.ts](file:///c:/Users/ngoan/Documents/thuctapsinh/job-PhuQuoc/backend/src/modules/resumes/resumes.controller.ts)) nhận request `POST /`.
+  * Service (file [resumes.service.ts](file:///c:/Users/ngoan/Documents/thuctapsinh/job-PhuQuoc/backend/src/modules/resumes/resumes.service.ts)) thực hiện:
+    1. Xác thực và kiểm tra sự tồn tại của `templateId`.
+    2. Nếu người dùng chọn đây là CV mặc định (`isDefault = true`), tự động chuyển đổi toàn bộ các CV khác của người dùng đó thành `isDefault = false` (`updateMany`).
+    3. Tạo một dòng dữ liệu mới trong bảng `CandidateResume` (`candidate_resume`) thông qua Prisma.
+  * Backend phản hồi kết quả thành công HTTP 201 cùng dữ liệu bản ghi mới bao gồm cả `id` được tạo tự động.
+
+* **Bước 6: Hoàn tất & Chuyển hướng (Done & Redirect)**
+  * Front-end nhận response thành công, ghi nhận `resumeId` mới, hiển thị toast thông báo thành công và chuyển hướng người dùng về trang danh sách CV cá nhân: `/candidate/resumes`.
+
+### 5.2. Sơ đồ tuần tự (Sequence Diagram)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Candidate as 🙋‍♂️ Candidate
+    participant FE as 🖥️ Frontend (Next.js)
+    participant BE as ⚙️ Backend (NestJS)
+    participant DB as 🗄️ Database (PostgreSQL)
+    
+    Note over Candidate, DB: Quy trình Khởi tạo & Tạo mới CV (Create CV Flow)
+    
+    Candidate->>FE: Bấm chọn mẫu CV tại trang /candidate/resumes/templates
+    FE->>Candidate: Chuyển hướng sang trang /candidate/resumes/new?templateId=tpl-...
+    
+    rect rgb(240, 248, 255)
+        Note over FE, BE: Tải thông tin tài khoản ban đầu
+        FE->>BE: GET /api/v1/auth/me
+        BE-->>FE: Trả về thông tin User (name, email, phone, image)
+    end
+    
+    FE-->>Candidate: Hiển thị CV Editor với thông tin mặc định (Chưa lưu DB)
+    
+    rect rgb(255, 253, 230)
+        Note over Candidate, FE: Chỉnh sửa trực quan trên giao diện
+        Candidate->>FE: Chỉnh sửa thông tin CV (Tên, Ảnh, Học vấn, Kinh nghiệm...)
+        Note over Candidate, FE: Ảnh đại diện tải lên được đọc thành Base64 Data URL
+    end
+    
+    Candidate->>FE: Bấm nút "Lưu thay đổi" (Lần đầu tạo)
+    FE->>BE: POST /api/v1/resumes { templateId, name, email, phone, avatar, ... }
+    
+    rect rgb(230, 245, 230)
+        Note over BE, DB: Xử lý nghiệp vụ & Lưu DB
+        BE->>DB: Kiểm tra Template hợp lệ
+        BE->>DB: Cập nhật isDefault = false cho các CV cũ của user (nếu cần)
+        BE->>DB: Tạo bản ghi mới trong bảng candidate_resume
+        DB-->>BE: Lưu thành công & trả về thông tin CV mới tạo
+    end
+    
+    BE-->>FE: HTTP 201 Created (Trả về data kèm id CV mới)
+    FE-->>Candidate: Hiển thị Toast thông báo & Chuyển hướng về /candidate/resumes
+```
+
 
