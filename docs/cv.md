@@ -162,9 +162,6 @@ sequenceDiagram
         Note over Employer: Sau khi F5 trang, hồ sơ rút ứng tuyển biến mất
     end
 ```
-    end
-```
-
 ---
 
 ## 5. Quy trình Khởi tạo & Tạo mới CV (Create CV Flow)
@@ -245,5 +242,87 @@ sequenceDiagram
     BE-->>FE: HTTP 201 Created (Trả về data kèm id CV mới)
     FE-->>Candidate: Hiển thị Toast thông báo & Chuyển hướng về /candidate/resumes
 ```
+
+---
+
+## 6. Quy trình Chỉnh sửa & Cập nhật CV (Edit CV Flow)
+
+Dưới đây mô tả chi tiết luồng xử lý và dữ liệu trao đổi khi ứng viên (Candidate) chỉnh sửa một CV đã tồn tại trong hệ thống:
+
+### 6.1. Chi tiết luồng xử lý
+
+* **Bước 1: Truy cập trang Chỉnh sửa (Edit Page Access)**
+  * Người dùng bấm nút **Chỉnh sửa** của một CV có sẵn trên giao diện.
+  * Hệ thống chuyển hướng người dùng đến đường dẫn `/candidate/resumes/[id]/edit` (file [edit/page.tsx](file:///c:/Users/ngoan/Documents/thuctapsinh/job-PhuQuoc/web/src/app/candidate/resumes/%5Bid%5D/edit/page.tsx)).
+
+* **Bước 2: Tải thông tin CV hiện tại (Load Existing Resume)**
+  * Trang chỉnh sửa khi được tải sẽ tự động gọi API `GET /api/v1/resumes/[id]`.
+  * Hệ thống ưu tiên nạp thông tin liên hệ độc lập từ chính bản ghi CV (`name`, `email`, `phone`, `avatar`). Nếu các trường này chưa có dữ liệu (null), hệ thống sẽ nạp dữ liệu dự phòng từ thông tin tài khoản người dùng (`user` liên kết).
+  * Render component template tương ứng với `templateId` nhận được, truyền kèm `resumeId` (`id`) để làm cơ sở xác định yêu cầu cập nhật sau này.
+
+* **Bước 3: Chỉnh sửa trực quan trên Client (Visual Editing)**
+  * Ứng viên thực hiện thay đổi trực quan các thông tin cá nhân, học vấn, kinh nghiệm.
+  * Việc tải ảnh đại diện mới được xử lý thông qua `FileReader` chuyển đổi thành Base64 Data URL lưu trực tiếp vào CV.
+
+* **Bước 4: Gửi yêu cầu Cập nhật CV (Update Request)**
+  * Khi người dùng nhấn nút **Lưu thay đổi**, hệ thống xác định `resumeId` đã tồn tại.
+  * Front-end gửi yêu cầu `PATCH /api/v1/resumes/${resumeId}` kèm theo payload thông tin thay đổi mới nhất của CV.
+
+* **Bước 5: Xử lý ở Backend & Cập nhật CSDL (Backend Storage)**
+  * NestJS Controller (file [resumes.controller.ts](file:///c:/Users/ngoan/Documents/thuctapsinh/job-PhuQuoc/backend/src/modules/resumes/resumes.controller.ts)) nhận request `PATCH /:id`.
+  * Service (file [resumes.service.ts](file:///c:/Users/ngoan/Documents/thuctapsinh/job-PhuQuoc/backend/src/modules/resumes/resumes.service.ts)) thực hiện:
+    1. Xác thực và kiểm tra quyền sở hữu (Đảm bảo người dùng hiện tại là chủ sở hữu của CV).
+    2. Nếu thiết lập `isDefault = true`, tự động cập nhật các CV khác cùng tài khoản thành `isDefault = false`.
+    3. Thực hiện cập nhật các thay đổi vào bản ghi CV tương ứng trong bảng `CandidateResume` (`candidate_resume`) thông qua Prisma.
+  * Backend trả về phản hồi thành công HTTP 200 kèm theo dữ liệu CV sau khi cập nhật.
+
+* **Bước 6: Hoàn tất & Chuyển hướng (Done & Redirect)**
+  * Front-end nhận phản hồi thành công, hiển thị toast thông báo thành công và chuyển hướng người dùng về trang danh sách CV cá nhân: `/candidate/resumes`.
+
+### 6.2. Sơ đồ tuần tự (Sequence Diagram)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Candidate as 🙋‍♂️ Candidate
+    participant FE as 🖥️ Frontend (Next.js)
+    participant BE as ⚙️ Backend (NestJS)
+    participant DB as 🗄️ Database (PostgreSQL)
+    
+    Note over Candidate, DB: Quy trình Chỉnh sửa & Cập nhật CV (Edit CV Flow)
+    
+    Candidate->>FE: Bấm chọn "Chỉnh sửa" CV từ trang danh sách
+    FE->>Candidate: Chuyển hướng sang trang /candidate/resumes/[id]/edit
+    
+    rect rgb(240, 248, 255)
+        Note over FE, BE: Tải thông tin CV hiện tại
+        FE->>BE: GET /api/v1/resumes/[id]
+        BE->>DB: Truy vấn dữ liệu CV và User liên kết
+        DB-->>BE: Trả về dữ liệu bản ghi CV
+        BE-->>FE: HTTP 200 OK (Kèm thông tin CV)
+    end
+    
+    Note over FE: Ưu tiên lấy thông tin liên hệ từ CV,<br/>nếu trống mới lấy từ User (Fallback)
+    FE-->>Candidate: Hiển thị CV Editor với dữ liệu đã nạp
+    
+    rect rgb(255, 253, 230)
+        Note over Candidate, FE: Chỉnh sửa trực quan trên giao diện
+        Candidate->>FE: Chỉnh sửa thông tin CV (Tên, Ảnh, Học vấn...)
+    end
+    
+    Candidate->>FE: Bấm nút "Lưu thay đổi" (Đã có resumeId)
+    FE->>BE: PATCH /api/v1/resumes/[id] { name, email, phone, avatar, ... }
+    
+    rect rgb(230, 245, 230)
+        Note over BE, DB: Xác thực & Cập nhật CSDL
+        BE->>DB: Kiểm tra quyền sở hữu (Owner)
+        BE->>DB: Cập nhật thông tin trong bảng candidate_resume
+        DB-->>BE: Cập nhật thành công
+    end
+    
+    BE-->>FE: HTTP 200 OK (Trả về dữ liệu CV đã cập nhật)
+    FE-->>Candidate: Hiển thị Toast thông báo & Chuyển hướng về /candidate/resumes
+```
+
 
 
