@@ -50,44 +50,79 @@ export class TemplateEngineService {
    */
   renderForEdit(htmlTemplate: string, cssTemplate: string, data: ResumeData): string {
     // Inject editable markers
-    let html = this.interpolate(htmlTemplate, data);
+    const html = this.interpolate(htmlTemplate, data);
     
     // Add edit mode styles and script
     const editStyles = `
       <style>
-        [data-field]:hover { outline: 2px solid #3b82f6; outline-offset: 2px; cursor: pointer; }
-        [data-field]:hover::after { 
-          content: '✏️'; 
-          position: absolute; 
-          top: -20px; 
-          right: 0; 
-          font-size: 12px;
+        [data-field]:hover { outline: 2px dashed #3b82f6; outline-offset: 2px; cursor: text; }
+        [data-field]:focus { outline: 2px solid #3b82f6 !important; background: #eff6ff !important; outline-offset: 2px; }
+        [data-field] { position: relative; transition: all 0.2s ease-in-out; min-height: 1em; display: inline-block; min-width: 20px; }
+        [data-field]:empty::before {
+            content: "Nhập " attr(data-field) "...";
+            color: #9ca3af;
+            font-style: italic;
+            pointer-events: none;
         }
-        [data-field] { position: relative; }
-        .editing { outline: 2px solid #3b82f6 !important; background: #eff6ff !important; }
+        /* Highlight sections */
+        [data-repeat] { position: relative; border: 1px dashed transparent; }
+        [data-repeat]:hover { border-color: #cbd5e1; }
       </style>
     `;
 
     const editScript = `
       <script>
-        document.addEventListener('click', function(e) {
-          var field = e.target.closest('[data-field]');
-          if (field) {
-            e.preventDefault();
-            e.stopPropagation();
-            window.parent.postMessage({
-              type: 'cv-edit-field',
-              field: field.dataset.field,
-              value: field.textContent.trim(),
-              rect: field.getBoundingClientRect()
-            }, '*');
-          }
-        });
-        
-        // Highlight editable fields on hover
-        document.querySelectorAll('[data-field]').forEach(function(el) {
-          el.title = 'Click để chỉnh sửa';
-        });
+        function initEditor() {
+          // Make all data-field elements contenteditable
+          document.querySelectorAll('[data-field]').forEach(function(el) {
+            if (el.dataset.editorInitialized) return;
+            el.dataset.editorInitialized = "true";
+            el.setAttribute('contenteditable', 'true');
+            el.setAttribute('spellcheck', 'false');
+            
+            // Listen to input events for live syncing back to React
+            let timeout = null;
+            el.addEventListener('input', function(e) {
+              clearTimeout(timeout);
+              timeout = setTimeout(() => {
+                window.parent.postMessage({
+                  type: 'cv-update-field',
+                  field: el.dataset.field,
+                  value: el.innerText
+                }, '*');
+              }, 300); // debounce 300ms
+            });
+
+            // Focus event to tell React which field is active
+            el.addEventListener('focus', function(e) {
+              window.parent.postMessage({
+                type: 'cv-focus-field',
+                field: el.dataset.field
+              }, '*');
+            });
+          });
+
+          // Listen for messages from React parent to update iframe DOM
+          window.addEventListener('message', function(event) {
+            if (event.data?.type === 'cv-sync-data') {
+               const { field, value } = event.data;
+               const el = document.querySelector('[data-field="' + field + '"]');
+               if (el && el.innerText !== value) {
+                   if (document.activeElement !== el) {
+                      el.innerText = value || '';
+                   }
+               }
+            }
+          });
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initEditor);
+        } else {
+          initEditor();
+        }
+        // Fallback for doc.write() in iframes which might swallow the event
+        setTimeout(initEditor, 100);
       </script>
     `;
 
@@ -190,7 +225,7 @@ export class TemplateEngineService {
   /**
    * Wrap HTML trong full document với Tailwind CDN
    */
-  private wrapInDocument(html: string, css: string, extraHead: string = ''): string {
+  private wrapInDocument(html: string, css: string, extraTags: string = ''): string {
     return `<!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -209,10 +244,10 @@ export class TemplateEngineService {
     }
     ${css}
   </style>
-  ${extraHead}
 </head>
 <body>
   ${html}
+  ${extraTags}
 </body>
 </html>`;
   }
