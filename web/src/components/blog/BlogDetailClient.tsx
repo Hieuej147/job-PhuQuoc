@@ -3,6 +3,43 @@
  * @description Component Client-side để hiển thị nội dung chi tiết bài viết Blog.
  * @note [HuynhhThanh] Trao đổi dữ liệu: Nhận đối tượng `blog` (chứa content, views, date thực tế) từ Database thông qua page.tsx. Các thông số như "lượt xem", "thời gian đọc", "số liệu liên quan" đã được tính toán từ dữ liệu thật.
  */
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE FILE HEADER & CHANGELOG — HuynhhThanh
+// ─────────────────────────────────────────────────────────────────────────────
+// ==============================================================================
+//  File    : web/src/components/blog/BlogDetailClient.tsx
+//  Module  : blog
+//  Tóm tắt : Component hiển thị chi tiết bài viết Blog
+//  Tác giả : HuynhhThanh
+//  Tạo lúc : 2026-06-25 09:35 (UTC+7)
+//  Encode  : UTF-8
+//  Version : 1.1.0
+//            · MAJOR → tăng khi: thay đổi không tương thích ngược (breaking)
+//            · MINOR → tăng khi: thêm tính năng mới, không phá vỡ cũ
+//            · PATCH → tăng khi: sửa lỗi, không thay đổi hành vi (behavior)
+//  Lịch sử :
+//  - [2026-06-25 09:35] v1.1.0 : Bỏ thời gian đọc
+// ------------------------------------------------------------------------------
+//  Changelog — lần thay đổi gần nhất
+// ------------------------------------------------------------------------------
+//  | Trường          | Nội dung                                                |
+//  |-----------------|----------------------------------------------------------|
+//  | **Người sửa**   | HuynhhThanh                                |
+//  | **Loại**        | Sửa lỗi / Tính năng                                      |
+//  | **Mức độ**      | S (1 file)                                               |
+//  | **Version**     | `v1.0.0 → v1.1.0`                                        |
+//  | **PR / Issue**  | Không                                                    |
+//  | **Reviewer**    | HuynhhThanh · ⏳ Pending                                 |
+//  | **Tóm tắt**     | Bỏ hiển thị phút đọc trong BlogDetailClient            |
+//  | **Phụ thuộc**   | Không                                                    |
+//  | **Skill/Tool**  | Không                                                    |
+//  | **Chi tiết**    | - Xóa thẻ span tĩnh hiển thị số phút đọc                 |
+//  |                 | - Xóa biến readTime                                      |
+//  | **Ảnh hưởng**   | Không                                                    |
+//  | **Ghi chú**     |                                                          |
+//  | **Test / CI**   | ⏳ Chưa chạy                                               |
+//  | **Trạng thái**  | ✅ Hoàn thành                                              |
+// ==============================================================================
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -151,8 +188,6 @@ export default function BlogDetailClient({
     ? authorName.slice(0, 2).toUpperCase()
     : "BB";
 
-  const readTime = Math.max(1, Math.ceil((blog.content?.length || 0) / 800));
-
   return (
     <div className="min-h-screen bg-[#f7f9ff] text-[#001e30] dark:bg-[#071a2b] dark:text-[#e0f2fe] font-sans antialiased overflow-x-hidden">
       {/* Reading progress bar */}
@@ -222,12 +257,7 @@ export default function BlogDetailClient({
                     </span>{" "}
                     {formattedDate}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">
-                      schedule
-                    </span>{" "}
-                    {readTime} phút đọc
-                  </span>
+
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">
                       visibility
@@ -299,7 +329,7 @@ export default function BlogDetailClient({
                   </span>
                   <span>{likeCount}</span> Yêu thích
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     navigator.clipboard.writeText(window.location.href);
                     toast.success("Đã sao chép đường dẫn bài viết!");
@@ -311,7 +341,7 @@ export default function BlogDetailClient({
                   </span>{" "}
                   Chia sẻ
                 </button>
-                <button 
+                <button
                   onClick={handleSave}
                   className="flex items-center gap-1.5 px-[18px] py-2 border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-full text-xs font-semibold cursor-pointer bg-white dark:bg-[#0d2137] text-slate-500 dark:text-[#94a3b8] hover:border-[#0e7490] hover:text-[#0e7490] transition-colors duration-200"
                 >
@@ -470,11 +500,11 @@ export default function BlogDetailClient({
                 placeholder="Email của bạn..."
                 className="w-full text-sm border border-slate-200 dark:border-[#1a3d5c] rounded-xl px-3 py-2 bg-[#f7f9ff] dark:bg-[#0a1e30] text-[#001e30] dark:text-[#e0f2fe] focus:ring-2 focus:ring-[#005a71]/30 focus:outline-none mb-2"
               />
-              <button 
+              <button
                 onClick={() => {
-                   if (!email) return toast.error("Vui lòng nhập email hợp lệ!");
-                   toast.success("Đăng ký nhận bài thành công!");
-                   setEmail("");
+                  if (!email) return toast.error("Vui lòng nhập email hợp lệ!");
+                  toast.success("Đăng ký nhận bài thành công!");
+                  setEmail("");
                 }}
                 className="w-full bg-[#005a71] dark:bg-[#0e7490] text-white font-semibold text-sm py-2.5 rounded-xl hover:opacity-90 transition-opacity"
               >

@@ -1,3 +1,50 @@
+<!--
+# ─────────────────────────────────────────────────────────────────────────────
+# TEMPLATE FILE HEADER & CHANGELOG — HuynhhThanh
+# Dùng cho mọi dự án · Copy nguyên khối comment vào đầu file hoặc file log Note
+# ─────────────────────────────────────────────────────────────────────────────
+
+==============================================================================
+ File    : docs/NoteHuynhhThanh.md
+ Module  : docs
+ Tóm tắt : Phân tích các task Blog và Dashboard Employer
+ Tác giả : HuynhhThanh
+ Tạo lúc : 2026-06-25 09:30 (UTC+7)
+ Encode  : UTF-8
+ Version : 1.1.0
+           · MAJOR → tăng khi: thay đổi không tương thích ngược (breaking)
+           · MINOR → tăng khi: thêm tính năng mới, không phá vỡ cũ
+           · PATCH → tăng khi: sửa lỗi, không thay đổi hành vi (behavior)
+ Lịch sử :
+ - [2026-06-25 09:30] v1.1.0 : Phân tích các task theo yêu cầu
+ - [2026-06-25 09:37] v1.2.0 : Hoàn thành Task A (Blog Page)
+------------------------------------------------------------------------------
+ Changelog — lần thay đổi gần nhất
+------------------------------------------------------------------------------
+ | Trường          | Nội dung                                                |
+ |-----------------|----------------------------------------------------------|
+ | **Người sửa**   | AI Agent (Antigravity)                                   |
+ | **Loại**        | Sửa lỗi / Tính năng                                      |
+ | **Mức độ**      | M (2-3 files)                                            |
+ | **Version**     | `v1.1.0 → v1.2.0`                                        |
+ | **PR / Issue**  | Không                                                    |
+ | **Reviewer**    | HuynhhThanh · ⏳ Pending                                 |
+ | **Tóm tắt**     | Thực thi hoàn tất Task A: Bỏ phút đọc, format ngày     |
+ | **Phụ thuộc**   | Không                                                    |
+ | **Skill/Tool**  | multi_replace_file_content                               |
+ | **Chi tiết**    | - Xóa các đoạn text tĩnh/động "phút đọc" trong BlogHero  |
+ |                 |   và BlogDetailClient.                                   |
+ |                 | - Đã format ngày tháng trong BlogPageClient (dd/MM/yyyy).|
+ |                 | - Đã gắn Universal Header cho các tệp đã sửa.            |
+ | **Ảnh hưởng**   | - web/src/components/blog/BlogHero.tsx                   |
+ |                 | - web/src/components/blog/BlogDetailClient.tsx           |
+ |                 | - web/src/components/blog/BlogPageClient.tsx             |
+ | **Ghi chú**     | Code đã được sửa đúng vị trí, hoàn thành Task A.         |
+ | **Test / CI**   | ⏳ Chưa chạy                                               |
+ | **Trạng thái**  | ✅ Hoàn thành                                              |
+==============================================================================
+-->
+
 # Nhật ký thực hiện (HuynhhThanh)
 
 ## Ngày 13/06/2026
@@ -50,3 +97,34 @@
   - **Khắc phục lỗi xác thực vòng lặp vô hạn**: Vào `backend/src/auth/auth.ts`, **Vô hiệu hóa việc lưu session qua Redis**. Better Auth sẽ tự động dùng PostgreSQL (bảng `session`) để lưu phiên làm việc.
   - **Dọn dẹp JWT Key cũ**: Viết script dọn dẹp bảng `jwks` để Better Auth tự sinh lại mã bảo mật. Tiến hành `npm run build` Backend và `pm2 restart` để tất cả thay đổi trên Backend được áp dụng triệt để.
   - Nhờ vậy, hiện tại mọi thứ đăng nhập hoàn hảo, vào thẳng Dashboard tương ứng tùy vào vai trò (Candidate / Employer).
+
+
+## Ngày 25/06/2026
+
+### 7. Phân tích task Blog & Dashboard Employer
+
+**A. Blog Page:**
+- **Vấn đề**: Cần định dạng lại hiển thị thời gian đăng và bỏ hoàn toàn các thông tin "thời gian đọc".
+- **Tiến độ**: ✅ **Đã hoàn thành**
+- **Chi tiết thực thi**:
+  - `BlogHero.tsx`: Đã xóa bỏ đoạn hiển thị "8 phút đọc". Đã gắn Universal Header Template.
+  - `BlogDetailClient.tsx`: Đã xóa bỏ thẻ hiển thị `{readTime} phút đọc` và gỡ bỏ biến tính toán `readTime`. Đã gắn Universal Header Template.
+  - `BlogPageClient.tsx`: Đã bọc `b.createdAt` bằng `Intl.DateTimeFormat` để format ngày thành chuẩn `dd/MM/yyyy`, đồng bộ thời gian trên toàn bộ thẻ và bài viết. Đã gắn Universal Header Template.
+  - `BlogCard.tsx`: Tự động nhận định dạng ngày mới.
+
+**B. Dashboard Employer - Đăng tin**:
+- **Mô tả công việc, Yêu cầu, Quyền lợi**:
+  - **Vấn đề**: Hiện DB lưu text bài đăng là HTML thô, khó cho Employer thao tác nhập liệu dù khi lên iframe chi tiết thì đẹp.
+  - **Hướng giải quyết**: Thay vì bắt người dùng nhập mã thẻ HTML bằng tay, sẽ tích hợp một **Rich Text Editor** (Trình soạn thảo văn bản phong phú như TipTap, React Quill, hoặc TinyMCE) vào form đăng tuyển. Bộ editor này có các nút in đậm, in nghiêng, gạch đầu dòng rất trực quan. Sau khi viết xong trên form, editor sẽ tự render ra format HTML sạch để lưu xuống database. Cách này giải quyết được mâu thuẫn: form nhập cực kỳ dễ dùng mà iframe hiển thị thì vẫn giữ nguyên được độ đẹp và định dạng gốc.
+- **Mức Lương**:
+  - **Vấn đề**: Yêu cầu nhập lương phải hiển thị dạng số thân thiện (ví dụ 10.000), nhưng khi gửi lên API cần định dạng số nguyên (10000).
+  - **Hướng giải quyết**: Dùng input có chức năng mask tiền tệ (như thư viện `react-number-format` hoặc tự viết hàm format `onChange`). Khi người dùng gõ số, form sẽ tự parse và hiển thị phân cách hàng nghìn (10.000), trước khi `onSubmit` sẽ thay thế bỏ dấu `.` rồi ép kiểu thành số `Number` để gọi API Backend an toàn.
+
+**C. Dashboard Employer - Hồ sơ công ty**:
+- **Yêu cầu**: Thiết kế lại tab "Hồ sơ công ty" như ảnh mockup (cần cung cấp thêm ảnh để code chuẩn), và sau khi điền thì quay về trang Công Ty cũng phải hiển thị đúng các thông tin này.
+- **Hướng giải quyết**: Mở component trang "Hồ sơ công ty" (`app/employer/company/page.tsx`). Dàn lại layout form theo yêu cầu thẩm mỹ của thiết kế. Bổ sung các API lấy và cập nhật profile công ty (nếu thiếu), sau đó đồng bộ state vào cả form form và trang public company detail.
+
+**D. Rà soát các tab khác trong Employer**:
+- **Phạm vi**: Tab Cài đặt (Settings), Thông báo (Notifications), Bảng điều khiển (Dashboard)... Tuyệt đối không đụng vào "Hồ sơ ứng viên" và "Quản lý đăng tin" theo đúng chỉ thị.
+- **Hướng giải quyết**: Đi rà soát UI xem có vỡ layout không, click xem các API endpoint có bị lỗi 404/500 không. Nếu lỗi nhẹ và chắc chắn đúng logic thì sẽ tự fix, nếu là lỗi to hoặc không chắc thì sẽ chỉ báo cáo lại bằng cách viết log vào file này.
+

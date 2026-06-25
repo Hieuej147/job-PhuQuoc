@@ -3,6 +3,42 @@
  * @description Component Client-side để render và xử lý danh sách bài viết (lọc, phân trang, tìm kiếm).
  * @note [HuynhhThanh] Trao đổi dữ liệu: Nhận mảng `initialBlogs` (dữ liệu thật từ DB) từ page.tsx. Các thông tin render trên thẻ đều được lấy thực tế từ dữ liệu trả về, không dùng mock data tĩnh nữa.
  */
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE FILE HEADER & CHANGELOG — HuynhhThanh
+// ─────────────────────────────────────────────────────────────────────────────
+// ==============================================================================
+//  File    : web/src/components/blog/BlogPageClient.tsx
+//  Module  : blog
+//  Tóm tắt : Component hiển thị danh sách bài viết Blog
+//  Tác giả : HuynhhThanh
+//  Tạo lúc : 2026-06-25 09:35 (UTC+7)
+//  Encode  : UTF-8
+//  Version : 1.1.0
+//            · MAJOR → tăng khi: thay đổi không tương thích ngược (breaking)
+//            · MINOR → tăng khi: thêm tính năng mới, không phá vỡ cũ
+//            · PATCH → tăng khi: sửa lỗi, không thay đổi hành vi (behavior)
+//  Lịch sử :
+//  - [2026-06-25 09:35] v1.1.0 : Format ngày tháng năm
+// ------------------------------------------------------------------------------
+//  Changelog — lần thay đổi gần nhất
+// ------------------------------------------------------------------------------
+//  | Trường          | Nội dung                                                |
+//  |-----------------|----------------------------------------------------------|
+//  | **Người sửa**   | HuynhhThanh                                 |
+//  | **Loại**        | Sửa lỗi / Tính năng                                      |
+//  | **Mức độ**      | S (1 file)                                               |
+//  | **Version**     | `v1.0.0 → v1.1.0`                                        |
+//  | **PR / Issue**  | Không                                                    |
+//  | **Reviewer**    | HuynhhThanh · ⏳ Pending                                 |
+//  | **Tóm tắt**     | Format ngày tháng trong BlogPageClient                 |
+//  | **Phụ thuộc**   | Không                                                    |
+//  | **Skill/Tool**  | Không                                                    |
+//  | **Chi tiết**    | - Bọc đối tượng b.createdAt bằng Intl.DateTimeFormat     |
+//  | **Ảnh hưởng**   | Không                                                    |
+//  | **Ghi chú**     |                                                          |
+//  | **Test / CI**   | ⏳ Chưa chạy                                               |
+//  | **Trạng thái**  | ✅ Hoàn thành                                              |
+// ==============================================================================
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -63,7 +99,11 @@ function mapBlog(b: Blog): MappedBlog {
     slug: b.slug,
     excerpt: b.excerpt || "",
     thumbnail: b.thumbnail,
-    date: b.createdAt,
+    date: new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(new Date(b.createdAt)),
     views: b.views || 0,
     categoryName: b.category?.name || "Blog",
     categorySlug: b.category?.slug || "blog",
@@ -78,29 +118,46 @@ interface BlogPageClientProps {
   initialBlogs?: Blog[];
   initialCategories?: BlogCategory[];
   initialTotalPages?: number;
-  initialSearchParams?: { page: string; search: string; category: string; sort: string; };
+  initialSearchParams?: {
+    page: string;
+    search: string;
+    category: string;
+    sort: string;
+  };
 }
 
 export default function BlogPageClient({
   initialBlogs = [],
   initialCategories = [],
   initialTotalPages = 1,
-  initialSearchParams = { page: "1", search: "", category: "all", sort: "newest" },
+  initialSearchParams = {
+    page: "1",
+    search: "",
+    category: "all",
+    sort: "newest",
+  },
 }: BlogPageClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
+
   const [activeTab, setActiveTab] = useState(initialSearchParams.category);
   const [sortBy, setSortBy] = useState(initialSearchParams.sort);
   const [search, setSearch] = useState(initialSearchParams.search);
   const [email, setEmail] = useState("");
-  const [currentPage, setCurrentPage] = useState(Number(initialSearchParams.page));
+  const [currentPage, setCurrentPage] = useState(
+    Number(initialSearchParams.page),
+  );
 
   const updateURL = (updates: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
-      if (value === "" || value === "all" || value === "newest" || (key === 'page' && value === "1")) {
+      if (
+        value === "" ||
+        value === "all" ||
+        value === "newest" ||
+        (key === "page" && value === "1")
+      ) {
         params.delete(key);
       } else {
         params.set(key, value);
@@ -136,8 +193,8 @@ export default function BlogPageClient({
   const activeCategoryLabel = useMemo(() => {
     if (activeTab === "all") return "Tất cả bài viết";
     return (
-      initialCategories.find((cat: BlogCategory) => cat.id === activeTab)?.name ||
-      "Bài viết"
+      initialCategories.find((cat: BlogCategory) => cat.id === activeTab)
+        ?.name || "Bài viết"
     );
   }, [activeTab, initialCategories]);
 
@@ -307,7 +364,9 @@ export default function BlogPageClient({
                   return (
                     <li key={c.id}>
                       <button
-                        onClick={() => updateURL({ category: c.slug, page: "1" })}
+                        onClick={() =>
+                          updateURL({ category: c.slug, page: "1" })
+                        }
                         className={`w-full flex justify-between items-center py-2 px-3 rounded-xl transition-colors text-left group ${
                           activeTab === c.slug
                             ? "bg-slate-100 dark:bg-[#1E5F74]/30 text-[#005a71] dark:text-[#67E8F9]"
