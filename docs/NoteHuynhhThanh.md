@@ -55,7 +55,7 @@
 
 ### 7. Phân tích task Blog & Dashboard Employer
 
-**A. Blog Page:**
+**Task 1: Blog Page**
 
 - **Vấn đề**: Cần định dạng lại hiển thị thời gian đăng và bỏ hoàn toàn các thông tin "thời gian đọc".
 - **Tiến độ**: ✅ **Đã hoàn thành**
@@ -75,8 +75,8 @@
 | **Loại**       | Sửa lỗi / Tính năng                                                                                                                                |
 | **Mức độ**     | M (2-3 files)                                                                                                                                      |
 | **Version**    | `v1.1.0 → v1.2.0`                                                                                                                                  |
-| **Tóm tắt**    | Hoàn thành Task A: Xóa phút đọc, format ngày thành dd/MM/yyyy                                                                                      |
-| **Lịch sử**    | - [2026-06-25 09:30]: v1.1.0 Phân tích các task theo yêu cầu <br> - [2026-06-25 09:37]: v1.2.0 Hoàn thành Task A (Blog Page)                       |
+| **Tóm tắt**    | Hoàn thành Task 1: Xóa phút đọc, format ngày thành dd/MM/yyyy                                                                                      |
+| **Lịch sử**    | - [2026-06-25 09:30]: v1.1.0 Phân tích các task theo yêu cầu <br> - [2026-06-25 09:37]: v1.2.0 Hoàn thành Task 1 (Blog Page)                       |
 | **Chi tiết**   | - Cập nhật BlogHero và BlogDetailClient: gỡ logic phút đọc <br> - Cập nhật BlogPageClient: bọc `createdAt` bằng Intl.DateTimeFormat                |
 | **Ảnh hưởng**  | - `web/src/components/blog/BlogHero.tsx` <br> - `web/src/components/blog/BlogDetailClient.tsx` <br> - `web/src/components/blog/BlogPageClient.tsx` |
 | **Ghi chú**    | Đã format lại bảng theo rule mới (Single Universal Table)                                                                                          |
@@ -108,23 +108,23 @@
     - Cập nhật file `globals.css` để thêm plugin typography `@plugin "@tailwindcss/typography"`.
     - Sửa file `src/components/ui/rich-content.tsx` để render Markdown bằng `react-markdown` kết hợp `rehype-raw` bọc trong class `prose` (Đảm bảo tương thích ngược với data HTML cũ trong DB).
 
-| Trường         | Nội dung                                                                                                                                                                                |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **File**       | `docs/NoteHuynhhThanh.md`                                                                                                                                                               |
-| **Module**     | `docs`                                                                                                                                                                                  |
-| **Tác giả**    | HuynhhThanh                                                                                                                                                                             |
-| **Tạo lúc**    | 2026-06-25 15:15 (UTC+7)                                                                                                                                                                |
-| **Người sửa**  | AI Agent (Antigravity)                                                                                                                                                                  |
-| **Loại**       | Tính năng / UI                                                                                                                                                                          |
-| **Mức độ**     | L (>3 files)                                                                                                                                                                            |
-| **Version**    | `v1.3.6 → v1.3.7`                                                                                                                                                                       |
-| **Tóm tắt**    | Tích hợp thành công Tiptap Editor và Markdown Render                                                                                                                                    |
-| **Lịch sử**    | - [2026-06-25 13:45]: v1.3.5 Dùng React Quill (Thất bại do Crash React 19) <br> - [2026-06-25 15:00]: v1.3.6 Chuyển sang Tiptap & Markdown <br> - [2026-06-25 15:15]: v1.3.7 Hoàn tất code Tiptap |
+| Trường         | Nội dung                                                                                                                                                                                                                                                 |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                                                                                                                                                                                                                |
+| **Module**     | `docs`                                                                                                                                                                                                                                                   |
+| **Tác giả**    | HuynhhThanh                                                                                                                                                                                                                                              |
+| **Tạo lúc**    | 2026-06-25 15:15 (UTC+7)                                                                                                                                                                                                                                 |
+| **Người sửa**  | AI Agent (Antigravity)                                                                                                                                                                                                                                   |
+| **Loại**       | Tính năng / UI                                                                                                                                                                                                                                           |
+| **Mức độ**     | L (>3 files)                                                                                                                                                                                                                                             |
+| **Version**    | `v1.3.6 → v1.3.7`                                                                                                                                                                                                                                        |
+| **Tóm tắt**    | Tích hợp thành công Tiptap Editor và Markdown Render                                                                                                                                                                                                     |
+| **Lịch sử**    | - [2026-06-25 13:45]: v1.3.5 Dùng React Quill (Thất bại do Crash React 19) <br> - [2026-06-25 15:00]: v1.3.6 Chuyển sang Tiptap & Markdown <br> - [2026-06-25 15:15]: v1.3.7 Hoàn tất code Tiptap                                                        |
 | **Chi tiết**   | - Build custom Toolbar (Lucide) cho Tiptap, tự động parse ra Markdown. <br> - Viết lại `RichContent` bằng `react-markdown` + `rehype-raw` để vừa render Markdown đẹp, vừa không làm hỏng tin tuyển dụng HTML cũ. <br> - Thêm Tailwind Typography plugin. |
-| **Ảnh hưởng**  | - `web/package.json` <br> - `web/src/components/ui/RichTextEditor.tsx` <br> - `web/src/app/globals.css` <br> - `web/src/components/ui/rich-content.tsx`                                 |
-| **Ghi chú**    | Dev giờ đã có thể dễ dàng đọc data trong DB.                                                                                                                                            |
-| **Test / CI**  | ✅ Pass (Editor mount thành công, không Crash SSR)                                                                                                                                       |
-| **Trạng thái** | ✅ Hoàn thành                                                                                                                                                                           |
+| **Ảnh hưởng**  | - `web/package.json` <br> - `web/src/components/ui/RichTextEditor.tsx` <br> - `web/src/app/globals.css` <br> - `web/src/components/ui/rich-content.tsx`                                                                                                  |
+| **Ghi chú**    | Dev giờ đã có thể dễ dàng đọc data trong DB.                                                                                                                                                                                                             |
+| **Test / CI**  | ✅ Pass (Editor mount thành công, không Crash SSR)                                                                                                                                                                                                       |
+| **Trạng thái** | ✅ Hoàn thành                                                                                                                                                                                                                                            |
 
 ---
 
@@ -133,7 +133,7 @@
 - **Vấn đề cốt lõi**: Yêu cầu của khách hàng là khi gõ `100000`, UI phải hiển thị ngay `100.000` (dễ nhìn, thân thiện), nhưng giá trị lưu trữ ngầm và gửi đi (xử lý dữ liệu) phải giữ nguyên là `100000`. Tuyệt đối không cho nhập chữ.
 - **Phân tích cách làm (Làm sao làm như vậy được?)**:
   Để đạt được điều này bằng **Native Code (Không dùng thư viện)**, ta phải xây dựng một component trung gian (ví dụ `CurrencyInput`) hoạt động theo nguyên lý "Controlled Component" của React, với luồng xử lý như sau:
-  1. **Tách biệt UI và Data**: 
+  1. **Tách biệt UI và Data**:
      - Dữ liệu thật (Data): Lưu ở state `form.salaryMin` dưới dạng chuỗi số nguyên thuần (VD: `"100000"`).
      - Giao diện hiển thị (UI): Thẻ `<input>` nhận một giá trị đã được format (VD: `"100.000"`).
   2. **Thuật toán xử lý khi gõ (onChange)**:
@@ -149,28 +149,27 @@
      - **Label hiển thị (Real-time Preview)**: Tạo ngay một dòng text nhỏ màu xanh (`text-blue-600`) ngay bên dưới ô input. Khi user gõ bên trên, dòng chữ bên dưới lập tức nhảy số định dạng `"~ 1.000.000 VNĐ"`.
      - **Đánh giá**: Cách làm này vừa đáp ứng yếu tố UI thân thiện, số tiền dễ nhìn, vừa đảm bảo tính kỹ thuật 100% bug-free (không lỗi nhảy con trỏ, không lỗi bộ gõ, không lỗi UX).
 - **Các file ảnh hưởng**:
-  1. `web/src/app/employer/jobs/create/page.tsx`: 
+  1. `web/src/app/employer/jobs/create/page.tsx`:
      - Sửa Component `CurrencyInput` áp dụng thiết kế Binance/Shopee: Input chứa raw value, thêm một thẻ `<p>` hiển thị `displayValue` nằm ngay bên dưới.
   2. DB & BE (Không ảnh hưởng).
 
-| Trường         | Nội dung                                                                                                                   |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **File**       | `docs/NoteHuynhhThanh.md`                                                                                                  |
-| **Module**     | `frontend/employer/jobs`                                                                                                   |
-| **Tác giả**    | HuynhhThanh                                                                                                                |
-| **Tạo lúc**    | 2026-06-25 17:00 (UTC+7)                                                                                                   |
-| **Người sửa**  | AI Agent (Antigravity)                                                                                                     |
-| **Loại**       | Tính năng / UI UX                                                                                                          |
-| **Mức độ**     | S (1 file)                                                                                                                 |
-| **Version**    | `v2.1.6 → v2.1.7`                                                                                                          |
-| **Tóm tắt**    | Đồng bộ layout UI lưới với trang Company & Nâng cấp nhập Lương                                                             |
+| Trường         | Nội dung                                                                                                                                                                                                                                                                                                    |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                                                                                                                                                                                                                                                                   |
+| **Module**     | `frontend/employer/jobs`                                                                                                                                                                                                                                                                                    |
+| **Tác giả**    | HuynhhThanh                                                                                                                                                                                                                                                                                                 |
+| **Tạo lúc**    | 2026-06-25 17:00 (UTC+7)                                                                                                                                                                                                                                                                                    |
+| **Người sửa**  | AI Agent (Antigravity)                                                                                                                                                                                                                                                                                      |
+| **Loại**       | Tính năng / UI UX                                                                                                                                                                                                                                                                                           |
+| **Mức độ**     | S (1 file)                                                                                                                                                                                                                                                                                                  |
+| **Version**    | `v2.1.6 → v2.1.7`                                                                                                                                                                                                                                                                                           |
+| **Tóm tắt**    | Đồng bộ layout UI lưới với trang Company & Nâng cấp nhập Lương                                                                                                                                                                                                                                              |
 | **Lịch sử**    | - [2026-06-25 17:00]: v2.1.4 Phân tích giải pháp Format As You Type. <br> - [2026-06-25 17:28]: v2.1.5 Phân tích lỗi IME Composition. <br> - [2026-06-25 17:41]: v2.1.6 Đổi UX sang Tách biệt Input & Label (Binance). <br> - [2026-06-25 18:25]: v2.1.7 Đồng bộ layout grid full-width giống trang Company |
-| **Chi tiết**   | - Gỡ bỏ wrapper `max-w-3xl` giới hạn chiều ngang ở trang đăng tin.<br> - Sắp xếp lại form: gộp các trường dữ liệu rời rạc thành dạng cột `grid-cols-1 md:grid-cols-2`. <br> - Giúp giao diện trang tạo job đồng bộ chuẩn thiết kế UX form như bên trang Hồ sơ công ty. |
-| **Ảnh hưởng**  | - `web/src/app/employer/jobs/create/page.tsx`                                                                              |
-| **Ghi chú**    | Layout form đăng tin nay đã full width và đẹp mắt tương tự company profile.                                                |
-| **Test / CI**  | ✅ Pass UI / UX hoàn hảo.                                                                                                  |
-| **Trạng thái** | ✅ Hoàn thành                                                                                                              |
-
+| **Chi tiết**   | - Gỡ bỏ wrapper `max-w-3xl` giới hạn chiều ngang ở trang đăng tin.<br> - Sắp xếp lại form: gộp các trường dữ liệu rời rạc thành dạng cột `grid-cols-1 md:grid-cols-2`. <br> - Giúp giao diện trang tạo job đồng bộ chuẩn thiết kế UX form như bên trang Hồ sơ công ty.                                      |
+| **Ảnh hưởng**  | - `web/src/app/employer/jobs/create/page.tsx`                                                                                                                                                                                                                                                               |
+| **Ghi chú**    | Layout form đăng tin nay đã full width và đẹp mắt tương tự company profile.                                                                                                                                                                                                                                 |
+| **Test / CI**  | ✅ Pass UI / UX hoàn hảo.                                                                                                                                                                                                                                                                                   |
+| **Trạng thái** | ✅ Hoàn thành                                                                                                                                                                                                                                                                                               |
 
 ---
 
@@ -207,7 +206,6 @@
 
 ---
 
-
 ### Task 5: Rà soát các tab khác trong Employer
 
 - **Phạm vi**: Tab Cài đặt (Settings), Thông báo (Notifications), Bảng điều khiển (Dashboard)... Tuyệt đối không đụng vào "Hồ sơ ứng viên" và "Quản lý đăng tin".
@@ -235,7 +233,53 @@
 | **Test / CI**  | ⏳ Chưa chạy                                              |
 | **Trạng thái** | ⏳ Đang chờ                                               |
 
-### 6. Khắc phục lỗi Hydration (React Hydration Error)
+---
+
+### Task 6: Dashboard Employer - Khắc phục lỗi hiển thị Sidebar (Hai menu cùng Active)
+
+- **Vấn đề**: Trên giao diện Nhà tuyển dụng (Employer Sidebar), khi đang ở trang "Đăng tin mới" (`/employer/jobs/create`), cả hai menu "Đăng tin mới" và "Quản lý tin đăng" đều bị làm nổi bật (trạng thái active) cùng một lúc (như trong ảnh).
+- **Nguyên nhân**:
+  - Item "Đăng tin mới" có đường dẫn: `/employer/jobs/create`
+  - Item "Quản lý tin đăng" có đường dẫn: `/employer/jobs`
+  - Logic xác định active hiện tại trong file `employer-sidebar.tsx` là: `const isActive = pathname === item.href || pathname.startsWith(item.href + "/");`
+  - Khi người dùng ở route `/employer/jobs/create`, đường dẫn này khớp tuyệt đối (exact match) với item "Đăng tin mới". Đồng thời nó cũng thỏa mãn điều kiện `startsWith("/employer/jobs/")` của item "Quản lý tin đăng". Dẫn đến cờ `isActive` của cả hai phần tử đều trả về `true`.
+- **Cách khắc phục**:
+  Sửa lại logic kiểm tra `isActive` ở phần render từng item (`navGroups.map` trong `employer-sidebar.tsx`).
+  Có 2 phương án thường dùng:
+  - **Phương án 1 (Thêm thuộc tính `exact`)**: Bổ sung cờ `exact: true` vào cấu hình của menu "Quản lý tin đăng". Trong logic render, nếu item có cờ `exact` thì chỉ check `pathname === item.href`.
+  - **Phương án 2 (Xử lý ngoại trừ trực tiếp)**: Loại trừ trường hợp trang tạo mới khi check startsWith của trang Quản lý tin đăng.
+  ```tsx
+  // Ví dụ Cách 2:
+  const isActive =
+    pathname === item.href ||
+    (pathname.startsWith(item.href + "/") &&
+      !(
+        item.href === "/employer/jobs" &&
+        pathname.startsWith("/employer/jobs/create")
+      ));
+  ```
+
+| Trường         | Nội dung                                                                                                                                                     |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **File**       | `docs/NoteHuynhhThanh.md`                                                                                                                                    |
+| **Module**     | `frontend/layout`                                                                                                                                            |
+| **Tác giả**    | HuynhhThanh                                                                                                                                                  |
+| **Tạo lúc**    | 2026-06-25 19:35 (UTC+7)                                                                                                                                     |
+| **Người sửa**  | AI Agent (Antigravity)                                                                                                                                       |
+| **Loại**       | Sửa lỗi                                                                                                                                                      |
+| **Mức độ**     | S (1 file)                                                                                                                                                   |
+| **Version**    | `v1.3.5 → v1.3.6`                                                                                                                                            |
+| **Tóm tắt**    | Khắc phục lỗi 2 menu sidebar cùng active khi tạo mới việc làm                                                                                                |
+| **Lịch sử**    | - [2026-06-25 19:35]: v1.3.5 Phân tích nguyên nhân lỗi logic path ở Employer Sidebar. <br> - [2026-06-25 19:49]: v1.3.6 Áp dụng code sửa lỗi sidebar         |
+| **Chi tiết**   | - Cập nhật logic `isActive`, thêm điều kiện loại trừ nhánh route `/employer/jobs/create` khi duyệt thẻ Quản lý tin đăng, tránh xung đột exact và startsWith. |
+| **Ảnh hưởng**  | - `web/src/components/layout/employer-sidebar.tsx`                                                                                                           |
+| **Ghi chú**    | (Không)                                                                                                                                                      |
+| **Test / CI**  | ✅ Chạy ổn định trên giao diện                                                                                                                               |
+| **Trạng thái** | ✅ Hoàn thành                                                                                                                                                |
+
+---
+
+### 8. Khắc phục lỗi Hydration (React Hydration Error)
 
 - **Vấn đề**: Khi truy cập trang `http://localhost:3001/employer/jobs/create` hoặc các trang khác, trình duyệt báo lỗi `A tree hydrated but some attributes of the server rendered HTML didn't match the client properties`.
 - **Phân tích log lỗi**: Trong đoạn log bạn cung cấp, xuất hiện các thuộc tính lạ bị chèn vào thẻ `<body>` và `<div>` như:
@@ -243,6 +287,30 @@
   - `bis_register="..."`
   - `__processed_...="true"`
 - **Nguyên nhân**: Lỗi này **KHÔNG PHẢI DO CODE DỰ ÁN**. Nguyên nhân là do một **Browser Extension** (tiện ích mở rộng của trình duyệt) trên máy bạn đã tự động thay đổi cấu trúc HTML (DOM) ngay trước khi React kịp thực hiện quá trình Hydration. Dấu hiệu `bis_skin_checked` đặc trưng xuất phát từ các extension bảo mật/tải file như **Bitdefender (Anti-tracker/Wallet)**, **Internet Download Manager (IDM)**, hoặc trình quản lý mật khẩu.
+- **Giải pháp xử lý (Không cần sửa code)**:
+  - **Cách 1 (Nhanh nhất)**: Sử dụng chế độ **Ẩn danh (Incognito Mode)** để chạy test dự án ở môi trường dev.
+  - **Cách 2**: Tắt/Vô hiệu hóa (Disable) các extension như Bitdefender, IDM cho trang `localhost:3001`.
+  - _(Lưu ý: Bạn không cần phải tìm cách thêm `suppressHydrationWarning` vào thẻ div vì extension này chèn mã độc đoán vào rất nhiều thẻ trên trang)._
+
+| Trường         | Nội dung                                                                                                                   |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                                                                                  |
+| **Module**     | `frontend`                                                                                                                 |
+| **Tác giả**    | HuynhhThanh                                                                                                                |
+| **Tạo lúc**    | 2026-06-25 14:35 (UTC+7)                                                                                                   |
+| **Người sửa**  | AI Agent (Antigravity)                                                                                                     |
+| **Loại**       | Sửa lỗi                                                                                                                    |
+| **Mức độ**     | S (1 file)                                                                                                                 |
+| **Version**    | `v1.3.3 → v1.3.4`                                                                                                          |
+| **Tóm tắt**    | Phân tích lỗi React Hydration Error do Browser Extension                                                                   |
+| **Lịch sử**    | - [2026-06-25 14:35]: v1.3.4 Phân tích lỗi Hydration                                                                       |
+| **Chi tiết**   | - Xác định lỗi sinh ra từ extension (có dấu `bis_skin_checked`). <br> - Đề xuất giải pháp tắt extension hoặc dùng ẩn danh. |
+| **Ảnh hưởng**  | - Môi trường Local Development                                                                                             |
+| **Ghi chú**    | Lỗi môi trường, KHÔNG PHẢI lỗi code dự án.                                                                                 |
+| **Test / CI**  | ✅ Đã xác định nguyên nhân                                                                                                 |
+| **Trạng thái** | ✅ Hoàn thành                                                                                                              |
+
+---E DỰ ÁN**. Nguyên nhân là do một **Browser Extension** (tiện ích mở rộng của trình duyệt) trên máy bạn đã tự động thay đổi cấu trúc HTML (DOM) ngay trước khi React kịp thực hiện quá trình Hydration. Dấu hiệu `bis_skin_checked` đặc trưng xuất phát từ các extension bảo mật/tải file như **Bitdefender (Anti-tracker/Wallet)**, **Internet Download Manager (IDM)**, hoặc trình quản lý mật khẩu.
 - **Giải pháp xử lý (Không cần sửa code)**:
   - **Cách 1 (Nhanh nhất)**: Sử dụng chế độ **Ẩn danh (Incognito Mode)** để chạy test dự án ở môi trường dev.
   - **Cách 2**: Tắt/Vô hiệu hóa (Disable) các extension như Bitdefender, IDM cho trang `localhost:3001`.
