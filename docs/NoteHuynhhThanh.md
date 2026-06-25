@@ -65,99 +65,101 @@
   - `BlogPageClient.tsx`: Đã bọc `b.createdAt` bằng `Intl.DateTimeFormat` để format ngày thành chuẩn `dd/MM/yyyy`, đồng bộ thời gian trên toàn bộ thẻ và bài viết. Đã gắn Universal Header Template.
   - `BlogCard.tsx`: Tự động nhận định dạng ngày mới.
 
-| Trường         | Nội dung                                                      |
-| -------------- | ------------------------------------------------------------- |
-| **File**       | `docs/NoteHuynhhThanh.md`                                     |
-| **Module**     | `docs`                                                        |
-| **Tác giả**    | HuynhhThanh                                                   |
-| **Tạo lúc**    | 2026-06-25 09:37 (UTC+7)                                      |
-| **Người sửa**  | HuynhhThanh                                                   |
-| **Loại**       | Sửa lỗi / Tính năng                                           |
-| **Mức độ**     | M (2-3 files)                                                 |
-| **Version**    | `v1.1.0 → v1.2.0`                                             |
-| **Tóm tắt**    | Hoàn thành Task A: Xóa phút đọc, format ngày thành dd/MM/yyyy |
-| **Lịch sử**    | - [2026-06-25 09:30]: v1.1.0 Phân tích các task theo yêu cầu <br> - [2026-06-25 09:37]: v1.2.0 Hoàn thành Task A (Blog Page) |
-| **Chi tiết**   | - Cập nhật BlogHero và BlogDetailClient: gỡ logic phút đọc <br> - Cập nhật BlogPageClient: bọc `createdAt` bằng Intl.DateTimeFormat |
+| Trường         | Nội dung                                                                                                                                           |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                                                                                                          |
+| **Module**     | `docs`                                                                                                                                             |
+| **Tác giả**    | HuynhhThanh                                                                                                                                        |
+| **Tạo lúc**    | 2026-06-25 09:37 (UTC+7)                                                                                                                           |
+| **Người sửa**  | HuynhhThanh                                                                                                                                        |
+| **Loại**       | Sửa lỗi / Tính năng                                                                                                                                |
+| **Mức độ**     | M (2-3 files)                                                                                                                                      |
+| **Version**    | `v1.1.0 → v1.2.0`                                                                                                                                  |
+| **Tóm tắt**    | Hoàn thành Task A: Xóa phút đọc, format ngày thành dd/MM/yyyy                                                                                      |
+| **Lịch sử**    | - [2026-06-25 09:30]: v1.1.0 Phân tích các task theo yêu cầu <br> - [2026-06-25 09:37]: v1.2.0 Hoàn thành Task A (Blog Page)                       |
+| **Chi tiết**   | - Cập nhật BlogHero và BlogDetailClient: gỡ logic phút đọc <br> - Cập nhật BlogPageClient: bọc `createdAt` bằng Intl.DateTimeFormat                |
 | **Ảnh hưởng**  | - `web/src/components/blog/BlogHero.tsx` <br> - `web/src/components/blog/BlogDetailClient.tsx` <br> - `web/src/components/blog/BlogPageClient.tsx` |
-| **Ghi chú**    | Đã format lại bảng theo rule mới (Single Universal Table)     |
-| **Test / CI**  | ✅ Pass                                                       |
-| **Trạng thái** | ✅ Hoàn thành                                                 |
+| **Ghi chú**    | Đã format lại bảng theo rule mới (Single Universal Table)                                                                                          |
+| **Test / CI**  | ✅ Pass                                                                                                                                            |
+| **Trạng thái** | ✅ Hoàn thành                                                                                                                                      |
 
-### Task 2: Dashboard Employer - Tích hợp React Quill
+### Task 2: Dashboard Employer - Tích hợp Tiptap Editor & Lưu Markdown
 
-- **Vấn đề**: Hiện DB lưu text bài đăng là HTML thô, khó cho Employer thao tác nhập liệu. Đồng thời, HTML làm tăng dung lượng lưu trữ và khó đọc khi Dev muốn kiểm tra data trực tiếp. Yêu cầu: Vẫn dùng giao diện soạn thảo trực quan (React Quill) nhưng ngầm chuyển sang Markdown để lưu DB.
-- **Hướng giải quyết**:
-  - **Phase 1 (Đã xong)**: Cài đặt `react-quill`, tạo `RichTextEditor` thay thế cho `<Textarea>`.
-  - **Phase 2 (Đang lên kế hoạch - Ngầm chuyển HTML sang Markdown)**:
-    1. **Cài đặt thư viện**: Thêm `turndown` (dịch HTML → MD) và `marked` (dịch MD → HTML).
-    2. **Lưu dữ liệu (Form Create/Edit)**: Trước khi gửi API (POST/PUT), dùng `turndown` chuyển đổi các trường `description`, `requirements`, `benefits` từ HTML sang Markdown rồi mới lưu DB.
-    3. **Hiển thị (Trang Detail)**: Khi đọc từ DB lên, dùng `marked.parse(data)` dịch ngược Markdown thành HTML rồi truyền vào `<RichContent>`. (Thư viện `marked` không làm hỏng thẻ HTML cũ nên tin cũ vẫn hiển thị tốt).
-    4. **Phân tích về việc Dev xem dữ liệu DB**: Khi áp dụng cách này, data trong Database mặc định sẽ là chuỗi Markdown thuần (ví dụ: `# Tiêu đề \n - Ý 1`). Do Markdown vốn là định dạng plain-text sinh ra để con người đọc hiểu dễ dàng, nên **Dev chỉ cần mở các công cụ quản lý DB (như DBeaver, pgAdmin, Supabase Studio, TablePlus,...) là có thể đọc trực tiếp rất trực quan**. Hoàn toàn **KHÔNG CẦN** phải code thêm bất kỳ trang Admin hay Tool nào khác chỉ để view data.
-- **Tiến độ**: ⏳ **Đang lên kế hoạch Phase 2**
-- **Các bước thực thi chi tiết (Phase 2)**:
-  1. Cài đặt `turndown` và `marked`.
-  2. Sửa `create/page.tsx` tích hợp `turndown` trước lệnh `fetch`.
-  3. Sửa `JobContent.tsx` tích hợp `marked` trước `<RichContent>`.
-- **Các file bị ảnh hưởng**:
-  - `web/package.json`
-  - `web/src/app/employer/jobs/create/page.tsx`
-  - `web/src/components/jobs/JobContent.tsx`
+- **Vấn đề**:
+  1. `react-quill` gây lỗi Crash toàn trang (React 19 xóa bỏ `findDOMNode`). Phải gỡ bỏ hoàn toàn.
+  2. DB lưu text bài đăng dạng HTML thô làm tăng dung lượng, Dev mở DB đọc rất đau mắt.
+- **Giải pháp (Tiptap + Markdown)**:
+  - Sử dụng **Tiptap** (`@tiptap/react`, `@tiptap/starter-kit`) vì nó là Headless Editor, tương thích 100% với React 19 / Next.js SSR.
+  - Tích hợp thêm gói `tiptap-markdown` để Editor tự động xuất ra chuỗi Markdown sạch sẽ thay vì HTML rác. DB sẽ chỉ nhận Markdown thuần.
+  - Phía giao diện Public (Xem tin): Dùng `react-markdown` kết hợp plugin Tailwind `@tailwindcss/typography` (`prose`) để render Markdown ra UI đẹp mắt.
+- **Tiến độ**: ⏳ **Đang lên kế hoạch (Plan)**
+- **Plan (R-T-P-A-V)**:
+  - **[x] Sub-task 1 (Dọn dẹp & Cài đặt)**:
+    - Gỡ bỏ thư viện cũ: `pnpm remove react-quill`.
+    - Cài đặt Tiptap: `pnpm add @tiptap/react @tiptap/pm @tiptap/starter-kit tiptap-markdown`.
+    - Cài đặt bộ render UI: `pnpm add react-markdown @tailwindcss/typography rehype-raw`.
+  - **[x] Sub-task 2 (Build Tiptap Editor)**:
+    - Làm lại file `src/components/ui/RichTextEditor.tsx`.
+    - Tạo một Toolbar gắn các nút In đậm, In nghiêng, List (Sử dụng icon `lucide-react` và UI chuẩn Shadcn).
+    - Cấu hình `onUpdate` để bắn ra giá trị Markdown (thông qua `editor.storage.markdown.getMarkdown()`).
+  - **[x] Sub-task 3 (Form Integration)**:
+    - Giữ nguyên `create/page.tsx` vì API của `RichTextEditor` mới không thay đổi (`value, onChange, placeholder`). Code được tối ưu hoàn hảo drop-in replacement.
+  - **[x] Sub-task 4 (Public Render)**:
+    - Cập nhật file `globals.css` để thêm plugin typography `@plugin "@tailwindcss/typography"`.
+    - Sửa file `src/components/ui/rich-content.tsx` để render Markdown bằng `react-markdown` kết hợp `rehype-raw` bọc trong class `prose` (Đảm bảo tương thích ngược với data HTML cũ trong DB).
 
-| Trường         | Nội dung                                                      |
-| -------------- | ------------------------------------------------------------- |
-| **File**       | `docs/NoteHuynhhThanh.md`                                     |
-| **Module**     | `docs`                                                        |
-| **Tác giả**    | HuynhhThanh                                                   |
-| **Tạo lúc**    | 2026-06-25 13:45 (UTC+7)                                      |
-| **Người sửa**  | AI Agent (Antigravity)                                        |
-| **Loại**       | Tính năng / Docs                                              |
-| **Mức độ**     | M (2-3 files)                                                 |
-| **Version**    | `v1.3.4 → v1.3.5`                                             |
-| **Tóm tắt**    | Tích hợp React Quill và phân tích chuyển MD ngầm (Phase 2)    |
-| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.0 Phân tích Task 2 <br> - [2026-06-25 10:57]: v1.3.4 Thực thi tích hợp React Quill <br> - [2026-06-25 13:45]: v1.3.5 Lên kế hoạch Phase 2 (Convert Markdown) |
-| **Chi tiết**   | - Phase 1: Tạo `RichTextEditor`, thay `Textarea` trong form <br> - Phase 2: Lên KH dùng `turndown` & `marked` convert HTML sang MD. Đánh giá Dev có thể đọc trực tiếp từ DB. |
-| **Ảnh hưởng**  | - `web/package.json` <br> - `web/src/components/ui/RichTextEditor.tsx` <br> - `web/src/app/employer/jobs/create/page.tsx` <br> - `web/src/components/jobs/JobContent.tsx` |
-| **Ghi chú**    | Bảng đã được gộp từ 2 bảng cũ thành 1 Universal Table         |
-| **Test / CI**  | ⏳ Chưa chạy Phase 2 (Phase 1 đã pass)                        |
-| **Trạng thái** | ⏳ Đang chờ duyệt Phase 2                                     |
+| Trường         | Nội dung                                                                                                                                                                                |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                                                                                                                                               |
+| **Module**     | `docs`                                                                                                                                                                                  |
+| **Tác giả**    | HuynhhThanh                                                                                                                                                                             |
+| **Tạo lúc**    | 2026-06-25 15:15 (UTC+7)                                                                                                                                                                |
+| **Người sửa**  | AI Agent (Antigravity)                                                                                                                                                                  |
+| **Loại**       | Tính năng / UI                                                                                                                                                                          |
+| **Mức độ**     | L (>3 files)                                                                                                                                                                            |
+| **Version**    | `v1.3.6 → v1.3.7`                                                                                                                                                                       |
+| **Tóm tắt**    | Tích hợp thành công Tiptap Editor và Markdown Render                                                                                                                                    |
+| **Lịch sử**    | - [2026-06-25 13:45]: v1.3.5 Dùng React Quill (Thất bại do Crash React 19) <br> - [2026-06-25 15:00]: v1.3.6 Chuyển sang Tiptap & Markdown <br> - [2026-06-25 15:15]: v1.3.7 Hoàn tất code Tiptap |
+| **Chi tiết**   | - Build custom Toolbar (Lucide) cho Tiptap, tự động parse ra Markdown. <br> - Viết lại `RichContent` bằng `react-markdown` + `rehype-raw` để vừa render Markdown đẹp, vừa không làm hỏng tin tuyển dụng HTML cũ. <br> - Thêm Tailwind Typography plugin. |
+| **Ảnh hưởng**  | - `web/package.json` <br> - `web/src/components/ui/RichTextEditor.tsx` <br> - `web/src/app/globals.css` <br> - `web/src/components/ui/rich-content.tsx`                                 |
+| **Ghi chú**    | Dev giờ đã có thể dễ dàng đọc data trong DB.                                                                                                                                            |
+| **Test / CI**  | ✅ Pass (Editor mount thành công, không Crash SSR)                                                                                                                                       |
+| **Trạng thái** | ✅ Hoàn thành                                                                                                                                                                           |
 
 ---
 
 ### Task 3: Dashboard Employer - Format Mức Lương
 
-- **Vấn đề**: Yêu cầu nhập lương phải hiển thị dạng số thân thiện (ví dụ 10.000), nhưng khi gửi lên API cần định dạng số nguyên (10000).
-- **Hướng giải quyết (Phân tích định dạng tiền tệ)**:
-  - Có 2 cách:
-    - **Cách 1 (Tự viết tay)**: Thêm hàm `formatCurrency(value)` dùng RegEx.
-    - **Cách 2 (Dùng thư viện `react-number-format`)**: Cài thư viện và dùng component `<NumericFormat />`.
-  - **Đề xuất**: Dùng **Cách 2** vì handle việc nhập liệu cực kì an toàn, tránh lỗi con trỏ bị nhảy lung tung khi gõ số.
-- **Tiến độ**: ⏳ **Đang chờ triển khai**
-- **Các bước thực thi chi tiết**:
-  1. Cài đặt thư viện: Chạy lệnh `pnpm add react-number-format`.
-  2. Cập nhật form (`create/page.tsx` và `edit/page.tsx`): Thay input thông thường bằng `<NumericFormat />`.
-  3. Cấu hình props: `thousandSeparator="."`, `decimalSeparator=","`, `suffix=" VND"` và cập nhật state dạng số nguyên qua `onValueChange`.
-- **Các file bị ảnh hưởng**:
-  - `web/package.json`
-  - `web/src/app/(employer)/employer/jobs/create/page.tsx`
-  - `web/src/app/(employer)/employer/jobs/[id]/edit/page.tsx`
+**Mục tiêu**: Hiển thị mức lương thân thiện với người dùng (VD: `10.000 VND`) nhưng vẫn gửi dữ liệu số nguyên (VD: `10000`) về Backend, đảm bảo không gặp lỗi nhảy con trỏ khi nhập liệu.
 
-| Trường         | Nội dung                                                      |
-| -------------- | ------------------------------------------------------------- |
-| **File**       | `docs/NoteHuynhhThanh.md`                                     |
-| **Module**     | `docs`                                                        |
-| **Tác giả**    | HuynhhThanh                                                   |
-| **Tạo lúc**    | 2026-06-25 10:35 (UTC+7)                                      |
-| **Người sửa**  | HuynhhThanh                                                   |
-| **Loại**       | Tính năng                                                     |
-| **Mức độ**     | S (1 file)                                                    |
-| **Version**    | `v1.3.0 → v1.3.1`                                             |
-| **Tóm tắt**    | Lên kế hoạch triển khai Task 3 (Format Lương)                 |
-| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.1 Phân tích Task 3                 |
-| **Chi tiết**   | - Lên plan các bước, danh sách file ảnh hưởng cho Task 3      |
-| **Ảnh hưởng**  | - `web/src/app/(employer)/employer/jobs/create/page.tsx` <br> - `web/src/app/(employer)/employer/jobs/[id]/edit/page.tsx` |
-| **Ghi chú**    | Cần cài đặt `react-number-format`                             |
-| **Test / CI**  | ⏳ Chưa chạy                                                  |
-| **Trạng thái** | ⏳ Đang chờ                                                   |
+- **Vấn đề**: Yêu cầu nhập lương phải hiển thị dạng số thân thiện (ví dụ 10.000), nhưng khi gửi lên API cần định dạng số nguyên (10000).
+- **Hướng giải quyết**: Sử dụng thư viện `react-number-format` vì handle việc nhập liệu cực kì an toàn, tránh lỗi con trỏ nhảy lung tung khi gõ số.
+- **Tiến độ**: ⏳ **Đang chờ triển khai**
+- **Plan (R-T-P-A-V)**:
+  - **[ ] Research**: Kiểm tra cấu trúc Form hiện tại xem input nhập lương nằm ở `create/page.tsx` & `edit/page.tsx` hay trong component dùng chung (ví dụ `JobForm`). Xác định UI framework đang dùng (shadcn).
+  - **[ ] Sub-task 1**: Chạy lệnh `pnpm add react-number-format` tại thư mục `web/`.
+  - **[ ] Sub-task 2**: Thay thế thẻ Input lương bằng `<NumericFormat customInput={Input} />`. Cấu hình props: `thousandSeparator="."`, `decimalSeparator=","`, `suffix=" VND"`, `allowNegative={false}`. Sử dụng `onValueChange={(values) => field.onChange(values.floatValue)}` để bóc tách giá trị số nguyên lưu vào form state.
+  - **[ ] Sub-task 3**: Đảm bảo form Edit tải đúng giá trị cũ và tự parse hiển thị đẹp mắt.
+  - **[ ] Verify**: Chạy linter, test trực tiếp giao diện. Đảm bảo payload Submit đúng chuẩn số nguyên.
+  - **[ ] Log**: Cập nhật Universal Table ở file code thay đổi & tệp Note này.
+
+| Trường         | Nội dung                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                                                                             |
+| **Module**     | `docs`                                                                                                                |
+| **Tác giả**    | HuynhhThanh                                                                                                           |
+| **Tạo lúc**    | 2026-06-25 10:35 (UTC+7)                                                                                              |
+| **Người sửa**  | AI Agent (Antigravity)                                                                                                |
+| **Loại**       | Tính năng / Plan                                                                                                      |
+| **Mức độ**     | M (Medium)                                                                                                            |
+| **Version**    | `v1.3.1 → v1.3.2`                                                                                                     |
+| **Tóm tắt**    | Phân tích chi tiết Plan (R-T-P-A-V) cho Task 3                                                                        |
+| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.1 Lên kế hoạch sơ bộ <br> - [2026-06-25 14:26]: v1.3.2 Lên Plan chi tiết (R-T-P-A-V)       |
+| **Chi tiết**   | - Cập nhật plan chi tiết tích hợp `react-number-format` <br> - Lên checklist các việc cần làm (Research, Act, Verify) |
+| **Ảnh hưởng**  | - `web/package.json` <br> - Các file UI Form liên quan                                                                |
+| **Ghi chú**    | Cần cài đặt `react-number-format`                                                                                     |
+| **Test / CI**  | ⏳ Chưa chạy                                                                                                          |
+| **Trạng thái** | ⏳ Đang chờ duyệt Plan                                                                                                |
 
 ---
 
@@ -174,25 +176,27 @@
   - `web/src/app/(employer)/employer/company/page.tsx`
   - `web/src/app/companies/[id]/page.tsx` (nếu có chỉnh sửa hiển thị)
 
-| Trường         | Nội dung                                                      |
-| -------------- | ------------------------------------------------------------- |
-| **File**       | `docs/NoteHuynhhThanh.md`                                     |
-| **Module**     | `docs`                                                        |
-| **Tác giả**    | HuynhhThanh                                                   |
-| **Tạo lúc**    | 2026-06-25 10:35 (UTC+7)                                      |
-| **Người sửa**  | HuynhhThanh                                                   |
-| **Loại**       | Tính năng                                                     |
-| **Mức độ**     | M (2-3 files)                                                 |
-| **Version**    | `v1.3.1 → v1.3.2`                                             |
-| **Tóm tắt**    | Lên kế hoạch triển khai Task 4 (Hồ sơ công ty)                |
-| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.2 Phân tích Task 4                 |
-| **Chi tiết**   | - Lên plan các bước, danh sách file ảnh hưởng cho Task 4      |
+| Trường         | Nội dung                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                                                         |
+| **Module**     | `docs`                                                                                            |
+| **Tác giả**    | HuynhhThanh                                                                                       |
+| **Tạo lúc**    | 2026-06-25 10:35 (UTC+7)                                                                          |
+| **Người sửa**  | HuynhhThanh                                                                                       |
+| **Loại**       | Tính năng                                                                                         |
+| **Mức độ**     | M (2-3 files)                                                                                     |
+| **Version**    | `v1.3.1 → v1.3.2`                                                                                 |
+| **Tóm tắt**    | Lên kế hoạch triển khai Task 4 (Hồ sơ công ty)                                                    |
+| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.2 Phân tích Task 4                                                     |
+| **Chi tiết**   | - Lên plan các bước, danh sách file ảnh hưởng cho Task 4                                          |
 | **Ảnh hưởng**  | - `web/src/app/(employer)/employer/company/page.tsx` <br> - `web/src/app/companies/[id]/page.tsx` |
-| **Ghi chú**    | Đã format lại bảng theo rule mới (Single Universal Table)     |
-| **Test / CI**  | ⏳ Chưa chạy                                                  |
-| **Trạng thái** | ⏳ Đang chờ                                                   |
+| **Ghi chú**    | Đã format lại bảng theo rule mới (Single Universal Table)                                         |
+| **Test / CI**  | ⏳ Chưa chạy                                                                                      |
+| **Trạng thái** | ⏳ Đang chờ                                                                                       |
 
 ---
+
+             |---
 
 ### Task 5: Rà soát các tab khác trong Employer
 
@@ -203,20 +207,51 @@
   1. Truy cập trực tiếp các tab Settings, Notifications, Dashboard từ sidebar.
   2. Kiểm tra console log, Network tab. Ghi nhận lỗi và xử lý.
 
-| Trường         | Nội dung                                                      |
-| -------------- | ------------------------------------------------------------- |
-| **File**       | `docs/NoteHuynhhThanh.md`                                     |
-| **Module**     | `docs`                                                        |
-| **Tác giả**    | HuynhhThanh                                                   |
-| **Tạo lúc**    | 2026-06-25 10:35 (UTC+7)                                      |
-| **Người sửa**  | HuynhhThanh                                                   |
-| **Loại**       | Sửa lỗi                                                       |
-| **Mức độ**     | L (Module)                                                    |
-| **Version**    | `v1.3.2 → v1.3.3`                                             |
-| **Tóm tắt**    | Lên kế hoạch rà soát UI các tab khác (Task 5)                 |
-| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.3 Phân tích Task 5                 |
-| **Chi tiết**   | - Lên plan các bước rà soát lỗi 404/500 và layout             |
-| **Ảnh hưởng**  | - Các trang nội bộ trong Dashboard (trừ Hồ sơ ứng viên)       |
-| **Ghi chú**    | Đã format lại bảng theo rule mới (Single Universal Table)     |
-| **Test / CI**  | ⏳ Chưa chạy                                                  |
-| **Trạng thái** | ⏳ Đang chờ                                                   |
+| Trường         | Nội dung                                                  |
+| -------------- | --------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                 |
+| **Module**     | `docs`                                                    |
+| **Tác giả**    | HuynhhThanh                                               |
+| **Tạo lúc**    | 2026-06-25 10:35 (UTC+7)                                  |
+| **Người sửa**  | HuynhhThanh                                               |
+| **Loại**       | Sửa lỗi                                                   |
+| **Mức độ**     | L (Module)                                                |
+| **Version**    | `v1.3.2 → v1.3.3`                                         |
+| **Tóm tắt**    | Lên kế hoạch rà soát UI các tab khác (Task 5)             |
+| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.3 Phân tích Task 5             |
+| **Chi tiết**   | - Lên plan các bước rà soát lỗi 404/500 và layout         |
+| **Ảnh hưởng**  | - Các trang nội bộ trong Dashboard (trừ Hồ sơ ứng viên)   |
+| **Ghi chú**    | Đã format lại bảng theo rule mới (Single Universal Table) |
+| **Test / CI**  | ⏳ Chưa chạy                                              |
+| **Trạng thái** | ⏳ Đang chờ                                               |
+
+### 6. Khắc phục lỗi Hydration (React Hydration Error)
+
+- **Vấn đề**: Khi truy cập trang `http://localhost:3001/employer/jobs/create` hoặc các trang khác, trình duyệt báo lỗi `A tree hydrated but some attributes of the server rendered HTML didn't match the client properties`.
+- **Phân tích log lỗi**: Trong đoạn log bạn cung cấp, xuất hiện các thuộc tính lạ bị chèn vào thẻ `<body>` và `<div>` như:
+  - `bis_skin_checked="1"`
+  - `bis_register="..."`
+  - `__processed_...="true"`
+- **Nguyên nhân**: Lỗi này **KHÔNG PHẢI DO CODE DỰ ÁN**. Nguyên nhân là do một **Browser Extension** (tiện ích mở rộng của trình duyệt) trên máy bạn đã tự động thay đổi cấu trúc HTML (DOM) ngay trước khi React kịp thực hiện quá trình Hydration. Dấu hiệu `bis_skin_checked` đặc trưng xuất phát từ các extension bảo mật/tải file như **Bitdefender (Anti-tracker/Wallet)**, **Internet Download Manager (IDM)**, hoặc trình quản lý mật khẩu.
+- **Giải pháp xử lý (Không cần sửa code)**:
+  - **Cách 1 (Nhanh nhất)**: Sử dụng chế độ **Ẩn danh (Incognito Mode)** để chạy test dự án ở môi trường dev.
+  - **Cách 2**: Tắt/Vô hiệu hóa (Disable) các extension như Bitdefender, IDM cho trang `localhost:3001`.
+  - _(Lưu ý: Bạn không cần phải tìm cách thêm `suppressHydrationWarning` vào thẻ div vì extension này chèn mã độc đoán vào rất nhiều thẻ trên trang)._
+
+| Trường         | Nội dung                                                                                                                   |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                                                                                  |
+| **Module**     | `frontend`                                                                                                                 |
+| **Tác giả**    | HuynhhThanh                                                                                                                |
+| **Tạo lúc**    | 2026-06-25 14:35 (UTC+7)                                                                                                   |
+| **Người sửa**  | AI Agent (Antigravity)                                                                                                     |
+| **Loại**       | Sửa lỗi                                                                                                                    |
+| **Mức độ**     | S (1 file)                                                                                                                 |
+| **Version**    | `v1.3.3 → v1.3.4`                                                                                                          |
+| **Tóm tắt**    | Phân tích lỗi React Hydration Error do Browser Extension                                                                   |
+| **Lịch sử**    | - [2026-06-25 14:35]: v1.3.4 Phân tích lỗi Hydration                                                                       |
+| **Chi tiết**   | - Xác định lỗi sinh ra từ extension (có dấu `bis_skin_checked`). <br> - Đề xuất giải pháp tắt extension hoặc dùng ẩn danh. |
+| **Ảnh hưởng**  | - Môi trường Local Development                                                                                             |
+| **Ghi chú**    | Lỗi môi trường, KHÔNG PHẢI lỗi code dự án.                                                                                 |
+| **Test / CI**  | ✅ Đã xác định nguyên nhân                                                                                                 |
+| **Trạng thái** | ✅ Hoàn thành                                                                                                              |
