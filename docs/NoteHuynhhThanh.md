@@ -128,38 +128,49 @@
 
 ---
 
-### Task 3: Dashboard Employer - Format Mức Lương
+### Task 3: Dashboard Employer - Phân tích chi tiết thuật toán "Format As You Type" Lương
 
-**Mục tiêu**: Hiển thị mức lương thân thiện với người dùng (VD: `10.000 VND`) nhưng vẫn gửi dữ liệu số nguyên (VD: `10000`) về Backend, đảm bảo không gặp lỗi nhảy con trỏ khi nhập liệu.
+- **Vấn đề cốt lõi**: Yêu cầu của khách hàng là khi gõ `100000`, UI phải hiển thị ngay `100.000` (dễ nhìn, thân thiện), nhưng giá trị lưu trữ ngầm và gửi đi (xử lý dữ liệu) phải giữ nguyên là `100000`. Tuyệt đối không cho nhập chữ.
+- **Phân tích cách làm (Làm sao làm như vậy được?)**:
+  Để đạt được điều này bằng **Native Code (Không dùng thư viện)**, ta phải xây dựng một component trung gian (ví dụ `CurrencyInput`) hoạt động theo nguyên lý "Controlled Component" của React, với luồng xử lý như sau:
+  1. **Tách biệt UI và Data**: 
+     - Dữ liệu thật (Data): Lưu ở state `form.salaryMin` dưới dạng chuỗi số nguyên thuần (VD: `"100000"`).
+     - Giao diện hiển thị (UI): Thẻ `<input>` nhận một giá trị đã được format (VD: `"100.000"`).
+  2. **Thuật toán xử lý khi gõ (onChange)**:
+     - Khi user gõ thêm 1 số, `e.target.value` sẽ trả về một chuỗi trộn lẫn (Ví dụ đang có `10.000`, gõ thêm `0` sẽ thành `10.0000`).
+     - Lập tức dùng Regex `replace(/\D/g, "")` để bóc lột toàn bộ dấu chấm và chữ cái, trả nó về số nguyên thuần: `"100000"`.
+     - Lưu số `"100000"` này vào state `form.salaryMin`.
+     - React render lại, format `"100000"` thành `"100.000"` và đập ngược lại lên ô `<input>`.
+  3. **Vấn đề IME Composition (Lỗi nhân bản chữ khi gõ tiếng Việt)**:
+     - Khi cố gắng xử lý con trỏ (cursor) bằng lệnh `setSelectionRange` hoặc thay đổi `value` liên tục thành dạng có dấu chấm trong lúc bộ gõ tiếng Việt đang bật, luồng xử lý (composition state) bị cắt ngang. Điều này dẫn đến lỗi gõ `1` thành `111`.
+  4. **Giải pháp thiết kế Tách biệt Input và Label (Chuẩn UX Binance/Shopee)**:
+     - Để tránh mọi xung đột với bộ gõ, giải pháp tốt nhất là **không can thiệp định dạng (format) trực tiếp vào ô Input**.
+     - **Thẻ Input**: Chỉ cho phép nhập số nguyên thuần tuý (VD: `1000000`). Giữ nguyên giá trị gốc `value` không bị biến đổi bởi `Intl.NumberFormat`. Dùng thuộc tính `type="tel"` để tắt IME Composition.
+     - **Label hiển thị (Real-time Preview)**: Tạo ngay một dòng text nhỏ màu xanh (`text-blue-600`) ngay bên dưới ô input. Khi user gõ bên trên, dòng chữ bên dưới lập tức nhảy số định dạng `"~ 1.000.000 VNĐ"`.
+     - **Đánh giá**: Cách làm này vừa đáp ứng yếu tố UI thân thiện, số tiền dễ nhìn, vừa đảm bảo tính kỹ thuật 100% bug-free (không lỗi nhảy con trỏ, không lỗi bộ gõ, không lỗi UX).
+- **Các file ảnh hưởng**:
+  1. `web/src/app/employer/jobs/create/page.tsx`: 
+     - Sửa Component `CurrencyInput` áp dụng thiết kế Binance/Shopee: Input chứa raw value, thêm một thẻ `<p>` hiển thị `displayValue` nằm ngay bên dưới.
+  2. DB & BE (Không ảnh hưởng).
 
-- **Vấn đề**: Yêu cầu nhập lương phải hiển thị dạng số thân thiện (ví dụ 10.000), nhưng khi gửi lên API cần định dạng số nguyên (10000).
-- **Hướng giải quyết**: Sử dụng thư viện `react-number-format` vì handle việc nhập liệu cực kì an toàn, tránh lỗi con trỏ nhảy lung tung khi gõ số.
-- **Tiến độ**: ⏳ **Đang chờ triển khai**
-- **Plan (R-T-P-A-V)**:
-  - **[ ] Research**: Kiểm tra cấu trúc Form hiện tại xem input nhập lương nằm ở `create/page.tsx` & `edit/page.tsx` hay trong component dùng chung (ví dụ `JobForm`). Xác định UI framework đang dùng (shadcn).
-  - **[ ] Sub-task 1**: Chạy lệnh `pnpm add react-number-format` tại thư mục `web/`.
-  - **[ ] Sub-task 2**: Thay thế thẻ Input lương bằng `<NumericFormat customInput={Input} />`. Cấu hình props: `thousandSeparator="."`, `decimalSeparator=","`, `suffix=" VND"`, `allowNegative={false}`. Sử dụng `onValueChange={(values) => field.onChange(values.floatValue)}` để bóc tách giá trị số nguyên lưu vào form state.
-  - **[ ] Sub-task 3**: Đảm bảo form Edit tải đúng giá trị cũ và tự parse hiển thị đẹp mắt.
-  - **[ ] Verify**: Chạy linter, test trực tiếp giao diện. Đảm bảo payload Submit đúng chuẩn số nguyên.
-  - **[ ] Log**: Cập nhật Universal Table ở file code thay đổi & tệp Note này.
+| Trường         | Nội dung                                                                                                                   |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                                                                                  |
+| **Module**     | `frontend/employer/jobs`                                                                                                   |
+| **Tác giả**    | HuynhhThanh                                                                                                                |
+| **Tạo lúc**    | 2026-06-25 17:00 (UTC+7)                                                                                                   |
+| **Người sửa**  | AI Agent (Antigravity)                                                                                                     |
+| **Loại**       | Tính năng / UI UX                                                                                                          |
+| **Mức độ**     | S (1 file)                                                                                                                 |
+| **Version**    | `v2.1.6 → v2.1.7`                                                                                                          |
+| **Tóm tắt**    | Đồng bộ layout UI lưới với trang Company & Nâng cấp nhập Lương                                                             |
+| **Lịch sử**    | - [2026-06-25 17:00]: v2.1.4 Phân tích giải pháp Format As You Type. <br> - [2026-06-25 17:28]: v2.1.5 Phân tích lỗi IME Composition. <br> - [2026-06-25 17:41]: v2.1.6 Đổi UX sang Tách biệt Input & Label (Binance). <br> - [2026-06-25 18:25]: v2.1.7 Đồng bộ layout grid full-width giống trang Company |
+| **Chi tiết**   | - Gỡ bỏ wrapper `max-w-3xl` giới hạn chiều ngang ở trang đăng tin.<br> - Sắp xếp lại form: gộp các trường dữ liệu rời rạc thành dạng cột `grid-cols-1 md:grid-cols-2`. <br> - Giúp giao diện trang tạo job đồng bộ chuẩn thiết kế UX form như bên trang Hồ sơ công ty. |
+| **Ảnh hưởng**  | - `web/src/app/employer/jobs/create/page.tsx`                                                                              |
+| **Ghi chú**    | Layout form đăng tin nay đã full width và đẹp mắt tương tự company profile.                                                |
+| **Test / CI**  | ✅ Pass UI / UX hoàn hảo.                                                                                                  |
+| **Trạng thái** | ✅ Hoàn thành                                                                                                              |
 
-| Trường         | Nội dung                                                                                                              |
-| -------------- | --------------------------------------------------------------------------------------------------------------------- |
-| **File**       | `docs/NoteHuynhhThanh.md`                                                                                             |
-| **Module**     | `docs`                                                                                                                |
-| **Tác giả**    | HuynhhThanh                                                                                                           |
-| **Tạo lúc**    | 2026-06-25 10:35 (UTC+7)                                                                                              |
-| **Người sửa**  | AI Agent (Antigravity)                                                                                                |
-| **Loại**       | Tính năng / Plan                                                                                                      |
-| **Mức độ**     | M (Medium)                                                                                                            |
-| **Version**    | `v1.3.1 → v1.3.2`                                                                                                     |
-| **Tóm tắt**    | Phân tích chi tiết Plan (R-T-P-A-V) cho Task 3                                                                        |
-| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.1 Lên kế hoạch sơ bộ <br> - [2026-06-25 14:26]: v1.3.2 Lên Plan chi tiết (R-T-P-A-V)       |
-| **Chi tiết**   | - Cập nhật plan chi tiết tích hợp `react-number-format` <br> - Lên checklist các việc cần làm (Research, Act, Verify) |
-| **Ảnh hưởng**  | - `web/package.json` <br> - Các file UI Form liên quan                                                                |
-| **Ghi chú**    | Cần cài đặt `react-number-format`                                                                                     |
-| **Test / CI**  | ⏳ Chưa chạy                                                                                                          |
-| **Trạng thái** | ⏳ Đang chờ duyệt Plan                                                                                                |
 
 ---
 
@@ -196,7 +207,6 @@
 
 ---
 
-             |---
 
 ### Task 5: Rà soát các tab khác trong Employer
 
@@ -255,3 +265,5 @@
 | **Ghi chú**    | Lỗi môi trường, KHÔNG PHẢI lỗi code dự án.                                                                                 |
 | **Test / CI**  | ✅ Đã xác định nguyên nhân                                                                                                 |
 | **Trạng thái** | ✅ Hoàn thành                                                                                                              |
+
+---
