@@ -1,50 +1,3 @@
-<!--
-# ─────────────────────────────────────────────────────────────────────────────
-# TEMPLATE FILE HEADER & CHANGELOG — HuynhhThanh
-# Dùng cho mọi dự án · Copy nguyên khối comment vào đầu file hoặc file log Note
-# ─────────────────────────────────────────────────────────────────────────────
-
-==============================================================================
- File    : docs/NoteHuynhhThanh.md
- Module  : docs
- Tóm tắt : Phân tích các task Blog và Dashboard Employer
- Tác giả : HuynhhThanh
- Tạo lúc : 2026-06-25 09:30 (UTC+7)
- Encode  : UTF-8
- Version : 1.1.0
-           · MAJOR → tăng khi: thay đổi không tương thích ngược (breaking)
-           · MINOR → tăng khi: thêm tính năng mới, không phá vỡ cũ
-           · PATCH → tăng khi: sửa lỗi, không thay đổi hành vi (behavior)
- Lịch sử :
- - [2026-06-25 09:30] v1.1.0 : Phân tích các task theo yêu cầu
- - [2026-06-25 09:37] v1.2.0 : Hoàn thành Task A (Blog Page)
-------------------------------------------------------------------------------
- Changelog — lần thay đổi gần nhất
-------------------------------------------------------------------------------
- | Trường          | Nội dung                                                |
- |-----------------|----------------------------------------------------------|
- | **Người sửa**   | AI Agent (Antigravity)                                   |
- | **Loại**        | Sửa lỗi / Tính năng                                      |
- | **Mức độ**      | M (2-3 files)                                            |
- | **Version**     | `v1.1.0 → v1.2.0`                                        |
- | **PR / Issue**  | Không                                                    |
- | **Reviewer**    | HuynhhThanh · ⏳ Pending                                 |
- | **Tóm tắt**     | Thực thi hoàn tất Task A: Bỏ phút đọc, format ngày     |
- | **Phụ thuộc**   | Không                                                    |
- | **Skill/Tool**  | multi_replace_file_content                               |
- | **Chi tiết**    | - Xóa các đoạn text tĩnh/động "phút đọc" trong BlogHero  |
- |                 |   và BlogDetailClient.                                   |
- |                 | - Đã format ngày tháng trong BlogPageClient (dd/MM/yyyy).|
- |                 | - Đã gắn Universal Header cho các tệp đã sửa.            |
- | **Ảnh hưởng**   | - web/src/components/blog/BlogHero.tsx                   |
- |                 | - web/src/components/blog/BlogDetailClient.tsx           |
- |                 | - web/src/components/blog/BlogPageClient.tsx             |
- | **Ghi chú**     | Code đã được sửa đúng vị trí, hoàn thành Task A.         |
- | **Test / CI**   | ⏳ Chưa chạy                                               |
- | **Trạng thái**  | ✅ Hoàn thành                                              |
-==============================================================================
--->
-
 # Nhật ký thực hiện (HuynhhThanh)
 
 ## Ngày 13/06/2026
@@ -98,12 +51,12 @@
   - **Dọn dẹp JWT Key cũ**: Viết script dọn dẹp bảng `jwks` để Better Auth tự sinh lại mã bảo mật. Tiến hành `npm run build` Backend và `pm2 restart` để tất cả thay đổi trên Backend được áp dụng triệt để.
   - Nhờ vậy, hiện tại mọi thứ đăng nhập hoàn hảo, vào thẳng Dashboard tương ứng tùy vào vai trò (Candidate / Employer).
 
-
 ## Ngày 25/06/2026
 
 ### 7. Phân tích task Blog & Dashboard Employer
 
 **A. Blog Page:**
+
 - **Vấn đề**: Cần định dạng lại hiển thị thời gian đăng và bỏ hoàn toàn các thông tin "thời gian đọc".
 - **Tiến độ**: ✅ **Đã hoàn thành**
 - **Chi tiết thực thi**:
@@ -112,19 +65,158 @@
   - `BlogPageClient.tsx`: Đã bọc `b.createdAt` bằng `Intl.DateTimeFormat` để format ngày thành chuẩn `dd/MM/yyyy`, đồng bộ thời gian trên toàn bộ thẻ và bài viết. Đã gắn Universal Header Template.
   - `BlogCard.tsx`: Tự động nhận định dạng ngày mới.
 
-**B. Dashboard Employer - Đăng tin**:
-- **Mô tả công việc, Yêu cầu, Quyền lợi**:
-  - **Vấn đề**: Hiện DB lưu text bài đăng là HTML thô, khó cho Employer thao tác nhập liệu dù khi lên iframe chi tiết thì đẹp.
-  - **Hướng giải quyết**: Thay vì bắt người dùng nhập mã thẻ HTML bằng tay, sẽ tích hợp một **Rich Text Editor** (Trình soạn thảo văn bản phong phú như TipTap, React Quill, hoặc TinyMCE) vào form đăng tuyển. Bộ editor này có các nút in đậm, in nghiêng, gạch đầu dòng rất trực quan. Sau khi viết xong trên form, editor sẽ tự render ra format HTML sạch để lưu xuống database. Cách này giải quyết được mâu thuẫn: form nhập cực kỳ dễ dùng mà iframe hiển thị thì vẫn giữ nguyên được độ đẹp và định dạng gốc.
-- **Mức Lương**:
-  - **Vấn đề**: Yêu cầu nhập lương phải hiển thị dạng số thân thiện (ví dụ 10.000), nhưng khi gửi lên API cần định dạng số nguyên (10000).
-  - **Hướng giải quyết**: Dùng input có chức năng mask tiền tệ (như thư viện `react-number-format` hoặc tự viết hàm format `onChange`). Khi người dùng gõ số, form sẽ tự parse và hiển thị phân cách hàng nghìn (10.000), trước khi `onSubmit` sẽ thay thế bỏ dấu `.` rồi ép kiểu thành số `Number` để gọi API Backend an toàn.
+| Trường         | Nội dung                                                      |
+| -------------- | ------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                     |
+| **Module**     | `docs`                                                        |
+| **Tác giả**    | HuynhhThanh                                                   |
+| **Tạo lúc**    | 2026-06-25 09:37 (UTC+7)                                      |
+| **Người sửa**  | HuynhhThanh                                                   |
+| **Loại**       | Sửa lỗi / Tính năng                                           |
+| **Mức độ**     | M (2-3 files)                                                 |
+| **Version**    | `v1.1.0 → v1.2.0`                                             |
+| **Tóm tắt**    | Hoàn thành Task A: Xóa phút đọc, format ngày thành dd/MM/yyyy |
+| **Lịch sử**    | - [2026-06-25 09:30]: v1.1.0 Phân tích các task theo yêu cầu <br> - [2026-06-25 09:37]: v1.2.0 Hoàn thành Task A (Blog Page) |
+| **Chi tiết**   | - Cập nhật BlogHero và BlogDetailClient: gỡ logic phút đọc <br> - Cập nhật BlogPageClient: bọc `createdAt` bằng Intl.DateTimeFormat |
+| **Ảnh hưởng**  | - `web/src/components/blog/BlogHero.tsx` <br> - `web/src/components/blog/BlogDetailClient.tsx` <br> - `web/src/components/blog/BlogPageClient.tsx` |
+| **Ghi chú**    | Đã format lại bảng theo rule mới (Single Universal Table)     |
+| **Test / CI**  | ✅ Pass                                                       |
+| **Trạng thái** | ✅ Hoàn thành                                                 |
 
-**C. Dashboard Employer - Hồ sơ công ty**:
+### Task 2: Dashboard Employer - Tích hợp React Quill
+
+- **Vấn đề**: Hiện DB lưu text bài đăng là HTML thô, khó cho Employer thao tác nhập liệu. Đồng thời, HTML làm tăng dung lượng lưu trữ và khó đọc khi Dev muốn kiểm tra data trực tiếp. Yêu cầu: Vẫn dùng giao diện soạn thảo trực quan (React Quill) nhưng ngầm chuyển sang Markdown để lưu DB.
+- **Hướng giải quyết**:
+  - **Phase 1 (Đã xong)**: Cài đặt `react-quill`, tạo `RichTextEditor` thay thế cho `<Textarea>`.
+  - **Phase 2 (Đang lên kế hoạch - Ngầm chuyển HTML sang Markdown)**:
+    1. **Cài đặt thư viện**: Thêm `turndown` (dịch HTML → MD) và `marked` (dịch MD → HTML).
+    2. **Lưu dữ liệu (Form Create/Edit)**: Trước khi gửi API (POST/PUT), dùng `turndown` chuyển đổi các trường `description`, `requirements`, `benefits` từ HTML sang Markdown rồi mới lưu DB.
+    3. **Hiển thị (Trang Detail)**: Khi đọc từ DB lên, dùng `marked.parse(data)` dịch ngược Markdown thành HTML rồi truyền vào `<RichContent>`. (Thư viện `marked` không làm hỏng thẻ HTML cũ nên tin cũ vẫn hiển thị tốt).
+    4. **Phân tích về việc Dev xem dữ liệu DB**: Khi áp dụng cách này, data trong Database mặc định sẽ là chuỗi Markdown thuần (ví dụ: `# Tiêu đề \n - Ý 1`). Do Markdown vốn là định dạng plain-text sinh ra để con người đọc hiểu dễ dàng, nên **Dev chỉ cần mở các công cụ quản lý DB (như DBeaver, pgAdmin, Supabase Studio, TablePlus,...) là có thể đọc trực tiếp rất trực quan**. Hoàn toàn **KHÔNG CẦN** phải code thêm bất kỳ trang Admin hay Tool nào khác chỉ để view data.
+- **Tiến độ**: ⏳ **Đang lên kế hoạch Phase 2**
+- **Các bước thực thi chi tiết (Phase 2)**:
+  1. Cài đặt `turndown` và `marked`.
+  2. Sửa `create/page.tsx` tích hợp `turndown` trước lệnh `fetch`.
+  3. Sửa `JobContent.tsx` tích hợp `marked` trước `<RichContent>`.
+- **Các file bị ảnh hưởng**:
+  - `web/package.json`
+  - `web/src/app/employer/jobs/create/page.tsx`
+  - `web/src/components/jobs/JobContent.tsx`
+
+| Trường         | Nội dung                                                      |
+| -------------- | ------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                     |
+| **Module**     | `docs`                                                        |
+| **Tác giả**    | HuynhhThanh                                                   |
+| **Tạo lúc**    | 2026-06-25 13:45 (UTC+7)                                      |
+| **Người sửa**  | AI Agent (Antigravity)                                        |
+| **Loại**       | Tính năng / Docs                                              |
+| **Mức độ**     | M (2-3 files)                                                 |
+| **Version**    | `v1.3.4 → v1.3.5`                                             |
+| **Tóm tắt**    | Tích hợp React Quill và phân tích chuyển MD ngầm (Phase 2)    |
+| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.0 Phân tích Task 2 <br> - [2026-06-25 10:57]: v1.3.4 Thực thi tích hợp React Quill <br> - [2026-06-25 13:45]: v1.3.5 Lên kế hoạch Phase 2 (Convert Markdown) |
+| **Chi tiết**   | - Phase 1: Tạo `RichTextEditor`, thay `Textarea` trong form <br> - Phase 2: Lên KH dùng `turndown` & `marked` convert HTML sang MD. Đánh giá Dev có thể đọc trực tiếp từ DB. |
+| **Ảnh hưởng**  | - `web/package.json` <br> - `web/src/components/ui/RichTextEditor.tsx` <br> - `web/src/app/employer/jobs/create/page.tsx` <br> - `web/src/components/jobs/JobContent.tsx` |
+| **Ghi chú**    | Bảng đã được gộp từ 2 bảng cũ thành 1 Universal Table         |
+| **Test / CI**  | ⏳ Chưa chạy Phase 2 (Phase 1 đã pass)                        |
+| **Trạng thái** | ⏳ Đang chờ duyệt Phase 2                                     |
+
+---
+
+### Task 3: Dashboard Employer - Format Mức Lương
+
+- **Vấn đề**: Yêu cầu nhập lương phải hiển thị dạng số thân thiện (ví dụ 10.000), nhưng khi gửi lên API cần định dạng số nguyên (10000).
+- **Hướng giải quyết (Phân tích định dạng tiền tệ)**:
+  - Có 2 cách:
+    - **Cách 1 (Tự viết tay)**: Thêm hàm `formatCurrency(value)` dùng RegEx.
+    - **Cách 2 (Dùng thư viện `react-number-format`)**: Cài thư viện và dùng component `<NumericFormat />`.
+  - **Đề xuất**: Dùng **Cách 2** vì handle việc nhập liệu cực kì an toàn, tránh lỗi con trỏ bị nhảy lung tung khi gõ số.
+- **Tiến độ**: ⏳ **Đang chờ triển khai**
+- **Các bước thực thi chi tiết**:
+  1. Cài đặt thư viện: Chạy lệnh `pnpm add react-number-format`.
+  2. Cập nhật form (`create/page.tsx` và `edit/page.tsx`): Thay input thông thường bằng `<NumericFormat />`.
+  3. Cấu hình props: `thousandSeparator="."`, `decimalSeparator=","`, `suffix=" VND"` và cập nhật state dạng số nguyên qua `onValueChange`.
+- **Các file bị ảnh hưởng**:
+  - `web/package.json`
+  - `web/src/app/(employer)/employer/jobs/create/page.tsx`
+  - `web/src/app/(employer)/employer/jobs/[id]/edit/page.tsx`
+
+| Trường         | Nội dung                                                      |
+| -------------- | ------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                     |
+| **Module**     | `docs`                                                        |
+| **Tác giả**    | HuynhhThanh                                                   |
+| **Tạo lúc**    | 2026-06-25 10:35 (UTC+7)                                      |
+| **Người sửa**  | HuynhhThanh                                                   |
+| **Loại**       | Tính năng                                                     |
+| **Mức độ**     | S (1 file)                                                    |
+| **Version**    | `v1.3.0 → v1.3.1`                                             |
+| **Tóm tắt**    | Lên kế hoạch triển khai Task 3 (Format Lương)                 |
+| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.1 Phân tích Task 3                 |
+| **Chi tiết**   | - Lên plan các bước, danh sách file ảnh hưởng cho Task 3      |
+| **Ảnh hưởng**  | - `web/src/app/(employer)/employer/jobs/create/page.tsx` <br> - `web/src/app/(employer)/employer/jobs/[id]/edit/page.tsx` |
+| **Ghi chú**    | Cần cài đặt `react-number-format`                             |
+| **Test / CI**  | ⏳ Chưa chạy                                                  |
+| **Trạng thái** | ⏳ Đang chờ                                                   |
+
+---
+
+### Task 4: Dashboard Employer - Hồ sơ công ty
+
 - **Yêu cầu**: Thiết kế lại tab "Hồ sơ công ty" như ảnh mockup (cần cung cấp thêm ảnh để code chuẩn), và sau khi điền thì quay về trang Công Ty cũng phải hiển thị đúng các thông tin này.
-- **Hướng giải quyết**: Mở component trang "Hồ sơ công ty" (`app/employer/company/page.tsx`). Dàn lại layout form theo yêu cầu thẩm mỹ của thiết kế. Bổ sung các API lấy và cập nhật profile công ty (nếu thiếu), sau đó đồng bộ state vào cả form form và trang public company detail.
+- **Hướng giải quyết**: Mở component trang "Hồ sơ công ty" (`app/employer/company/page.tsx`). Dàn lại layout form theo yêu cầu thẩm mỹ của thiết kế. Bổ tiếp các API lấy/cập nhật profile, sau đó đồng bộ state vào cả form và trang public company detail.
+- **Tiến độ**: ⏳ **Đang chờ thiết kế / triển khai**
+- **Các bước thực thi chi tiết**:
+  1. Dàn lại layout giao diện `app/employer/company/page.tsx` theo bản thiết kế chuẩn.
+  2. Map form với API gửi dữ liệu chuẩn xác.
+  3. Kiểm tra trang `companies/[id]/page.tsx` (public) để xác nhận hiển thị.
+- **Các file bị ảnh hưởng**:
+  - `web/src/app/(employer)/employer/company/page.tsx`
+  - `web/src/app/companies/[id]/page.tsx` (nếu có chỉnh sửa hiển thị)
 
-**D. Rà soát các tab khác trong Employer**:
-- **Phạm vi**: Tab Cài đặt (Settings), Thông báo (Notifications), Bảng điều khiển (Dashboard)... Tuyệt đối không đụng vào "Hồ sơ ứng viên" và "Quản lý đăng tin" theo đúng chỉ thị.
-- **Hướng giải quyết**: Đi rà soát UI xem có vỡ layout không, click xem các API endpoint có bị lỗi 404/500 không. Nếu lỗi nhẹ và chắc chắn đúng logic thì sẽ tự fix, nếu là lỗi to hoặc không chắc thì sẽ chỉ báo cáo lại bằng cách viết log vào file này.
+| Trường         | Nội dung                                                      |
+| -------------- | ------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                     |
+| **Module**     | `docs`                                                        |
+| **Tác giả**    | HuynhhThanh                                                   |
+| **Tạo lúc**    | 2026-06-25 10:35 (UTC+7)                                      |
+| **Người sửa**  | HuynhhThanh                                                   |
+| **Loại**       | Tính năng                                                     |
+| **Mức độ**     | M (2-3 files)                                                 |
+| **Version**    | `v1.3.1 → v1.3.2`                                             |
+| **Tóm tắt**    | Lên kế hoạch triển khai Task 4 (Hồ sơ công ty)                |
+| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.2 Phân tích Task 4                 |
+| **Chi tiết**   | - Lên plan các bước, danh sách file ảnh hưởng cho Task 4      |
+| **Ảnh hưởng**  | - `web/src/app/(employer)/employer/company/page.tsx` <br> - `web/src/app/companies/[id]/page.tsx` |
+| **Ghi chú**    | Đã format lại bảng theo rule mới (Single Universal Table)     |
+| **Test / CI**  | ⏳ Chưa chạy                                                  |
+| **Trạng thái** | ⏳ Đang chờ                                                   |
 
+---
+
+### Task 5: Rà soát các tab khác trong Employer
+
+- **Phạm vi**: Tab Cài đặt (Settings), Thông báo (Notifications), Bảng điều khiển (Dashboard)... Tuyệt đối không đụng vào "Hồ sơ ứng viên" và "Quản lý đăng tin".
+- **Hướng giải quyết**: Đi rà soát UI xem có vỡ layout không, click xem các API endpoint có bị lỗi 404/500 không. Nếu lỗi nhẹ tự fix, lỗi to báo cáo.
+- **Tiến độ**: ⏳ **Chưa bắt đầu**
+- **Các bước thực thi chi tiết**:
+  1. Truy cập trực tiếp các tab Settings, Notifications, Dashboard từ sidebar.
+  2. Kiểm tra console log, Network tab. Ghi nhận lỗi và xử lý.
+
+| Trường         | Nội dung                                                      |
+| -------------- | ------------------------------------------------------------- |
+| **File**       | `docs/NoteHuynhhThanh.md`                                     |
+| **Module**     | `docs`                                                        |
+| **Tác giả**    | HuynhhThanh                                                   |
+| **Tạo lúc**    | 2026-06-25 10:35 (UTC+7)                                      |
+| **Người sửa**  | HuynhhThanh                                                   |
+| **Loại**       | Sửa lỗi                                                       |
+| **Mức độ**     | L (Module)                                                    |
+| **Version**    | `v1.3.2 → v1.3.3`                                             |
+| **Tóm tắt**    | Lên kế hoạch rà soát UI các tab khác (Task 5)                 |
+| **Lịch sử**    | - [2026-06-25 10:35]: v1.3.3 Phân tích Task 5                 |
+| **Chi tiết**   | - Lên plan các bước rà soát lỗi 404/500 và layout             |
+| **Ảnh hưởng**  | - Các trang nội bộ trong Dashboard (trừ Hồ sơ ứng viên)       |
+| **Ghi chú**    | Đã format lại bảng theo rule mới (Single Universal Table)     |
+| **Test / CI**  | ⏳ Chưa chạy                                                  |
+| **Trạng thái** | ⏳ Đang chờ                                                   |

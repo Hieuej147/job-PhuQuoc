@@ -5,11 +5,45 @@
  * - Fetch `/api/v1/categories`: Lấy danh sách ngành nghề (Categories) để hiển thị trong dropdown chọn ngành.
  * - POST `/api/v1/jobs`: Gửi dữ liệu form (thông tin job) xuống Backend để lưu vào bảng `Job` trong Database. Sau khi tạo thành công sẽ chuyển hướng sang trang thanh toán gói đăng tin.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE FILE HEADER & CHANGELOG — HuynhhThanh
+// ─────────────────────────────────────────────────────────────────────────────
+// ==============================================================================
+//  File    : web/src/app/employer/jobs/create/page.tsx
+//  Module  : employer/jobs
+//  Tóm tắt : Form đăng tin tuyển dụng mới
+//  Tác giả : HuynhhThanh
+//  Tạo lúc : 2026-06-25 11:00 (UTC+7)
+//  Encode  : UTF-8
+//  Version : 1.1.0
+//  Lịch sử :
+//  - [2026-06-25 11:00] v1.1.0 : Tích hợp React Quill thay thế Textarea
+// ------------------------------------------------------------------------------
+//  Changelog — lần thay đổi gần nhất
+// ------------------------------------------------------------------------------
+//  | Trường          | Nội dung                                                |
+//  |-----------------|----------------------------------------------------------|
+//  | **Người sửa**   | HuynhhThanh                                  |
+//  | **Loại**        | Tính năng                                                |
+//  | **Mức độ**      | M (2-3 files)                                            |
+//  | **Version**     | `v1.0.0 → v1.1.0`                                        |
+//  | **PR / Issue**  | Không                                                    |
+//  | **Reviewer**    | HuynhhThanh · ✅ Approved                                |
+//  | **Tóm tắt**     | Tích hợp React Quill vào form tạo công việc              |
+//  | **Phụ thuộc**   | `react-quill`                                            |
+//  | **Skill/Tool**  | Không                                                    |
+//  | **Chi tiết**    | - Import và sử dụng `RichTextEditor` thay vì `Textarea`  |
+//  |                 | - Áp dụng cho trường description, requirements, benefits |
+//  | **Ảnh hưởng**   | Không                                                    |
+//  | **Test / CI**   | ✅ Build thành công                                        |
+//  | **Trạng thái**  | ✅ Hoàn thành                                              |
+// ==============================================================================
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -155,15 +189,15 @@ export default function CreateJobPage() {
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Mô tả công việc <span className="text-red-500">*</span></label>
-              <Textarea value={form.description} onChange={(e) => updateField("description", e.target.value)} rows={6} placeholder="Mô tả chi tiết công việc..." />
+              <RichTextEditor value={form.description} onChange={(val) => updateField("description", val)} placeholder="Mô tả chi tiết công việc..." />
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Yêu cầu</label>
-              <Textarea value={form.requirements} onChange={(e) => updateField("requirements", e.target.value)} rows={4} placeholder="Yêu cầu ứng viên..." />
+              <RichTextEditor value={form.requirements} onChange={(val) => updateField("requirements", val)} placeholder="Yêu cầu ứng viên..." />
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Quyền lợi</label>
-              <Textarea value={form.benefits} onChange={(e) => updateField("benefits", e.target.value)} rows={4} placeholder="Quyền lợi phúc lợi..." />
+              <RichTextEditor value={form.benefits} onChange={(val) => updateField("benefits", val)} placeholder="Quyền lợi phúc lợi..." />
             </div>
           </CardContent>
         </Card>
