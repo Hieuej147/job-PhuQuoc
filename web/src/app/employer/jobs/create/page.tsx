@@ -1,35 +1,3 @@
-/**
- * ==============================================================================
- *  File    : web/src/app/employer/jobs/create/page.tsx
- *  Module  : employer/jobs
- *  Tác giả : HuynhhThanh
- *  Tạo lúc : 2026-06-25 11:00 (UTC+7)
- *  Encode  : UTF-8
- *  Người sửa   : AI Agent (Antigravity)
- *  Loại        : Tối ưu UI
- *  Mức độ      : S (1 file)
- *  Version     : v2.1.6 → v2.1.7
- *  PR / Issue  : Căn chỉnh giao diện đăng tin
- *  Reviewer    : HuynhhThanh · ✅ Approved
- *  Tóm tắt     | Đồng bộ UI layout với trang hồ sơ công ty
- *  Phụ thuộc   | (Không)
- *  Lịch sử     | - [2026-06-25 15:10] v2.0.0 : Chuyển sang Tiptap để hỗ trợ React 19 & Markdown
- *              | - [2026-06-25 15:55] v2.1.0 : Tích hợp react-number-format cho trường nhập lương
- *              | - [2026-06-25 16:15] v2.1.1 : Khắc phục lỗi Cursor Jump (react-number-format)
- *              | - [2026-06-25 16:20] v2.1.2 : Gỡ bỏ react-number-format, dùng native Intl
- *              | - [2026-06-25 16:30] v2.1.3 : Native Format-on-Blur (Tối ưu Cursor)
- *              | - [2026-06-25 17:10] v2.1.4 : Native Format-as-you-type với requestAnimationFrame
- *              | - [2026-06-25 17:30] v2.1.5 : Sửa lỗi IME Composition tiếng Việt bằng type="tel"
- *              | - [2026-06-25 17:45] v2.1.6 : Nâng cấp UX Binance Style (Label tách biệt Input)
- *              | - [2026-06-25 18:20] v2.1.7 : Đồng bộ layout grid full-width giống trang Company
- *  Chi tiết    | - Gỡ bỏ wrapper `max-w-3xl`
- *              | - Nhóm trường dữ liệu vào `grid-cols-1 md:grid-cols-2` bên trong `CardContent`
- *  Ảnh hưởng   | - `web/src/app/employer/jobs/create/page.tsx`
- *  Ghi chú     | Layout đã tương đồng với trang Company (không giới hạn width, dùng grid chuẩn).
- *  Test / CI   | ✅ Đã test mượt mà trên Unikey và EVKey
- *  Trạng thái  | ✅ Hoàn thành
- * ==============================================================================
- */
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,9 +36,6 @@ const JOB_LEVELS = [
   { value: "DIRECTOR", label: "Director" },
 ];
 
-// Component nhập tiền tệ theo chuẩn thiết kế Binance/Shopee
-// Giúp tránh 100% các lỗi xung đột với bộ gõ tiếng Việt (IME Composition)
-// và hiện tượng nhảy con trỏ do format value liên tục.
 function CurrencyInput({
   value,
   onChange,
@@ -80,22 +45,19 @@ function CurrencyInput({
   onChange: (val: string) => void;
   placeholder?: string;
 }) {
-  // Tạo chuỗi đã format để hiển thị bên dưới (VD: 1.000.000)
+  // Keep formatting outside the input to avoid cursor jumps with Vietnamese IME.
   const displayValue = value
     ? new Intl.NumberFormat("vi-VN").format(Number(value))
     : "";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Chỉ lột lấy số nguyên, mặc kệ người dùng có cố tình copy/paste chữ vào
     const raw = e.target.value.replace(/\D/g, "");
-    onChange(raw); // Bắn dữ liệu thô (raw number) về parent state
+    onChange(raw);
   };
 
   return (
     <div className="relative">
       <div className="relative">
-        {/* Thẻ Input: Chỉ chứa số thô, tuyệt đối không can thiệp format */}
-        {/* Sử dụng type="tel" để tắt hoàn toàn tính năng nối chữ (composition) của bàn phím */}
         <Input
           type="tel"
           inputMode="numeric"

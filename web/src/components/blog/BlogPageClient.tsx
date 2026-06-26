@@ -1,44 +1,3 @@
-/**
- * @file BlogPageClient.tsx
- * @description Component Client-side để render và xử lý danh sách bài viết (lọc, phân trang, tìm kiếm).
- * @note [HuynhhThanh] Trao đổi dữ liệu: Nhận mảng `initialBlogs` (dữ liệu thật từ DB) từ page.tsx. Các thông tin render trên thẻ đều được lấy thực tế từ dữ liệu trả về, không dùng mock data tĩnh nữa.
- */
-// ─────────────────────────────────────────────────────────────────────────────
-// TEMPLATE FILE HEADER & CHANGELOG — HuynhhThanh
-// ─────────────────────────────────────────────────────────────────────────────
-// ==============================================================================
-//  File    : web/src/components/blog/BlogPageClient.tsx
-//  Module  : blog
-//  Tóm tắt : Component hiển thị danh sách bài viết Blog
-//  Tác giả : HuynhhThanh
-//  Tạo lúc : 2026-06-25 09:35 (UTC+7)
-//  Encode  : UTF-8
-//  Version : 1.1.0
-//            · MAJOR → tăng khi: thay đổi không tương thích ngược (breaking)
-//            · MINOR → tăng khi: thêm tính năng mới, không phá vỡ cũ
-//            · PATCH → tăng khi: sửa lỗi, không thay đổi hành vi (behavior)
-//  Lịch sử :
-//  - [2026-06-25 09:35] v1.1.0 : Format ngày tháng năm
-// ------------------------------------------------------------------------------
-//  Changelog — lần thay đổi gần nhất
-// ------------------------------------------------------------------------------
-//  | Trường          | Nội dung                                                |
-//  |-----------------|----------------------------------------------------------|
-//  | **Người sửa**   | HuynhhThanh                                 |
-//  | **Loại**        | Sửa lỗi / Tính năng                                      |
-//  | **Mức độ**      | S (1 file)                                               |
-//  | **Version**     | `v1.0.0 → v1.1.0`                                        |
-//  | **PR / Issue**  | Không                                                    |
-//  | **Reviewer**    | HuynhhThanh · ⏳ Pending                                 |
-//  | **Tóm tắt**     | Format ngày tháng trong BlogPageClient                 |
-//  | **Phụ thuộc**   | Không                                                    |
-//  | **Skill/Tool**  | Không                                                    |
-//  | **Chi tiết**    | - Bọc đối tượng b.createdAt bằng Intl.DateTimeFormat     |
-//  | **Ảnh hưởng**   | Không                                                    |
-//  | **Ghi chú**     |                                                          |
-//  | **Test / CI**   | ⏳ Chưa chạy                                               |
-//  | **Trạng thái**  | ✅ Hoàn thành                                              |
-// ==============================================================================
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -387,7 +346,7 @@ export default function BlogPageClient({
             </div>
 
             {/* 4. Bản tin đăng ký */}
-            <div className="bg-gradient-to-br from-[#005a71] to-[#0E7490] dark:bg-gradient-to-br dark:from-[#0F3347] dark:to-[#091A27] rounded-2xl p-5 text-white shadow-md shadow-[#005a71]/10 dark:shadow-none border border-transparent dark:border-[#1E5F74] fade-up stagger-4">
+            <div className="bg-linear-to-br from-[#005a71] to-[#0E7490] dark:bg-linear-to-br dark:from-[#0F3347] dark:to-[#091A27] rounded-2xl p-5 text-white shadow-md shadow-[#005a71]/10 dark:shadow-none border border-transparent dark:border-[#1E5F74] fade-up stagger-4">
               <h3 className="text-sm font-bold mb-1 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-amber-300 animate-bounce">
                   notifications

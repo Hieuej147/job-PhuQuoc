@@ -1,39 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// TEMPLATE FILE HEADER & CHANGELOG — HuynhhThanh
-// ─────────────────────────────────────────────────────────────────────────────
-// ==============================================================================
-//  File    : web/src/components/blog/BlogHero.tsx
-//  Module  : blog
-//  Tóm tắt : Component hiển thị bài viết nổi bật phần hero
-//  Tác giả : HuynhhThanh
-//  Tạo lúc : 2026-06-25 09:35 (UTC+7)
-//  Encode  : UTF-8
-//  Version : 1.1.0
-//            · MAJOR → tăng khi: thay đổi không tương thích ngược (breaking)
-//            · MINOR → tăng khi: thêm tính năng mới, không phá vỡ cũ
-//            · PATCH → tăng khi: sửa lỗi, không thay đổi hành vi (behavior)
-//  Lịch sử :
-//  - [2026-06-25 09:35] v1.1.0 : Bỏ hiển thị phút đọc
-// ------------------------------------------------------------------------------
-//  Changelog — lần thay đổi gần nhất
-// ------------------------------------------------------------------------------
-//  | Trường          | Nội dung                                                |
-//  |-----------------|----------------------------------------------------------|
-//  | **Người sửa**   | HuynhhThanh                              |
-//  | **Loại**        | Sửa lỗi / Tính năng                                      |
-//  | **Mức độ**      | S (1 file)                                               |
-//  | **Version**     | `v1.0.0 → v1.1.0`                                        |
-//  | **PR / Issue**  | Không                                                    |
-//  | **Reviewer**    | HuynhhThanh · ⏳ Pending                                 |
-//  | **Tóm tắt**     | Bỏ hiển thị phút đọc trong BlogHero                    |
-//  | **Phụ thuộc**   | Không                                                    |
-//  | **Skill/Tool**  | Không                                                    |
-//  | **Chi tiết**    | - Xóa thẻ span tĩnh hiển thị 8 phút đọc                  |
-//  | **Ảnh hưởng**   | Không                                                    |
-//  | **Ghi chú**     |                                                          |
-//  | **Test / CI**   | ⏳ Chưa chạy                                               |
-//  | **Trạng thái**  | ✅ Hoàn thành                                              |
-// ==============================================================================
 "use client";
 
 import Link from "next/link";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEditor, EditorContent } from '@tiptap/react';
+import { Editor, useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
@@ -8,45 +8,33 @@ import { Button } from '@/components/ui/button';
 import { Bold, Italic, List, ListOrdered, Heading2, Strikethrough } from 'lucide-react';
 import { useEffect } from 'react';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TEMPLATE FILE HEADER & CHANGELOG — HuynhhThanh
-// ─────────────────────────────────────────────────────────────────────────────
-// ==============================================================================
-//  File    : web/src/components/ui/RichTextEditor.tsx
-//  Module  : components/ui
-//  Tóm tắt : RichTextEditor tích hợp Tiptap + Markdown
-//  Tác giả : HuynhhThanh
-//  Tạo lúc : 2026-06-25 11:00 (UTC+7)
-//  Encode  : UTF-8
-//  Version : 2.0.0
-//  Lịch sử :
-//  - [2026-06-25 11:00] v1.0.0 : Tạo mới với react-quill
-//  - [2026-06-25 15:10] v2.0.0 : Chuyển sang Tiptap để hỗ trợ React 19 & Markdown
-// ------------------------------------------------------------------------------
-//  Changelog — lần thay đổi gần nhất
-// ------------------------------------------------------------------------------
-//  | Trường          | Nội dung                                                |
-//  |-----------------|----------------------------------------------------------|
-//  | **Người sửa**   | HuynhhThanh                                   |
-//  | **Loại**        | Refactor                                                 |
-//  | **Mức độ**      | M (2-3 files)                                            |
-//  | **Version**     | `v1.0.0 → v2.0.0`                                        |
-//  | **PR / Issue**  | Xóa react-quill vì Crash ở React 19                      |
-//  | **Reviewer**    | HuynhhThanh · ✅ Approved                                |
-//  | **Tóm tắt**     | Thay thế toàn bộ bằng Tiptap Headless Editor             |
-//  | **Phụ thuộc**   | `@tiptap/react`, `tiptap-markdown`, `@tiptap/starter-kit`|
-//  | **Chi tiết**    | Xây dựng MenuBar custom bằng Shadcn Button và Lucide Icon|
-//  |                 | Xuất dữ liệu ra dạng Markdown thuần                      |
-//  | **Trạng thái**  | ✅ Hoàn thành                                              |
-// ==============================================================================
-
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
 }
 
-const MenuBar = ({ editor }: { editor: any }) => {
+type MarkdownStorage = {
+  storage: {
+    markdown?: {
+      getMarkdown: () => string;
+    };
+  };
+};
+
+// Plugin tiptap-markdown có storage runtime nhưng type của Tiptap không khai báo sẵn.
+// Helper này gom phần cast ở một chỗ để form luôn nhận/lưu Markdown thay vì HTML.
+function getMarkdown(editor: Editor) {
+  return (editor as Editor & MarkdownStorage).storage.markdown?.getMarkdown() ?? "";
+}
+
+// Giữ selection trong editor khi bấm toolbar.
+// Nếu không prevent mousedown, browser có thể focus vào button trước khi command apply.
+function keepSelection(event: React.MouseEvent<HTMLButtonElement>) {
+  event.preventDefault();
+}
+
+const MenuBar = ({ editor }: { editor: Editor | null }) => {
   if (!editor) {
     return null;
   }
@@ -57,6 +45,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
         variant={editor.isActive('bold') ? 'secondary' : 'ghost'}
         size="icon"
         className="h-8 w-8"
+        onMouseDown={keepSelection}
         onClick={(e) => {
           e.preventDefault();
           editor.chain().focus().toggleBold().run();
@@ -70,6 +59,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
         variant={editor.isActive('italic') ? 'secondary' : 'ghost'}
         size="icon"
         className="h-8 w-8"
+        onMouseDown={keepSelection}
         onClick={(e) => {
           e.preventDefault();
           editor.chain().focus().toggleItalic().run();
@@ -83,6 +73,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
         variant={editor.isActive('strike') ? 'secondary' : 'ghost'}
         size="icon"
         className="h-8 w-8"
+        onMouseDown={keepSelection}
         onClick={(e) => {
           e.preventDefault();
           editor.chain().focus().toggleStrike().run();
@@ -93,12 +84,13 @@ const MenuBar = ({ editor }: { editor: any }) => {
         <Strikethrough className="h-4 w-4" />
       </Button>
       
-      <div className="w-[1px] h-5 bg-gray-300 dark:bg-gray-700 mx-1" />
+      <div className="w-px h-5 bg-gray-300 dark:bg-gray-700 mx-1" />
       
       <Button
         variant={editor.isActive('heading', { level: 2 }) ? 'secondary' : 'ghost'}
         size="icon"
         className="h-8 w-8"
+        onMouseDown={keepSelection}
         onClick={(e) => {
           e.preventDefault();
           editor.chain().focus().toggleHeading({ level: 2 }).run();
@@ -109,12 +101,13 @@ const MenuBar = ({ editor }: { editor: any }) => {
         <Heading2 className="h-4 w-4" />
       </Button>
       
-      <div className="w-[1px] h-5 bg-gray-300 dark:bg-gray-700 mx-1" />
+      <div className="w-px h-5 bg-gray-300 dark:bg-gray-700 mx-1" />
       
       <Button
         variant={editor.isActive('bulletList') ? 'secondary' : 'ghost'}
         size="icon"
         className="h-8 w-8"
+        onMouseDown={keepSelection}
         onClick={(e) => {
           e.preventDefault();
           editor.chain().focus().toggleBulletList().run();
@@ -128,6 +121,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
         variant={editor.isActive('orderedList') ? 'secondary' : 'ghost'}
         size="icon"
         className="h-8 w-8"
+        onMouseDown={keepSelection}
         onClick={(e) => {
           e.preventDefault();
           editor.chain().focus().toggleOrderedList().run();
@@ -145,6 +139,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
   const editor = useEditor({
     extensions: [
       StarterKit,
+      // Lưu nội dung editor về Markdown để đồng bộ với JobDetail/RichContent.
       Markdown,
       Placeholder.configure({
         placeholder: placeholder || 'Nhập nội dung...',
@@ -158,16 +153,17 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
       },
     },
     onUpdate: ({ editor }) => {
-      const markdown = editor.storage.markdown.getMarkdown();
+      // Mỗi lần người dùng gõ/format, đẩy Markdown về parent form state.
+      const markdown = getMarkdown(editor);
       onChange(markdown);
     },
   });
 
   useEffect(() => {
-    if (editor && value !== editor.storage.markdown.getMarkdown()) {
-      setTimeout(() => {
-        editor.commands.setContent(value);
-      });
+    if (editor && value !== getMarkdown(editor)) {
+      // Sync value từ bên ngoài vào editor mà không emit update ngược lại,
+      // tránh vòng lặp state và tránh ghi đè nội dung khi người dùng đang gõ.
+      editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [value, editor]);
 
