@@ -54,12 +54,6 @@ export default function BlogHero({ featured, formatViews }: BlogHeroProps) {
                 </span>{" "}
                 {formatViews(featured.views)} lượt xem
               </span>
-              <span className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">
-                  schedule
-                </span>{" "}
-                8 phút đọc
-              </span>
             </div>
             <Link
               href={`/blog/${featured.slug}`}
