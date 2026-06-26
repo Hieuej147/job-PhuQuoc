@@ -21,7 +21,7 @@ async function proxyRequest(request: NextRequest, slug: string[]) {
       credentials: "include",
     };
 
-    if (request.method !== "GET" && request.method !== "HEAD") {
+    if (["POST", "PUT", "PATCH"].includes(request.method)) {
       fetchOptions.body = await request.text();
     }
 
