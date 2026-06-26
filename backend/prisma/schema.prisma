@@ -353,10 +353,6 @@ model CandidateResume {
   skills      String?
   degree      String?
   languages   String?
-  name        String?
-  email       String?
-  phone       String?
-  avatar      String?
   isDefault   Boolean  @default(false)
   templateId  String
   createdAt   DateTime @default(now())

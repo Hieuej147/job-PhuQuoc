@@ -42,22 +42,6 @@ export class CreateResumeDto {
   languages?: string;
 
   @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsString()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @IsOptional()
-  @IsString()
-  avatar?: string;
-
-  @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
 
@@ -105,22 +89,6 @@ export class UpdateResumeDto {
   @IsOptional()
   @IsString()
   languages?: string;
-
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsString()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @IsOptional()
-  @IsString()
-  avatar?: string;
 
   @IsOptional()
   @IsBoolean()

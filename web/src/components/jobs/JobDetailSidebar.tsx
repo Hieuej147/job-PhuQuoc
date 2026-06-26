@@ -24,9 +24,7 @@ import {
   Globe, 
   Facebook, 
   Linkedin,
-  MessageSquare,
-  CheckCircle2,
-  XCircle
+  MessageSquare
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { OverviewItem } from '@/types/job';
@@ -36,47 +34,24 @@ import { OverviewItem } from '@/types/job';
 // ==========================================
 
 interface JobApplySidebarProps {
-  onApply: () => void;
-  onSave: () => void;
-  onWithdraw?: () => void;
-  isSaved: boolean;
-  isApplied?: boolean;
-  withdrawing?: boolean;
+  onApply: () => void; // Hàm callback nộp hồ sơ ứng tuyển
+  onSave: () => void; // Hàm callback lưu việc làm
+  isSaved: boolean; // Trạng thái tin đã được lưu hay chưa
 }
 
-export function JobApplySidebar({ onApply, onSave, onWithdraw, isSaved, isApplied, withdrawing }: JobApplySidebarProps) {
+export function JobApplySidebar({ onApply, onSave, isSaved }: JobApplySidebarProps) {
   return (
     <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] p-6 shadow-sm transition-colors duration-200">
-      {isApplied ? (
-        <>
-          {/* Trạng thái đã ứng tuyển */}
-          <div className="w-full flex items-center justify-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-400 font-bold py-4 rounded-xl text-sm mb-3">
-            <CheckCircle2 className="w-4 h-4" />
-            Đã ứng tuyển
-          </div>
-          {/* Nút bỏ ứng tuyển */}
-          <button
-            onClick={onWithdraw}
-            disabled={withdrawing}
-            id="btn-withdraw"
-            className="w-full flex items-center justify-center gap-2 border border-red-300 dark:border-red-700 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-semibold py-3 rounded-xl transition-colors text-sm mb-3 cursor-pointer disabled:opacity-50"
-          >
-            <XCircle className="w-4 h-4" />
-            {withdrawing ? 'Đang xử lý...' : 'Bỏ ứng tuyển'}
-          </button>
-        </>
-      ) : (
-        /* Nút ứng tuyển lớn */
-        <button
-          onClick={onApply}
-          id="btn-apply"
-          className="btn-apply-pulse w-full bg-gradient-to-r from-[#005a71] to-[#0e7490] dark:from-[#0d9488] dark:to-[#0e7490] hover:opacity-95 text-white font-bold py-4 rounded-xl transition-all shadow-lg text-sm mb-3 cursor-pointer"
-        >
-          Ứng tuyển ngay
-        </button>
-      )}
+      {/* Nút ứng tuyển lớn với hiệu ứng nhấp nháy thu hút sự chú ý */}
+      <button
+        onClick={onApply}
+        id="btn-apply"
+        className="btn-apply-pulse w-full bg-gradient-to-r from-[#005a71] to-[#0e7490] dark:from-[#0d9488] dark:to-[#0e7490] hover:opacity-95 text-white font-bold py-4 rounded-xl transition-all shadow-lg text-sm mb-3 cursor-pointer"
+      >
+        Ứng tuyển ngay
+      </button>
 
-      {/* Nút lưu việc làm */}
+      {/* Nút lưu việc làm nhanh */}
       <button
         onClick={onSave}
         id="btn-save"
@@ -89,7 +64,7 @@ export function JobApplySidebar({ onApply, onSave, onWithdraw, isSaved, isApplie
         {isSaved ? '✓ Đã lưu việc làm' : 'Lưu việc làm'}
       </button>
 
-      {/* Nhãn bảo mật */}
+      {/* Nhãn văn bản thông báo tính bảo mật thông tin */}
       <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-3 flex items-center justify-center gap-1">
         <Lock className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
         Thông tin của bạn được bảo mật hoàn toàn

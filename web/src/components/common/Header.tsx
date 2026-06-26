@@ -65,10 +65,6 @@ export default function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  if (pathname?.includes("/resumes/") && pathname?.includes("/print")) {
-    return null;
-  }
-
   useEffect(() => {
     if (!profile) {
       setNotifications([]);

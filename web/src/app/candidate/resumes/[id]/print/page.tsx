@@ -2,52 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { TEMPLATE_MAP } from "@/template";
 import { Spinner } from "@/components/ui/spinner";
-
-interface ResumeData {
-  id: string;
-  title: string;
-  address: string | null;
-  summary: string | null;
-  skills: string | null;
-  degree: string | null;
-  languages: string | null;
-  socialLinks: any;
-  education: any;
-  experience: any;
-  projects: any;
-  template: { id: string; name: string };
-  user: { name: string; email: string; phone: string | null; image: string | null };
-}
+import { TemplateRenderer } from "@/components/cv/template-renderer";
 
 export default function PrintResumePage() {
   const params = useParams();
   const id = params.id as string;
-  const [resume, setResume] = useState<ResumeData | null>(null);
+  const [htmlContent, setHtmlContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-    const bypass = searchParams?.get("bypass");
-    const fetchUrl = bypass
-      ? `/api/v1/resumes/${id}?bypass=${bypass}`
-      : `/api/v1/resumes/${id}`;
-
-    fetch(fetchUrl, { credentials: "include" })
+    fetch(`/api/v1/resumes/${id}/render?mode=view`, { credentials: "include" })
       .then((r) => r.json())
-      .then((d) => setResume(d.data))
+      .then((d) => setHtmlContent(d.data?.html || d.html || (typeof d.data === 'string' ? d.data : "")))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
 
   useEffect(() => {
-    if (resume && !loading) {
+    if (htmlContent && !loading) {
       // Auto-print after a short delay for rendering
       const timer = setTimeout(() => window.print(), 1000);
       return () => clearTimeout(timer);
     }
-  }, [resume, loading]);
+  }, [htmlContent, loading]);
 
   if (loading) {
     return (
@@ -57,46 +35,17 @@ export default function PrintResumePage() {
     );
   }
 
-  if (!resume) {
+  if (!htmlContent) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>Không tìm thấy hồ sơ</p>
+        <p>Không tìm thấy hồ sơ hoặc lỗi kết xuất</p>
       </div>
     );
   }
-
-  const TemplateComponent = TEMPLATE_MAP[resume.template.id as keyof typeof TEMPLATE_MAP];
-  if (!TemplateComponent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Không tìm thấy mẫu CV</p>
-      </div>
-    );
-  }
-
-  const user = {
-    name: resume.user.name,
-    email: resume.user.email,
-    phone: resume.user.phone || "",
-    avatar: resume.user.image || "",
-  };
-
-  const resumeData = {
-    title: resume.title,
-    address: resume.address || "",
-    summary: resume.summary || "",
-    degree: resume.degree || "",
-    languages: resume.languages || "",
-    skills: resume.skills || "",
-    socialLinks: resume.socialLinks || [],
-    education: resume.education || [],
-    experience: resume.experience || [],
-    projects: resume.projects || [],
-  };
 
   return (
-    <div className="min-h-screen bg-white">
-      <TemplateComponent user={user} resume={resumeData} />
+    <div className="min-h-screen bg-white print:m-0 print:p-0">
+      <TemplateRenderer html={htmlContent} editMode={false} className="w-full h-full min-h-screen" />
     </div>
   );
 }

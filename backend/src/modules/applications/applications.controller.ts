@@ -6,13 +6,11 @@
  * - FE gọi `GET /api/v1/applications/employer` -> Trả về dữ liệu thật từ DB cho Nhà tuyển dụng.
  * - FE gọi `PATCH /api/v1/applications/:id/status` -> Lưu trạng thái mới (Duyệt/Từ chối) thẳng vào Database.
  */
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Res } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
-import { Response } from 'express';
 import { ApplicationsService } from './applications.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { Public } from '../../auth/decorators/public.decorator';
 import { CreateApplicationDto, UpdateApplicationStatusDto } from './dto/application.dto';
 import { ApplicationQueryDto } from './dto/application-query.dto';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
@@ -70,27 +68,6 @@ export class ApplicationsController {
   @ApiResponse({ status: 404, description: 'Không tìm thấy job' })
   findByJob(@Param('jobId') jobId: string, @CurrentUser() user: UserSession, @Query() query: ApplicationQueryDto) {
     return this.applicationsService.findByJob(jobId, user.user.id, query);
-  }
-
-  @Get(':id/resume-pdf')
-  @Public()
-  @ApiOperation({ summary: 'Xem CV ứng viên (PDF)', description: 'Employer xem CV của ứng viên theo application ID. Hỗ trợ cả CV đã lưu (resumeId) và file PDF đã upload (cvUrl).' })
-  @ApiParam({ name: 'id', description: 'ID của application' })
-  @ApiResponse({ status: 200, description: 'PDF file hoặc redirect URL' })
-  @ApiResponse({ status: 404, description: 'Không tìm thấy application hoặc CV' })
-  async getResumePdf(@Param('id') id: string, @Res() res: Response) {
-    const result = await this.applicationsService.getResumePdfForEmployer(id);
-    // cvUrl case: trả về redirect tới URL public
-    if ('url' in result) {
-      return res.redirect(result.url);
-    }
-    // resumeId case: stream PDF buffer
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="cv-${id}.pdf"`,
-      'Content-Length': result.length,
-    });
-    res.send(result);
   }
 
   @Patch(':id/status')

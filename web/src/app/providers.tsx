@@ -9,8 +9,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import type { AuthUser } from "@/lib/auth";
 
-import { usePathname } from "next/navigation";
-
 export function Providers({
   children,
   initialUser,
@@ -18,9 +16,6 @@ export function Providers({
   children: React.ReactNode;
   initialUser?: AuthUser | null;
 }) {
-  const pathname = usePathname();
-  const isPrintPage = pathname?.includes("/print");
-
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <TooltipProvider>
@@ -29,7 +24,7 @@ export function Providers({
             runtimeUrl="/api/copilotkit"
             credentials="include"
             publicLicenseKey={process.env.NEXT_PUBLIC_COPILOTKIT_LICENSE_KEY}
-            showDevConsole={!isPrintPage}
+            showDevConsole={true}
           >
             {children}
             <Toaster richColors position="top-right" />

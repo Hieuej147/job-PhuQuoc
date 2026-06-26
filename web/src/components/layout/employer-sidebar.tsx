@@ -151,7 +151,13 @@ export function EmployerSidebar() {
               {group.label}
             </p>
             {group.items.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isActive =
+                pathname === item.href ||
+                (pathname.startsWith(item.href + "/") &&
+                  !(
+                    item.href === "/employer/jobs" &&
+                    pathname.startsWith("/employer/jobs/create")
+                  ));
               return (
                 <Link
                   key={item.label}

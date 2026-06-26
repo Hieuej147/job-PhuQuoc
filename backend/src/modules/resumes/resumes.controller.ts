@@ -94,8 +94,7 @@ export class ResumesController {
   @ApiResponse({ status: 403, description: 'Không phải owner' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async findOne(@Param('id') id: string, @CurrentUser() user: UserSession) {
-    const role = Array.isArray(user.user.role) ? user.user.role[0] : (user.user.role as string | undefined);
-    const resume = await this.resumesService.findById(id, user.user.id, role);
+    const resume = await this.resumesService.findById(id, user.user.id);
     return { data: resume };
   }
 
@@ -130,8 +129,7 @@ export class ResumesController {
   @ApiResponse({ status: 403, description: 'Không phải owner' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async getPdf(@Param('id') id: string, @CurrentUser() user: UserSession, @Res() res: Response) {
-    const role = Array.isArray(user.user.role) ? user.user.role[0] : (user.user.role as string | undefined);
-    const pdf = await this.resumesService.generatePdf(id, user.user.id, role);
+    const pdf = await this.resumesService.generatePdf(id, user.user.id);
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="resume-${id}.pdf"`,
@@ -163,7 +161,6 @@ export class ResumesController {
   }
 
   @Delete(':id')
-  @Roles('CANDIDATE')
   @ApiBearerAuth('better-auth.session_token')
   @ApiOperation({ summary: 'Xóa CV', description: 'Chỉ owner mới được xóa.' })
   @ApiParam({ name: 'id', description: 'ID của resume' })

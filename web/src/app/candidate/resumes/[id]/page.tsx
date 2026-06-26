@@ -7,27 +7,15 @@ import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Trash2, Star, Download } from "lucide-react";
 import { toast } from "sonner";
-import { TEMPLATE_MAP } from "@/template";
 
 interface ResumeData {
   id: string;
   title: string;
-  name: string | null;
-  email: string | null;
-  phone: string | null;
-  avatar: string | null;
-  address: string | null;
   summary: string | null;
   skills: string | null;
-  degree: string | null;
   languages: string | null;
-  socialLinks: any;
-  education: any;
-  experience: any;
-  projects: any;
   isDefault: boolean;
   template: { id: string; name: string };
-  user: { name: string; email: string; phone: string | null; image: string | null };
 }
 
 export default function ResumeDetailPage() {
@@ -35,17 +23,26 @@ export default function ResumeDetailPage() {
   const router = useRouter();
   const id = params.id as string;
   const [resume, setResume] = useState<ResumeData | null>(null);
+  const [renderedHtml, setRenderedHtml] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const resumeRes = await fetch(`/api/v1/resumes/${id}`, { credentials: "include" });
+        const [resumeRes, renderRes] = await Promise.all([
+          fetch(`/api/v1/resumes/${id}`, { credentials: "include" }),
+          fetch(`/api/v1/resumes/${id}/render`, { credentials: "include" }),
+        ]);
 
         if (resumeRes.ok) {
           const d = await resumeRes.json();
           setResume(d.data?.data ?? d.data);
+        }
+
+        if (renderRes.ok) {
+          const d = await renderRes.json();
+          setRenderedHtml(d.data?.data?.html ?? d.data?.html ?? d.html ?? "");
         }
       } catch {
         toast.error("Không thể tải CV");
@@ -57,24 +54,10 @@ export default function ResumeDetailPage() {
   }, [id]);
 
   const handleDelete = async () => {
-    if (!window.confirm("Xác nhận xóa hồ sơ này?")) return;
-    try {
-      const res = await fetch(`/api/v1/resumes/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      const body = await res.text();
-      if (!res.ok) {
-        toast.error(`Xóa thất bại (${res.status}): ${body}`);
-        console.error("Delete failed:", res.status, body);
-        return;
-      }
-      toast.success("Đã xóa CV");
-      router.push("/candidate/resumes");
-    } catch (err) {
-      toast.error(`Lỗi kết nối: ${String(err)}`);
-      console.error("Delete error:", err);
-    }
+    if (!confirm("Xác nhận xóa hồ sơ này?")) return;
+    await fetch(`/api/v1/resumes/${id}`, { method: "DELETE", credentials: "include" });
+    toast.success("Đã xóa CV");
+    router.push("/candidate/resumes");
   };
 
   const handleSetDefault = async () => {
@@ -113,28 +96,6 @@ export default function ResumeDetailPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
   if (!resume) return <div className="p-6"><p>Không tìm thấy hồ sơ</p></div>;
 
-  const TemplateComponent = TEMPLATE_MAP[resume.template?.id as keyof typeof TEMPLATE_MAP];
-
-  const userProps = {
-    name: resume.name || resume.user?.name || "Họ và Tên",
-    email: resume.email || resume.user?.email || "",
-    phone: resume.phone || resume.user?.phone || "",
-    avatar: resume.avatar || resume.user?.image || "",
-  };
-
-  const resumeProps = {
-    title: resume.title,
-    address: resume.address || "",
-    summary: resume.summary || "",
-    degree: resume.degree || "",
-    languages: resume.languages || "",
-    skills: resume.skills || "",
-    socialLinks: resume.socialLinks || [],
-    education: resume.education || [],
-    experience: resume.experience || [],
-    projects: resume.projects || [],
-  };
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -169,13 +130,18 @@ export default function ResumeDetailPage() {
       </div>
 
       {/* CV Preview */}
-      {TemplateComponent ? (
+      {renderedHtml ? (
         <div className="border rounded-xl overflow-hidden bg-white shadow-sm">
-          <TemplateComponent user={userProps} resume={resumeProps} readOnly={true} />
+          <iframe
+            srcDoc={renderedHtml}
+            className="w-full"
+            style={{ height: "1200px", border: "none" }}
+            title="CV Preview"
+          />
         </div>
       ) : (
         <div className="bg-muted rounded-xl p-8 text-center">
-          <p className="text-muted-foreground">Không tìm thấy mẫu CV thiết kế phù hợp.</p>
+          <p className="text-muted-foreground">Không thể tải preview CV.</p>
         </div>
       )}
     </div>

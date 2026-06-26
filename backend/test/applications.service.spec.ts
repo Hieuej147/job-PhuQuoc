@@ -38,8 +38,7 @@ describe('ApplicationsService', () => {
       findById: vi.fn(),
       findByOwnerId: vi.fn(),
     };
-    const resumesServiceMock = {};
-    service = new ApplicationsService(prismaMock as any, inngestMock, auditServiceMock, jobContractMock, companyContractMock, resumesServiceMock as any);
+    service = new ApplicationsService(prismaMock as any, inngestMock, auditServiceMock, jobContractMock, companyContractMock);
   });
 
   it('should be defined', () => {
@@ -133,7 +132,7 @@ describe('ApplicationsService', () => {
 
       const result = await service.findByJob('job1', 'employer1', { page: 1, limit: 10 });
 
-      expect(result.data.items).toEqual(mockApplications);
+      expect(result.items).toEqual(mockApplications);
     });
 
     it('should throw NotFoundException when job not found', async () => {

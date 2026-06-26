@@ -26,18 +26,13 @@ export class ResumesService {
     });
   }
 
-  async findById(id: string, userId?: string, userRole?: string) {
+  async findById(id: string, userId?: string) {
     const resume = await this.prisma.candidateResume.findUnique({
       where: { id },
-      include: {
-        template: { select: { id: true, name: true, description: true, previewUrl: true, htmlTemplate: true, cssTemplate: true, isPublic: true } },
-        user: { select: { id: true, name: true, email: true, phone: true, image: true } }
-      },
+      include: { template: { select: { id: true, name: true, description: true, previewUrl: true, htmlTemplate: true, cssTemplate: true, isPublic: true } } },
     });
     if (!resume) throw new NotFoundException('Resume not found');
-    if (userId && userRole !== 'EMPLOYER' && userRole !== 'ADMIN' && resume.userId !== userId) {
-      throw new ForbiddenException('Not your resume');
-    }
+    if (userId && resume.userId !== userId) throw new ForbiddenException('Not your resume');
     return resume;
   }
 
@@ -278,18 +273,16 @@ export class ResumesService {
     };
   }
 
-  async generatePdf(id: string, userId?: string, userRole?: string): Promise<Buffer> {
+  async generatePdf(id: string, userId?: string): Promise<Buffer> {
     const resume = await this.prisma.candidateResume.findUnique({
       where: { id },
       include: { template: { select: { id: true } } },
     });
     if (!resume) throw new NotFoundException('Resume not found');
-    if (userId && userRole !== 'EMPLOYER' && userRole !== 'ADMIN' && resume.userId !== userId) {
-      throw new ForbiddenException('Not your resume');
-    }
+    if (userId && resume.userId !== userId) throw new ForbiddenException('Not your resume');
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    const printUrl = `${frontendUrl}/resumes/${id}/print?bypass=puppeteer_bypass_key`;
+    const printUrl = `${frontendUrl}/candidate/resumes/${id}/print`;
 
     let puppeteer: typeof import('puppeteer');
     try {

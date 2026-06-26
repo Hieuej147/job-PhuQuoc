@@ -1,8 +1,3 @@
-/**
- * @file BlogPageClient.tsx
- * @description Component Client-side để render và xử lý danh sách bài viết (lọc, phân trang, tìm kiếm).
- * @note [HuynhhThanh] Trao đổi dữ liệu: Nhận mảng `initialBlogs` (dữ liệu thật từ DB) từ page.tsx. Các thông tin render trên thẻ đều được lấy thực tế từ dữ liệu trả về, không dùng mock data tĩnh nữa.
- */
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -63,7 +58,11 @@ function mapBlog(b: Blog): MappedBlog {
     slug: b.slug,
     excerpt: b.excerpt || "",
     thumbnail: b.thumbnail,
-    date: b.createdAt,
+    date: new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(new Date(b.createdAt)),
     views: b.views || 0,
     categoryName: b.category?.name || "Blog",
     categorySlug: b.category?.slug || "blog",
@@ -78,29 +77,46 @@ interface BlogPageClientProps {
   initialBlogs?: Blog[];
   initialCategories?: BlogCategory[];
   initialTotalPages?: number;
-  initialSearchParams?: { page: string; search: string; category: string; sort: string; };
+  initialSearchParams?: {
+    page: string;
+    search: string;
+    category: string;
+    sort: string;
+  };
 }
 
 export default function BlogPageClient({
   initialBlogs = [],
   initialCategories = [],
   initialTotalPages = 1,
-  initialSearchParams = { page: "1", search: "", category: "all", sort: "newest" },
+  initialSearchParams = {
+    page: "1",
+    search: "",
+    category: "all",
+    sort: "newest",
+  },
 }: BlogPageClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
+
   const [activeTab, setActiveTab] = useState(initialSearchParams.category);
   const [sortBy, setSortBy] = useState(initialSearchParams.sort);
   const [search, setSearch] = useState(initialSearchParams.search);
   const [email, setEmail] = useState("");
-  const [currentPage, setCurrentPage] = useState(Number(initialSearchParams.page));
+  const [currentPage, setCurrentPage] = useState(
+    Number(initialSearchParams.page),
+  );
 
   const updateURL = (updates: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
-      if (value === "" || value === "all" || value === "newest" || (key === 'page' && value === "1")) {
+      if (
+        value === "" ||
+        value === "all" ||
+        value === "newest" ||
+        (key === "page" && value === "1")
+      ) {
         params.delete(key);
       } else {
         params.set(key, value);
@@ -136,8 +152,8 @@ export default function BlogPageClient({
   const activeCategoryLabel = useMemo(() => {
     if (activeTab === "all") return "Tất cả bài viết";
     return (
-      initialCategories.find((cat: BlogCategory) => cat.id === activeTab)?.name ||
-      "Bài viết"
+      initialCategories.find((cat: BlogCategory) => cat.id === activeTab)
+        ?.name || "Bài viết"
     );
   }, [activeTab, initialCategories]);
 
@@ -307,7 +323,9 @@ export default function BlogPageClient({
                   return (
                     <li key={c.id}>
                       <button
-                        onClick={() => updateURL({ category: c.slug, page: "1" })}
+                        onClick={() =>
+                          updateURL({ category: c.slug, page: "1" })
+                        }
                         className={`w-full flex justify-between items-center py-2 px-3 rounded-xl transition-colors text-left group ${
                           activeTab === c.slug
                             ? "bg-slate-100 dark:bg-[#1E5F74]/30 text-[#005a71] dark:text-[#67E8F9]"
@@ -328,7 +346,7 @@ export default function BlogPageClient({
             </div>
 
             {/* 4. Bản tin đăng ký */}
-            <div className="bg-gradient-to-br from-[#005a71] to-[#0E7490] dark:bg-gradient-to-br dark:from-[#0F3347] dark:to-[#091A27] rounded-2xl p-5 text-white shadow-md shadow-[#005a71]/10 dark:shadow-none border border-transparent dark:border-[#1E5F74] fade-up stagger-4">
+            <div className="bg-linear-to-br from-[#005a71] to-[#0E7490] dark:bg-linear-to-br dark:from-[#0F3347] dark:to-[#091A27] rounded-2xl p-5 text-white shadow-md shadow-[#005a71]/10 dark:shadow-none border border-transparent dark:border-[#1E5F74] fade-up stagger-4">
               <h3 className="text-sm font-bold mb-1 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-amber-300 animate-bounce">
                   notifications
