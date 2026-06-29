@@ -212,6 +212,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
   const mappedJob = {
     ...job,
     company: job.company.name,
+    companyLogo: job.company.logo,
     contractType: TYPE_LABELS[job.type] || job.type,
     salary,
     experience: EXP_LABELS[job.experience || ""] || "Không yêu cầu",
@@ -330,8 +331,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
             <JobApplySidebar onApply={openApplyModal} onSave={toggleSave} isSaved={isSaved} />
             <JobOverviewSidebar items={overviewItems} />
             <JobCompanySidebar
-              companyInitials={companyInitials}
-              textColor="#ffffff"
+              companyLogo={job.company.logo}
               companyName={job.company.name}
               companySlug={job.company.slug}
               industry={job.company.industry || ""}

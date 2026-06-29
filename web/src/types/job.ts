@@ -3,6 +3,7 @@ export interface JobType {
   slug: string;
   title: string;
   company: string;
+  companyLogo?: string | null;
   companyInitials: string;
   logoColor: string;
   textColor: string;

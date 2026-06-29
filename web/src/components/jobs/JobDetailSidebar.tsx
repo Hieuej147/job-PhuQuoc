@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { OverviewItem } from '@/types/job';
+import { CompanyLogo } from '@/components/company/company-logo';
 
 // ==========================================
 // COMPONENT 1: JobApplySidebar
@@ -172,8 +173,7 @@ export function JobOverviewSidebar({ items }: JobOverviewSidebarProps) {
 // ==========================================
 
 interface JobCompanySidebarProps {
-  companyInitials: string;
-  textColor: string;
+  companyLogo?: string | null;
   companyName: string;
   companySlug?: string;
   industry: string;
@@ -183,8 +183,7 @@ interface JobCompanySidebarProps {
 }
 
 export function JobCompanySidebar({
-  companyInitials,
-  textColor,
+  companyLogo,
   companyName,
   companySlug,
   industry,
@@ -199,10 +198,12 @@ export function JobCompanySidebar({
 
       {/* Header thông tin công ty */}
       <div className="flex items-center gap-3 mb-4">
-        {/* Khung logo đại diện bằng chữ */}
-        <div className="w-12 h-12 bg-gray-50 dark:bg-[#071a2b] rounded-xl flex items-center justify-center border border-gray-100 dark:border-[#1a3d5c] flex-shrink-0">
-          <span className={`text-base font-bold ${textColor}`}>{companyInitials}</span>
-        </div>
+        <CompanyLogo
+          name={companyName}
+          logo={companyLogo}
+          className="w-12 h-12 rounded-xl border border-gray-100 dark:border-[#1a3d5c] flex-shrink-0"
+          textClassName="text-base"
+        />
         <div>
           {/* Tên công ty đầy đủ */}
           <p className="font-bold text-sm text-gray-800 dark:text-[#f8fafc] line-clamp-1">{companyName}</p>

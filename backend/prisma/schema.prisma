@@ -238,6 +238,7 @@ model Company {
   name          String
   slug          String      @unique
   logo          String?
+  logoPublicId  String?
   website       String?
   description   String?
   wardId        String?

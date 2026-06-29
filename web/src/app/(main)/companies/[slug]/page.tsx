@@ -7,7 +7,7 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000"
 
 async function fetchCompany(slug: string) {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/v1/companies/slug/${slug}`, { next: { revalidate: 60 } })
+    const res = await fetch(`${BACKEND_URL}/api/v1/companies/slug/${slug}`, { cache: "no-store" })
     if (!res.ok) return null
     const data = await res.json()
     return data.data || data

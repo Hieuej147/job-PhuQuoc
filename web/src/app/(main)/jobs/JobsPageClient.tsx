@@ -92,6 +92,7 @@ function mapJobType(item: JobItem) {
     slug: item.slug,
     title: item.title,
     company: item.company.name,
+    companyLogo: item.company.logo,
     companyInitials: item.company.name.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase(),
     logoColor: "#0E7490",
     textColor: "#ffffff",

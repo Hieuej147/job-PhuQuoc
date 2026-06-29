@@ -13,7 +13,7 @@ interface PageProps {
 async function fetchJob(slug: string) {
   try {
     const res = await fetch(`${BACKEND_URL}/api/v1/jobs/slug/${slug}`, {
-      next: { revalidate: 300 },
+      cache: "no-store",
     });
     if (!res.ok) return null;
     const data = await res.json();

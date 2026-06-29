@@ -1040,6 +1040,15 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | STRIPE_WEBHOOK_SECRET | ❌ | — | Stripe webhook secret |
 | INNGEST_EVENT_KEY | ❌ | — | Inngest event key |
 | INNGEST_SIGNING_KEY | ❌ | — | Inngest signing key |
+| CLOUDINARY_CLOUD_NAME | ❌ | — | Cloudinary cloud name, bắt buộc khi dùng upload logo công ty |
+| CLOUDINARY_API_KEY | ❌ | — | Cloudinary API key, bắt buộc khi dùng upload logo công ty |
+| CLOUDINARY_API_SECRET | ❌ | — | Cloudinary API secret, bắt buộc khi dùng upload logo công ty |
+
+### Cloudinary Company Logo
+
+- Logo công ty được upload qua `POST /api/v1/upload/company-logo`.
+- DB lưu URL hiển thị ở `Company.logo` và Cloudinary public id ở `Company.logoPublicId`.
+- Khi employer đổi logo, backend upload ảnh mới, cập nhật DB thành công rồi mới xoá logo cũ bằng `logoPublicId`.
 
 ### Setup
 
