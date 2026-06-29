@@ -25,6 +25,7 @@ import { SavedModule } from "./modules/saved/saved.module";
 import { PricingModule } from "./modules/pricing/pricing.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
 import { AuditModule } from "./modules/audit/audit.module";
+import { UploadModule } from "./modules/upload/upload.module";
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { AuditModule } from "./modules/audit/audit.module";
     PricingModule,
     PaymentsModule,
     AuditModule,
+    UploadModule,
   ],
   providers: [
     {

@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Share2 } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
+import { CompanyLogo } from "@/components/company/company-logo"
 
 const TYPE_MAP: Record<string, string> = {
   FULL_TIME: "Full-time", PART_TIME: "Part-time", REMOTE: "Remote",
@@ -112,7 +113,6 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
   const location = company.ward
     ? `${company.ward.name}, ${company.ward.district?.name || "Phú Quốc"}`
     : company.addressDetail || "Phú Quốc"
-  const initials = company.name.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase()
   const jobCount = company._count?.jobs || mappedJobs.length
 
   const tabs = [
@@ -138,9 +138,12 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
         <div className="max-w-7xl mx-auto px-4 md:px-8 -mt-12 relative z-10">
           <div className="fade-up stagger-1 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
             <div className="flex items-end gap-4">
-              <div className="w-20 h-20 md:w-24 md:h-24 bg-white dark:bg-[#0f2436] rounded-2xl flex items-center justify-center shadow-xl border-2 border-white dark:border-[#1e3a4f] flex-shrink-0">
-                <span className="text-2xl font-black text-[#0E7490]">{initials}</span>
-              </div>
+              <CompanyLogo
+                name={company.name}
+                logo={company.logo}
+                className="w-20 h-20 md:w-24 md:h-24 rounded-2xl shadow-xl border-2 border-white dark:border-[#1e3a4f] flex-shrink-0"
+                textClassName="text-2xl"
+              />
               <div className="pb-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl md:text-2xl font-bold text-[#001e30] dark:text-white">{company.name}</h1>

@@ -34,13 +34,13 @@ pnpm-debug.log*
 .pm2/
 dump.pm2
 
-# Prisma migrations (gen từ schema)
-backend/prisma/migrations/
-
 # Backup data
 backup/
+backups/
 backend/prisma/*.sql
 
+# Local uploaded files
+web/public/uploads/
 
 # IDE
 .vscode/

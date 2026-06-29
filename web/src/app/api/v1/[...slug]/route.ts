@@ -22,7 +22,7 @@ async function proxyRequest(request: NextRequest, slug: string[]) {
     };
 
     if (["POST", "PUT", "PATCH"].includes(request.method)) {
-      fetchOptions.body = await request.text();
+      fetchOptions.body = await request.arrayBuffer();
     }
 
     const response = await fetch(backendUrl, fetchOptions);
