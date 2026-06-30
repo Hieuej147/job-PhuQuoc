@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Res, Header, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Res, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ResumesService } from './resumes.service';
@@ -6,7 +6,6 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { CreateResumeDto, UpdateResumeDto, CreateTemplateDto, UpdateTemplateDto } from './dto/resume.dto';
-import { RenderTemplateDto } from './dto/render-template.dto';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 
 @ApiTags('Resumes')
@@ -94,30 +93,9 @@ export class ResumesController {
   @ApiResponse({ status: 403, description: 'Không phải owner' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async findOne(@Param('id') id: string, @CurrentUser() user: UserSession) {
-    const resume = await this.resumesService.findById(id, user.user.id);
+    const role = Array.isArray(user.user.role) ? user.user.role[0] : (user.user.role as string | undefined);
+    const resume = await this.resumesService.findById(id, user.user.id, role);
     return { data: resume };
-  }
-
-  @Get(':id/render')
-  @Roles('CANDIDATE', 'EMPLOYER', 'ADMIN')
-  @ApiBearerAuth('better-auth.session_token')
-  @ApiOperation({ summary: 'Render CV', description: 'Render CV thành HTML hoàn chỉnh.' })
-  @ApiParam({ name: 'id', description: 'ID của resume' })
-  @ApiQuery({ name: 'mode', required: false, enum: ['view', 'edit'], description: 'Chế độ render' })
-  @ApiResponse({ status: 200, description: 'HTML render' })
-  @ApiResponse({ status: 403, description: 'Không phải owner' })
-  async render(@Param('id') id: string, @CurrentUser() user: UserSession, @Query('mode') mode?: string) {
-    const result = await this.resumesService.render(id, user.user.id, (mode as 'view' | 'edit') || 'view');
-    return { data: result };
-  }
-
-  @Post('render-template')
-  @Public()
-  @ApiOperation({ summary: 'Render template với data', description: 'Render template với data mẫu để preview.' })
-  @ApiResponse({ status: 200, description: 'HTML render' })
-  async renderTemplate(@Body() body: RenderTemplateDto) {
-    const result = await this.resumesService.renderTemplate(body.templateId, body.data, (body.mode as 'view' | 'edit') || 'view');
-    return { data: result };
   }
 
   @Get(':id/pdf')
@@ -129,7 +107,8 @@ export class ResumesController {
   @ApiResponse({ status: 403, description: 'Không phải owner' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async getPdf(@Param('id') id: string, @CurrentUser() user: UserSession, @Res() res: Response) {
-    const pdf = await this.resumesService.generatePdf(id, user.user.id);
+    const role = Array.isArray(user.user.role) ? user.user.role[0] : (user.user.role as string | undefined);
+    const pdf = await this.resumesService.generatePdf(id, user.user.id, role);
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="resume-${id}.pdf"`,
@@ -161,6 +140,7 @@ export class ResumesController {
   }
 
   @Delete(':id')
+  @Roles('CANDIDATE')
   @ApiBearerAuth('better-auth.session_token')
   @ApiOperation({ summary: 'Xóa CV', description: 'Chỉ owner mới được xóa.' })
   @ApiParam({ name: 'id', description: 'ID của resume' })
