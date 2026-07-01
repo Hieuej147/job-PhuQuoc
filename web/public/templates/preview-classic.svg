@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Classic CV preview">
+  <rect width="480" height="300" fill="#f7f0e8"/>
+  <rect x="82" y="18" width="316" height="264" rx="6" fill="#fffdf8" stroke="#d6c4ac"/>
+  <rect x="120" y="42" width="176" height="16" rx="2" fill="#78350f"/>
+  <rect x="120" y="70" width="236" height="7" rx="2" fill="#a16207"/>
+  <line x1="120" y1="94" x2="360" y2="94" stroke="#d6c4ac" stroke-width="2"/>
+  <rect x="120" y="120" width="96" height="10" rx="2" fill="#78350f"/>
+  <rect x="120" y="144" width="106" height="7" rx="2" fill="#78716c"/>
+  <rect x="120" y="160" width="88" height="7" rx="2" fill="#a8a29e"/>
+  <rect x="250" y="120" width="92" height="10" rx="2" fill="#78350f"/>
+  <rect x="250" y="144" width="92" height="7" rx="2" fill="#78716c"/>
+  <rect x="250" y="160" width="76" height="7" rx="2" fill="#a8a29e"/>
+  <rect x="120" y="204" width="122" height="10" rx="2" fill="#78350f"/>
+  <rect x="120" y="228" width="230" height="7" rx="2" fill="#78716c"/>
+</svg>

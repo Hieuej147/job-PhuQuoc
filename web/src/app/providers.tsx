@@ -3,6 +3,7 @@
 import { CopilotKitProvider } from "@copilotkit/react-core/v2";
 //@ts-ignore
 import "@copilotkit/react-core/v2/styles.css";
+import { usePathname } from "next/navigation";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -16,19 +17,32 @@ export function Providers({
   children: React.ReactNode;
   initialUser?: AuthUser | null;
 }) {
+  const pathname = usePathname();
+  const isPrintRoute =
+    /^\/resumes\/[^/]+\/print$/.test(pathname || "") ||
+    /^\/applications\/[^/]+\/resume\/print$/.test(pathname || "");
+
+  const content = (
+    <>
+      {children}
+      <Toaster richColors position="top-right" />
+    </>
+  );
+
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <TooltipProvider>
         <AuthProvider initialUser={initialUser}>
-          <CopilotKitProvider
-            runtimeUrl="/api/copilotkit"
-            credentials="include"
-            publicLicenseKey={process.env.NEXT_PUBLIC_COPILOTKIT_LICENSE_KEY}
-            showDevConsole={true}
-          >
-            {children}
-            <Toaster richColors position="top-right" />
-          </CopilotKitProvider>
+          {isPrintRoute ? content : (
+            <CopilotKitProvider
+              runtimeUrl="/api/copilotkit"
+              credentials="include"
+              publicLicenseKey={process.env.NEXT_PUBLIC_COPILOTKIT_LICENSE_KEY}
+              showDevConsole={true}
+            >
+              {content}
+            </CopilotKitProvider>
+          )}
         </AuthProvider>
       </TooltipProvider>
     </ThemeProvider>

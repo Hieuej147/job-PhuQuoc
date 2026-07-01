@@ -38,8 +38,7 @@ describe('ApplicationsService', () => {
       findById: vi.fn(),
       findByOwnerId: vi.fn(),
     };
-    const resumesServiceMock = {};
-    service = new ApplicationsService(prismaMock as any, inngestMock, auditServiceMock, jobContractMock, companyContractMock, resumesServiceMock as any);
+    service = new ApplicationsService(prismaMock as any, inngestMock, auditServiceMock, jobContractMock, companyContractMock);
   });
 
   it('should be defined', () => {

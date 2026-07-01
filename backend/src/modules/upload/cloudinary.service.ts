@@ -29,9 +29,47 @@ export class CloudinaryService {
     });
   }
 
+  async uploadFile(file: Express.Multer.File, options: UploadApiOptions): Promise<UploadApiResponse> {
+    this.ensureConfigured();
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        options,
+        (error, result) => {
+          if (error) return reject(new BadRequestException(`Upload thất bại: ${error.message}`));
+          if (!result) return reject(new BadRequestException('Cloudinary không trả về kết quả upload'));
+          resolve(result);
+        },
+      );
+
+      streamifier.createReadStream(file.buffer).pipe(uploadStream);
+    });
+  }
+
   async deleteFile(publicId: string) {
     this.ensureConfigured();
     return cloudinary.uploader.destroy(publicId);
+  }
+
+  createPrivateDownloadUrlFromDeliveryUrl(deliveryUrl: string) {
+    this.ensureConfigured();
+
+    const parsed = new URL(deliveryUrl);
+    const marker = '/image/upload/';
+    const markerIndex = parsed.pathname.indexOf(marker);
+
+    if (markerIndex === -1) {
+      throw new BadRequestException('Cloudinary delivery URL không phải image upload URL');
+    }
+
+    const pathAfterUpload = parsed.pathname.slice(markerIndex + marker.length);
+    const withoutVersion = pathAfterUpload.replace(/^v\d+\//, '');
+    const publicId = withoutVersion.replace(/\.pdf$/i, '');
+
+    return cloudinary.utils.private_download_url(publicId, 'pdf', {
+      resource_type: 'image',
+      type: 'upload',
+    });
   }
 
   private ensureConfigured() {

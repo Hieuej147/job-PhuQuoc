@@ -7,7 +7,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Trash2, Star, Download } from "lucide-react";
 import { toast } from "sonner";
-import { TEMPLATE_MAP } from "@/template";
+import { ResumePrintDocument } from "@/components/resume/resume-print-document";
 
 interface ResumeData {
   id: string;
@@ -36,7 +36,6 @@ export default function ResumeDetailPage() {
   const id = params.id as string;
   const [resume, setResume] = useState<ResumeData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -89,31 +88,11 @@ export default function ResumeDetailPage() {
   };
 
   const handleExportPdf = async () => {
-    setExporting(true);
-    try {
-      const response = await fetch(`/api/v1/resumes/${id}/pdf`, {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to export PDF");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `cv-${resume?.title || id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Đã tải PDF");
-    } catch {
-      toast.error("Không thể tạo PDF");
-    } finally {
-      setExporting(false);
-    }
+    window.open(`/resumes/${id}/print?print=1`, "_blank", "noopener,noreferrer");
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
   if (!resume) return <div className="p-6"><p>Không tìm thấy hồ sơ</p></div>;
-
-  const TemplateComponent = TEMPLATE_MAP[resume.template?.id as keyof typeof TEMPLATE_MAP];
 
   const userProps = {
     name: resume.name || resume.user?.name || "Họ và Tên",
@@ -154,8 +133,8 @@ export default function ResumeDetailPage() {
           <Button variant="outline" size="sm" onClick={() => router.push(`/candidate/resumes/${id}/edit`)}>
             <Edit className="size-4 mr-1" /> Sửa
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={exporting}>
-            <Download className="size-4 mr-1" /> {exporting ? "Đang xuất..." : "Export PDF"}
+          <Button variant="outline" size="sm" onClick={handleExportPdf}>
+            <Download className="size-4 mr-1" /> Xem/In PDF
           </Button>
           <Button variant="destructive" size="sm" onClick={handleDelete}>
             <Trash2 className="size-4 mr-1" /> Xóa
@@ -168,16 +147,9 @@ export default function ResumeDetailPage() {
         {resume.languages && <span> • {resume.languages}</span>}
       </div>
 
-      {/* CV Preview */}
-      {TemplateComponent ? (
-        <div className="border rounded-xl overflow-hidden bg-white shadow-sm">
-          <TemplateComponent user={userProps} resume={resumeProps} readOnly={true} />
-        </div>
-      ) : (
-        <div className="bg-muted rounded-xl p-8 text-center">
-          <p className="text-muted-foreground">Không tìm thấy mẫu CV thiết kế phù hợp.</p>
-        </div>
-      )}
+      <div className="overflow-auto rounded-xl border bg-slate-100 py-8 shadow-inner">
+        <ResumePrintDocument user={userProps} resume={resumeProps} templateId={resume.template?.id} />
+      </div>
     </div>
   );
 }

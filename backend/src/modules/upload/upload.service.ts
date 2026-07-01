@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CloudinaryService } from './cloudinary.service';
 
 const COMPANY_LOGO_FOLDER = 'job-phuquoc/company-logos';
+const CANDIDATE_CV_FOLDER = 'job-phuquoc/candidate-cvs';
 
 @Injectable()
 export class UploadService {
@@ -54,6 +55,28 @@ export class UploadService {
       data: {
         companyId: company.id,
         logo: result.secure_url,
+      },
+    };
+  }
+
+  async uploadCandidateCv(userId: string, file: Express.Multer.File) {
+    const result = await this.cloudinaryService.uploadFile(file, {
+      folder: `${CANDIDATE_CV_FOLDER}/${userId}`,
+      resource_type: 'raw',
+      allowed_formats: ['pdf'],
+      use_filename: true,
+      unique_filename: true,
+    });
+
+    if (!result.secure_url || !result.public_id) {
+      throw new BadRequestException('Cloudinary không trả về URL CV hợp lệ');
+    }
+
+    return {
+      message: 'Upload CV thành công',
+      data: {
+        cvUrl: result.secure_url,
+        publicId: result.public_id,
       },
     };
   }

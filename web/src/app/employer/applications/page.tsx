@@ -4,7 +4,7 @@
  * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
  * - GET `/api/v1/applications/employer`: Lấy danh sách hồ sơ ứng tuyển từ bảng `Application` liên kết với tài khoản nhà tuyển dụng hiện tại.
  * - PATCH `/api/v1/applications/:id/status`: Gửi API xuống backend để cập nhật trạng thái hồ sơ (Chờ duyệt, Chấp nhận, Từ chối) vào DB.
- * - GET `/api/v1/applications/:id/resume-pdf`: Employer xem CV ứng viên (hỗ trợ cả resumeId và cvUrl).
+ * - GET `/api/v1/applications/:id/resume`: Employer xem CV ứng viên theo quyền sở hữu application.
  */
 "use client";
 
@@ -12,12 +12,19 @@ import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ResumePrintDocument } from "@/components/resume/resume-print-document";
+import { toast } from "sonner";
 import {
   Users,
-  Check,
-  X,
   Eye,
   FileText,
   Mail,
@@ -37,10 +44,18 @@ interface ResumeInfo {
   name?: string | null;
   email?: string | null;
   phone?: string | null;
+  avatar?: string | null;
   address?: string | null;
+  summary?: string | null;
+  degree?: string | null;
+  languages?: string | null;
+  socialLinks?: any;
+  projects?: any;
   experience?: any;
   education?: any;
   skills?: string | null;
+  template?: { id: string; name: string } | null;
+  user?: { name: string; email: string; phone?: string | null; image?: string | null } | null;
 }
 
 interface Application {
@@ -55,6 +70,10 @@ interface Application {
   job: { id: string; title: string; company?: { name: string } };
   resume?: ResumeInfo | null;
 }
+
+type CvViewerPayload =
+  | { type: "uploaded"; url: string }
+  | { type: "resume"; resume: ResumeInfo };
 
 const statusMap: Record<string, { label: string; class: string; dot: string }> = {
   PENDING: { label: "Chờ xem", class: "bg-amber-500/10 text-amber-500 border-amber-500/20", dot: "bg-amber-500" },
@@ -84,6 +103,11 @@ export default function EmployerApplicationsPage() {
   const [selectedJobId, setSelectedJobId] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("NEWEST");
+  const [cvModalOpen, setCvModalOpen] = useState(false);
+  const [cvPayload, setCvPayload] = useState<CvViewerPayload | null>(null);
+  const [cvApplicationId, setCvApplicationId] = useState<string | null>(null);
+  const [cvLoading, setCvLoading] = useState(false);
+  const [cvError, setCvError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/v1/applications/employer?limit=100", { credentials: "include" })
@@ -123,11 +147,42 @@ export default function EmployerApplicationsPage() {
     }
   };
 
-  const handleViewCV = (app: Application) => {
-    if (app.cvUrl) {
-      window.open(app.cvUrl, "_blank");
-    } else if (app.resumeId) {
-      window.open(`/resumes/${app.resumeId}/print?print=false&bypass=puppeteer_bypass_key`, "_blank");
+  const handleViewCV = async (app: Application) => {
+    setCvModalOpen(true);
+    setCvPayload(null);
+    setCvApplicationId(app.id);
+    setCvError(null);
+    setCvLoading(true);
+
+    try {
+      const response = await fetch(`/api/v1/applications/${app.id}/resume`, {
+        credentials: "include",
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body?.message || "Không thể tải CV ứng viên");
+      }
+
+      const payload = body.data?.data ?? body.data ?? body;
+      setCvPayload(payload);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không thể tải CV ứng viên";
+      setCvError(message);
+      toast.error(message);
+    } finally {
+      setCvLoading(false);
+    }
+  };
+
+  const handlePrintCv = () => {
+    window.print();
+  };
+
+  const handleOpenCvNewTab = () => {
+    if (cvPayload?.type === "uploaded" && cvApplicationId) {
+      window.open(`/api/v1/applications/${cvApplicationId}/resume-file`, "_blank", "noopener,noreferrer");
+    } else if (cvPayload?.type === "resume" && cvApplicationId) {
+      window.open(`/applications/${cvApplicationId}/resume/print`, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -215,6 +270,30 @@ export default function EmployerApplicationsPage() {
       .toUpperCase();
   };
 
+  const selectedResume = cvPayload?.type === "resume" ? cvPayload.resume : null;
+  const selectedResumeUser = selectedResume
+    ? {
+        name: selectedResume.name || selectedResume.user?.name || "Họ và Tên",
+        email: selectedResume.email || selectedResume.user?.email || "",
+        phone: selectedResume.phone || selectedResume.user?.phone || "",
+        avatar: selectedResume.avatar || selectedResume.user?.image || "",
+      }
+    : null;
+  const selectedResumeData = selectedResume
+    ? {
+        title: selectedResume.title || "CV ứng viên",
+        address: selectedResume.address || "",
+        summary: selectedResume.summary || "",
+        degree: selectedResume.degree || "",
+        languages: selectedResume.languages || "",
+        skills: selectedResume.skills || "",
+        socialLinks: selectedResume.socialLinks || [],
+        education: selectedResume.education || [],
+        experience: selectedResume.experience || [],
+        projects: selectedResume.projects || [],
+      }
+    : null;
+
   const colors = [
     "from-cyan-600 to-teal-500",
     "from-amber-500 to-orange-600",
@@ -256,24 +335,20 @@ export default function EmployerApplicationsPage() {
         </Button>
       </div>
 
-      {/* 4 Summary Cards */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1 */}
         <div className="bg-[#0b2434] border border-slate-700/60 rounded-xl p-5 shadow-md flex flex-col justify-between min-h-[100px] border-l-4 border-l-blue-500">
           <p className="text-2xl font-black text-slate-100">{counts.total}</p>
           <p className="text-xs text-slate-400 font-semibold mt-1">Tổng hồ sơ</p>
         </div>
-        {/* Card 2 */}
         <div className="bg-[#0b2434] border border-slate-700/60 rounded-xl p-5 shadow-md flex flex-col justify-between min-h-[100px] border-l-4 border-l-amber-500">
           <p className="text-2xl font-black text-slate-100">{counts.pending}</p>
           <p className="text-xs text-slate-400 font-semibold mt-1">Chờ xem xét</p>
         </div>
-        {/* Card 3 */}
         <div className="bg-[#0b2434] border border-slate-700/60 rounded-xl p-5 shadow-md flex flex-col justify-between min-h-[100px] border-l-4 border-l-emerald-500">
           <p className="text-2xl font-black text-slate-100">{counts.accepted}</p>
           <p className="text-xs text-slate-400 font-semibold mt-1">Đã chấp nhận</p>
         </div>
-        {/* Card 4 */}
         <div className="bg-[#0b2434] border border-slate-700/60 rounded-xl p-5 shadow-md flex flex-col justify-between min-h-[100px] border-l-4 border-l-rose-500">
           <p className="text-2xl font-black text-slate-100">{counts.rejected}</p>
           <p className="text-xs text-slate-400 font-semibold mt-1">Không phù hợp</p>
@@ -380,7 +455,7 @@ export default function EmployerApplicationsPage() {
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <span>Chấp nhận</span>
-            <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === "ACCEPTED" ? "bg-emerald-500/20 text-emerald-450" : "bg-[#0d2334] text-slate-400"}`}>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === "ACCEPTED" ? "bg-emerald-500/20 text-emerald-400" : "bg-[#0d2334] text-slate-400"}`}>
               {counts.accepted}
             </span>
           </button>
@@ -389,13 +464,13 @@ export default function EmployerApplicationsPage() {
             onClick={() => setStatusFilter("REJECTED")}
             className={`px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all ${
               statusFilter === "REJECTED"
-                ? "bg-rose-500/20 text-rose-450 border border-rose-500/30 scale-105 font-bold"
+                ? "bg-rose-500/20 text-rose-400 border border-rose-500/30 scale-105 font-bold"
                 : "bg-[#071622] text-slate-300 hover:bg-[#0f2a3f] border border-slate-800"
             }`}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
             <span>Từ chối</span>
-            <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === "REJECTED" ? "bg-rose-500/20 text-rose-450" : "bg-[#0d2334] text-slate-400"}`}>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === "REJECTED" ? "bg-rose-500/20 text-rose-400" : "bg-[#0d2334] text-slate-400"}`}>
               {counts.rejected}
             </span>
           </button>
@@ -565,36 +640,40 @@ export default function EmployerApplicationsPage() {
                       <span className="text-xs text-slate-500 italic">Không đính kèm CV</span>
                     )}
 
-                    {/* Manage actions (Duyệt / Từ chối / Đang xem xét) */}
+                    {/* Manage actions: trạng thái terminal không còn action để tránh spam request. */}
                     <div className="flex flex-wrap items-center gap-2">
-                      {app.status === "PENDING" && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStatus(app.id, "REVIEWING")}
-                          className="bg-[#0e2738] text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 text-xs px-4 py-2 rounded-lg border border-blue-500/20 font-semibold"
-                        >
-                          Đang xem xét
-                        </Button>
-                      )}
+                      {app.status === "ACCEPTED" || app.status === "REJECTED" ? (
+                        <span className={`rounded-lg border px-4 py-2 text-xs font-semibold ${statusConfig.class}`}>
+                          Đã kết thúc: {statusConfig.label}
+                        </span>
+                      ) : (
+                        <>
+                          {app.status === "PENDING" && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleStatus(app.id, "REVIEWING")}
+                              className="bg-[#0e2738] text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 text-xs px-4 py-2 rounded-lg border border-blue-500/20 font-semibold"
+                            >
+                              Đang xem xét
+                            </Button>
+                          )}
 
-                      {app.status !== "ACCEPTED" && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStatus(app.id, "ACCEPTED")}
-                          className="bg-[#0a3625] text-[#22c55e] hover:bg-[#0e4b34] text-xs px-4 py-2 rounded-lg border border-[#22c55e]/20 font-semibold flex items-center gap-1"
-                        >
-                          <span>✓ Chấp nhận</span>
-                        </Button>
-                      )}
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatus(app.id, "ACCEPTED")}
+                            className="bg-[#0a3625] text-[#22c55e] hover:bg-[#0e4b34] text-xs px-4 py-2 rounded-lg border border-[#22c55e]/20 font-semibold flex items-center gap-1"
+                          >
+                            <span>✓ Chấp nhận</span>
+                          </Button>
 
-                      {app.status !== "REJECTED" && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStatus(app.id, "REJECTED")}
-                          className="bg-[#3b1219] text-[#ef4444] hover:bg-[#521922] text-xs px-4 py-2 rounded-lg border border-[#ef4444]/20 font-semibold flex items-center gap-1"
-                        >
-                          <span>✗ Từ chối</span>
-                        </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatus(app.id, "REJECTED")}
+                            className="bg-[#3b1219] text-[#ef4444] hover:bg-[#521922] text-xs px-4 py-2 rounded-lg border border-[#ef4444]/20 font-semibold flex items-center gap-1"
+                          >
+                            <span>✗ Từ chối</span>
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -604,6 +683,101 @@ export default function EmployerApplicationsPage() {
           })}
         </div>
       )}
+
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          .employer-cv-print-area,
+          .employer-cv-print-area * {
+            visibility: visible !important;
+          }
+          .employer-cv-print-area {
+            position: absolute !important;
+            inset: 0 auto auto 0 !important;
+            width: 210mm !important;
+            background: #ffffff !important;
+          }
+          .employer-cv-print-hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      <Dialog open={cvModalOpen} onOpenChange={setCvModalOpen}>
+        <DialogContent className="max-h-[92vh] overflow-hidden bg-[#071622] p-0 text-slate-100 sm:max-w-6xl">
+          <DialogHeader className="employer-cv-print-hidden border-b border-slate-800 px-6 py-4">
+            <div className="flex flex-col gap-3 pr-10 md:flex-row md:items-center md:justify-between">
+              <div>
+                <DialogTitle>CV ứng viên</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Xem CV ngay trong dashboard. CV tạo online sẽ được render dạng giấy A4.
+                </DialogDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {cvPayload && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleOpenCvNewTab}
+                      className="border-slate-700 bg-[#0d2334] text-slate-100 hover:bg-[#12344d]"
+                    >
+                      Mở tab mới
+                    </Button>
+                    {cvPayload.type === "resume" && (
+                      <Button
+                        size="sm"
+                        onClick={handlePrintCv}
+                        className="bg-[#106b82] text-white hover:bg-[#147e9a]"
+                      >
+                        In / Lưu PDF
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="max-h-[calc(92vh-88px)] overflow-auto bg-slate-200 p-6">
+            {cvLoading ? (
+              <div className="flex h-[60vh] items-center justify-center">
+                <Spinner size="lg" className="text-[#005a71]" />
+              </div>
+            ) : cvError ? (
+              <div className="flex h-[60vh] items-center justify-center">
+                <p className="rounded-lg bg-white px-4 py-3 text-sm text-red-600 shadow">{cvError}</p>
+              </div>
+            ) : cvPayload?.type === "uploaded" ? (
+              cvApplicationId ? (
+                <iframe
+                  src={`/api/v1/applications/${cvApplicationId}/resume-file`}
+                  title="CV PDF ứng viên"
+                  className="mx-auto h-[75vh] w-full max-w-5xl rounded-lg border border-slate-300 bg-white"
+                />
+              ) : (
+                <div className="flex h-[60vh] items-center justify-center">
+                  <p className="rounded-lg bg-white px-4 py-3 text-sm text-slate-600 shadow">Không xác định được hồ sơ ứng tuyển.</p>
+                </div>
+              )
+            ) : selectedResume && selectedResumeUser && selectedResumeData ? (
+              <div className="employer-cv-print-area">
+                <ResumePrintDocument
+                  user={selectedResumeUser}
+                  resume={selectedResumeData}
+                  templateId={selectedResume.template?.id}
+                />
+              </div>
+            ) : (
+              <div className="flex h-[60vh] items-center justify-center">
+                <p className="rounded-lg bg-white px-4 py-3 text-sm text-slate-600 shadow">Không có CV để hiển thị.</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -2,12 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { TEMPLATE_MAP } from "@/template";
+import { ResumePrintDocument } from "@/components/resume/resume-print-document";
 import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 
 interface ResumeData {
   id: string;
   title: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  avatar?: string | null;
   address: string | null;
   summary: string | null;
   skills: string | null;
@@ -28,13 +33,7 @@ export default function PublicPrintResumePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-    const bypass = searchParams?.get("bypass");
-    const fetchUrl = bypass
-      ? `/api/v1/resumes/${id}?bypass=${bypass}`
-      : `/api/v1/resumes/${id}`;
-
-    fetch(fetchUrl, { credentials: "include" })
+    fetch(`/api/v1/resumes/${id}`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
         const resumeData = d.data?.data ?? d.data ?? d;
@@ -43,6 +42,14 @@ export default function PublicPrintResumePage() {
       .catch(() => { })
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (loading || !resume) return;
+    const shouldPrint = new URLSearchParams(window.location.search).get("print") === "1";
+    if (!shouldPrint) return;
+    const timer = window.setTimeout(() => window.print(), 300);
+    return () => window.clearTimeout(timer);
+  }, [loading, resume]);
 
   if (loading) {
     return (
@@ -56,15 +63,6 @@ export default function PublicPrintResumePage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <p>Không tìm thấy hồ sơ</p>
-      </div>
-    );
-  }
-
-  const TemplateComponent = TEMPLATE_MAP[resume.template.id as keyof typeof TEMPLATE_MAP];
-  if (!TemplateComponent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <p>Không tìm thấy mẫu CV</p>
       </div>
     );
   }
@@ -90,7 +88,7 @@ export default function PublicPrintResumePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white readonly-cv-view">
+    <div className="min-h-screen bg-slate-200 readonly-cv-view">
       <style>{`
         .readonly-cv-view input, 
         .readonly-cv-view textarea {
@@ -137,7 +135,7 @@ export default function PublicPrintResumePage() {
             display: none !important;
           }
           .readonly-cv-view {
-            padding: 10px !important;
+            padding: 0 !important;
             margin: 0 !important;
             background: #ffffff !important;
             min-height: 0 !important;
@@ -160,9 +158,38 @@ export default function PublicPrintResumePage() {
             min-height: 0 !important;
             height: auto !important;
           }
+          .print-toolbar {
+            display: none !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          .resume-print-page,
+          .resume-print-page * {
+            visibility: visible !important;
+          }
+          .resume-print-page {
+            position: absolute !important;
+            inset: 0 auto auto 0 !important;
+            width: 210mm !important;
+            background: #ffffff !important;
+          }
+          .resume-print-page article {
+            margin: 0 !important;
+            box-shadow: none !important;
+          }
         }
       `}</style>
-      <TemplateComponent user={user} resume={resumeData} readOnly={true} />
+      <div className="print-toolbar sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-3 shadow-sm">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">{resume.title || "CV"}</p>
+          <p className="text-xs text-slate-500">Dùng Ctrl+P hoặc nút In/Lưu PDF để lưu file.</p>
+        </div>
+        <Button onClick={() => window.print()}>In / Lưu PDF</Button>
+      </div>
+      <div className="resume-print-page py-8 print:py-0">
+        <ResumePrintDocument user={user} resume={resumeData} templateId={resume.template?.id} />
+      </div>
     </div>
   );
 }

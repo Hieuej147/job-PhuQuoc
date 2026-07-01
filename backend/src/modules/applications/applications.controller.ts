@@ -6,13 +6,13 @@
  * - FE gọi `GET /api/v1/applications/employer` -> Trả về dữ liệu thật từ DB cho Nhà tuyển dụng.
  * - FE gọi `PATCH /api/v1/applications/:id/status` -> Lưu trạng thái mới (Duyệt/Từ chối) thẳng vào Database.
  */
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Res } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Patch, Delete, Param, Query, Body, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ApplicationsService } from './applications.service';
+import { CloudinaryService } from '../upload/cloudinary.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { Public } from '../../auth/decorators/public.decorator';
 import { CreateApplicationDto, UpdateApplicationStatusDto } from './dto/application.dto';
 import { ApplicationQueryDto } from './dto/application-query.dto';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
@@ -20,7 +20,10 @@ import type { UserSession } from '@thallesp/nestjs-better-auth';
 @ApiTags('Applications')
 @Controller('applications')
 export class ApplicationsController {
-  constructor(private readonly applicationsService: ApplicationsService) {}
+  constructor(
+    private readonly applicationsService: ApplicationsService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @Post()
   @Roles('CANDIDATE')
@@ -72,25 +75,47 @@ export class ApplicationsController {
     return this.applicationsService.findByJob(jobId, user.user.id, query);
   }
 
-  @Get(':id/resume-pdf')
-  @Public()
-  @ApiOperation({ summary: 'Xem CV ứng viên (PDF)', description: 'Employer xem CV của ứng viên theo application ID. Hỗ trợ cả CV đã lưu (resumeId) và file PDF đã upload (cvUrl).' })
+  @Get(':id/resume')
+  @Roles('EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Xem dữ liệu CV ứng viên', description: 'Employer lấy CV theo application ID. Backend kiểm tra application thuộc job của công ty employer hiện tại.' })
   @ApiParam({ name: 'id', description: 'ID của application' })
-  @ApiResponse({ status: 200, description: 'PDF file hoặc redirect URL' })
+  @ApiResponse({ status: 200, description: 'Dữ liệu CV đã lưu hoặc URL file PDF upload' })
+  @ApiResponse({ status: 403, description: 'Không phải owner của công ty' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy application hoặc CV' })
-  async getResumePdf(@Param('id') id: string, @Res() res: Response) {
-    const result = await this.applicationsService.getResumePdfForEmployer(id);
-    // cvUrl case: trả về redirect tới URL public
-    if ('url' in result) {
-      return res.redirect(result.url);
+  getResume(@Param('id') id: string, @CurrentUser() user: UserSession) {
+    return this.applicationsService.getResumeForEmployer(id, user.user.id);
+  }
+
+  @Get(':id/resume-file')
+  @Roles('EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Xem file CV PDF upload', description: 'Employer stream file PDF ứng viên đã upload theo application ID. Backend kiểm tra ownership và chỉ proxy URL Cloudinary hợp lệ của hệ thống.' })
+  @ApiParam({ name: 'id', description: 'ID của application' })
+  @ApiResponse({ status: 200, description: 'PDF inline' })
+  @ApiResponse({ status: 403, description: 'Không phải owner của công ty' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy application hoặc CV upload' })
+  async getResumeFile(@Param('id') id: string, @CurrentUser() user: UserSession, @Res() res: Response) {
+    const { url } = await this.applicationsService.getUploadedCvUrlForEmployer(id, user.user.id);
+    let fileResponse = await fetch(url);
+
+    if (!fileResponse.ok && url.includes('/image/upload/')) {
+      const signedUrl = this.cloudinaryService.createPrivateDownloadUrlFromDeliveryUrl(url);
+      fileResponse = await fetch(signedUrl);
     }
-    // resumeId case: stream PDF buffer
+
+    if (!fileResponse.ok) {
+      throw new BadRequestException(`Không thể tải file CV từ storage (${fileResponse.status})`);
+    }
+
+    const buffer = Buffer.from(await fileResponse.arrayBuffer());
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `inline; filename="cv-${id}.pdf"`,
-      'Content-Length': result.length,
+      'Content-Length': buffer.length,
+      'Cache-Control': 'private, max-age=300',
     });
-    res.send(result);
+    res.send(buffer);
   }
 
   @Patch(':id/status')

@@ -24,6 +24,14 @@ const FALLBACK_TEMPLATES: ResumeTemplate[] = Object.entries(TEMPLATE_DISPLAY).ma
   }),
 );
 
+const TEMPLATE_PREVIEW_URLS: Record<string, string> = {
+  "tpl-modern-01": "/templates/preview-modern.svg",
+  "tpl-classic-02": "/templates/preview-classic.svg",
+  "tpl-creative-04": "/templates/preview-creative.svg",
+  "tpl-dev-05": "/templates/preview-dev.svg",
+  "tpl-minimal-03": "/templates/preview-minimal.svg",
+};
+
 function getRenderableTemplates(list: ResumeTemplate[]) {
   return list.filter((template) => template.id in TEMPLATE_MAP);
 }
@@ -83,27 +91,29 @@ export default function TemplateGalleryPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map((template) => (
-            <Card
-              key={template.id}
-              className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group flex flex-col justify-between"
-              onClick={() => handleUseTemplate(template.id)}
-            >
-              {/* Visual Preview Card header */}
-              <div className="h-44 bg-slate-50 border-b flex items-center justify-center relative overflow-hidden">
-                {template.previewUrl ? (
-                  <img
-                    src={template.previewUrl}
-                    alt={template.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      // Fallback to icon if image fails to load
-                      (e.target as HTMLElement).style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <FileText className="size-16 text-slate-300 group-hover:scale-110 transition-transform duration-300" />
-                )}
+          {templates.map((template) => {
+            const previewUrl = TEMPLATE_PREVIEW_URLS[template.id] || template.previewUrl;
+
+            return (
+              <Card
+                key={template.id}
+                className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group flex flex-col justify-between"
+                onClick={() => handleUseTemplate(template.id)}
+              >
+                {/* Visual Preview Card header */}
+                <div className="h-44 bg-slate-50 border-b flex items-center justify-center relative overflow-hidden">
+                  {previewUrl ? (
+                    <img
+                      src={previewUrl}
+                      alt={template.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        e.currentTarget.src = "/templates/preview-fallback.svg";
+                      }}
+                    />
+                  ) : (
+                    <FileText className="size-16 text-slate-300 group-hover:scale-110 transition-transform duration-300" />
+                  )}
                 <div className="absolute top-3 right-3">
                   <Badge variant="secondary" className="text-xs">
                     <Globe className="size-3 mr-1" /> Trực quan
@@ -140,7 +150,8 @@ export default function TemplateGalleryPage() {
                 </Button>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

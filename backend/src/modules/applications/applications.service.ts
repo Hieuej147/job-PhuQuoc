@@ -4,7 +4,6 @@ import { InngestService } from '../../inngest/inngest.service';
 import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { JobContractService } from '../shared/contracts/job.contract';
 import { CompanyContractService } from '../shared/contracts/company.contract';
-import { ResumesService } from '../resumes/resumes.service';
 import { ApplicationStatus } from '@prisma/client';
 import { CreateApplicationDto, UpdateApplicationStatusDto } from './dto/application.dto';
 import { ApplicationQueryDto } from './dto/application-query.dto';
@@ -17,7 +16,6 @@ export class ApplicationsService {
     private readonly auditWriteContract: AuditWriteContractService,
     private readonly jobContract: JobContractService,
     private readonly companyContract: CompanyContractService,
-    private readonly resumesService: ResumesService,
   ) {}
 
   async apply(userId: string, data: CreateApplicationDto) {
@@ -25,6 +23,7 @@ export class ApplicationsService {
     const job = await this.jobContract.findById(data.jobId);
     if (!job) throw new NotFoundException('Job not found');
     if (job.status !== 'ACTIVE') throw new ConflictException('Job is not active');
+    if (data.cvUrl) this.assertAllowedUploadedCvUrl(data.cvUrl);
 
     const existing = await this.prisma.jobApplication.findUnique({ where: { userId_jobId: { userId, jobId: data.jobId } } });
     if (existing) throw new ConflictException('Already applied to this job');
@@ -115,25 +114,66 @@ export class ApplicationsService {
     return { data: { items, total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async getResumePdfForEmployer(applicationId: string, employerId?: string): Promise<Buffer | { url: string }> {
+  async getResumeForEmployer(applicationId: string, employerId: string) {
+    const app = await this.prisma.jobApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        job: { include: { company: true } },
+        resume: {
+          include: {
+            template: { select: { id: true, name: true, description: true, previewUrl: true, isPublic: true } },
+            user: { select: { id: true, name: true, email: true, phone: true, image: true } },
+          },
+        },
+      },
+    });
+
+    if (!app) throw new NotFoundException('Application not found');
+    if (app.job.company.ownerId !== employerId) throw new ForbiddenException('Not company owner');
+
+    if (app.cvUrl) {
+      this.assertAllowedUploadedCvUrl(app.cvUrl);
+      return { data: { type: 'uploaded', url: app.cvUrl } };
+    }
+
+    if (app.resume) {
+      return { data: { type: 'resume', resume: app.resume } };
+    }
+
+    throw new NotFoundException('No CV found for this application');
+  }
+
+  async getUploadedCvUrlForEmployer(applicationId: string, employerId: string) {
     const app = await this.prisma.jobApplication.findUnique({
       where: { id: applicationId },
       include: { job: { include: { company: true } } },
     });
+
     if (!app) throw new NotFoundException('Application not found');
-    if (employerId && app.job.company.ownerId !== employerId) throw new ForbiddenException('Not company owner');
+    if (app.job.company.ownerId !== employerId) throw new ForbiddenException('Not company owner');
+    if (!app.cvUrl) throw new NotFoundException('No uploaded CV found for this application');
 
-    // Nếu là file PDF upload → trả URL public
-    if (app.cvUrl) {
-      return { url: app.cvUrl };
+    this.assertAllowedUploadedCvUrl(app.cvUrl);
+    return { url: app.cvUrl };
+  }
+
+  private assertAllowedUploadedCvUrl(url: string) {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new BadRequestException('CV upload URL không hợp lệ');
     }
 
-    // Nếu là CV đã lưu → generate PDF (không kiểm tra owner)
-    if (app.resumeId) {
-      return this.resumesService.generatePdf(app.resumeId);
-    }
+    const isCloudinaryCandidateCv =
+      parsed.protocol === 'https:' &&
+      parsed.hostname === 'res.cloudinary.com' &&
+      (parsed.pathname.includes('/image/upload/') || parsed.pathname.includes('/raw/upload/')) &&
+      parsed.pathname.includes('/job-phuquoc/candidate-cvs/');
 
-    throw new NotFoundException('No CV found for this application');
+    if (!isCloudinaryCandidateCv) {
+      throw new BadRequestException('CV upload URL không thuộc storage hợp lệ của hệ thống');
+    }
   }
 
   async updateStatus(id: string, userId: string, status: UpdateApplicationStatusDto['status']) {

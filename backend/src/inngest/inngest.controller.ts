@@ -8,6 +8,7 @@ import { createNotificationFunctions } from "./functions/notification.functions"
 import { createWeeklySummaryFunction } from "./functions/weekly-summary.function";
 import { createJobExpiryFunctions } from "./functions/job-expiry.function";
 import { createUserFunctions } from "./functions/user.functions";
+import { createApplicationCleanupFunctions } from "./functions/application-cleanup.function";
 import type { Request, Response } from "express";
 
 @Controller("inngest")
@@ -28,6 +29,7 @@ export class InngestController implements OnModuleInit {
         ...createNotificationFunctions(this.prisma),
         ...createJobExpiryFunctions(this.prisma),
         ...createUserFunctions(this.prisma),
+        ...createApplicationCleanupFunctions(this.prisma),
         createWeeklySummaryFunction(this.prisma),
       ];
 

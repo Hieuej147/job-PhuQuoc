@@ -99,10 +99,10 @@ Employer xem CV bằng endpoint theo `applicationId`, backend kiểm tra applica
 
 ### Employer xem CV ứng viên
 
-1. FE gọi `GET /api/v1/applications/:id/resume` hoặc `/resume-pdf` có auth employer.
+1. FE gọi `GET /api/v1/applications/:id/resume` có auth employer để lấy payload CV.
 2. Backend kiểm tra `application.job.company.ownerId === employerId`.
-3. Nếu là upload PDF, backend stream file private.
-4. Nếu là resume đã lưu, backend render/export PDF sau khi đã check quyền.
+3. Nếu là upload PDF, FE dùng `GET /api/v1/applications/:id/resume-file`; backend proxy/stream PDF inline sau khi kiểm ownership.
+4. Nếu là resume đã lưu, FE render bằng A4 renderer và export bằng browser print; backend không render PDF trong phase hiện tại.
 
 ## 5. Phase triển khai đề xuất
 
@@ -139,3 +139,20 @@ Employer xem CV bằng endpoint theo `applicationId`, backend kiểm tra applica
 - Không giữ docs cũ mô tả `PROFILE_MASTER`, public PDF, hoặc bypass Puppeteer.
 - Chỉ giữ lại UI candidate applications/saved nếu build ổn.
 - Employer applications và CV review sẽ làm lại sau theo application ownership chuẩn.
+
+
+## 7. Trạng thái triển khai hiện tại 2026-07-01
+
+Phase hiện tại đã chọn hướng **FE render - BE trả dữ liệu**:
+
+- `GET /api/v1/resumes/:id/pdf` và backend Puppeteer PDF đã bị loại khỏi luồng chính.
+- Candidate export CV bằng route FE `/resumes/:id/print` với `ResumePrintDocument`.
+- Employer xem CV qua modal `/employer/applications`:
+  - CV tạo online: `GET /api/v1/applications/:id/resume` rồi FE render A4.
+  - CV upload PDF: `GET /api/v1/applications/:id/resume-file`, backend stream inline.
+- Candidate upload PDF ứng tuyển qua `POST /api/v1/upload/candidate-cv`; backend validate role, MIME PDF, size 10MB và lưu Cloudinary.
+- Application terminal cleanup chạy bằng Inngest:
+  - `REJECTED` xoá sau 14 ngày.
+  - `ACCEPTED` xoá sau 30 ngày.
+
+Ghi chú còn lại: hiện `JobApplication` mới lưu `cvUrl`, chưa lưu `cvPublicId`. Nếu muốn cleanup cả file Cloudinary khi application bị xoá, nên thêm `cvPublicId` vào schema ở phase sau.

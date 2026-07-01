@@ -1,6 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Res, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { Response } from 'express';
 import { ResumesService } from './resumes.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -96,25 +95,6 @@ export class ResumesController {
     const role = Array.isArray(user.user.role) ? user.user.role[0] : (user.user.role as string | undefined);
     const resume = await this.resumesService.findById(id, user.user.id, role);
     return { data: resume };
-  }
-
-  @Get(':id/pdf')
-  @Roles('CANDIDATE', 'EMPLOYER', 'ADMIN')
-  @ApiBearerAuth('better-auth.session_token')
-  @ApiOperation({ summary: 'Export CV PDF', description: 'Xuất CV dưới dạng PDF.' })
-  @ApiParam({ name: 'id', description: 'ID của resume' })
-  @ApiResponse({ status: 200, description: 'PDF file' })
-  @ApiResponse({ status: 403, description: 'Không phải owner' })
-  @ApiResponse({ status: 404, description: 'Không tìm thấy' })
-  async getPdf(@Param('id') id: string, @CurrentUser() user: UserSession, @Res() res: Response) {
-    const role = Array.isArray(user.user.role) ? user.user.role[0] : (user.user.role as string | undefined);
-    const pdf = await this.resumesService.generatePdf(id, user.user.id, role);
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="resume-${id}.pdf"`,
-      'Content-Length': pdf.length,
-    });
-    res.send(pdf);
   }
 
   @Post()

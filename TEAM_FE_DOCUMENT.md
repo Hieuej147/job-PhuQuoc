@@ -1,6 +1,6 @@
 # Phú Quốc Jobs — Tài liệu cho Team FE
 
-*Cập nhật: 2026-06-20*
+*Cập nhật: 2026-07-01*
 
 ---
 
@@ -63,7 +63,7 @@ graph TB
     subgraph DB["💾 Infrastructure"]
         PG[("PostgreSQL 16<br/>Port 5435<br/>22 tables")]
         RD[("Redis 7<br/>Port 6381<br/>Session + Cache")]
-        ING["Inngest<br/>─────────────────<br/>Event Bus<br/>10 async functions"]
+        ING["Inngest<br/>─────────────────<br/>Event Bus<br/>11 async functions"]
     end
 
     FE -->|"fetch + cookie"| V1
@@ -221,7 +221,7 @@ cp docker/.env.example web/.env
 - **`NEXT_PUBLIC_*`**: Các biến có prefix `NEXT_PUBLIC_` được expose ra browser.
 - **`BACKEND_URL`**: Dùng cho SSR calls từ Next.js server → Backend. Phải là URL mà server có thể truy cập được.
 - **`AGENT_URL`**: URL của Python AI agent. Phải match với port trong `scripts/run-agent.sh`.
-- **CopilotKit Threads**: Candidate/Employer dashboard dùng `useThreads` khi cấu hình đủ `COPILOTKIT_INTELLIGENCE_API_KEY`, `COPILOTKIT_INTELLIGENCE_API_URL`, `COPILOTKIT_INTELLIGENCE_WS_URL`; thiếu env thì runtime fallback về SSE và UI sẽ báo threads chưa sẵn sàng.
+- **CopilotKit Threads**: luồng chính hiện không dùng `useThreads`; candidate dùng agent `candidate`, employer dùng agent `recruiter` qua runtime `/api/copilotkit`.
 - **Không commit `.env`** lên git — đã có trong `.gitignore`.
 - **Template**: Copy từ `docker/.env.example`: `cp docker/.env.example backend/.env && cp docker/.env.example web/.env`
 
@@ -592,7 +592,7 @@ sequenceDiagram
 
 ---
 
-#### GET /api/v1/resumes/:id/pdf — Export PDF
+#### FE route /resumes/:id/print — Export PDF
 
 ```mermaid
 sequenceDiagram
@@ -600,12 +600,13 @@ sequenceDiagram
     participant FE as Frontend
     participant BE as Backend
 
-    C->>FE: Click "Export PDF"
-    FE->>BE: GET /api/v1/resumes/:id/pdf
-    BE->>BE: Puppeteer: open print page
-    BE->>BE: Generate A4 PDF
-    BE-->>FE: Binary PDF file
-    FE->>FE: Download file
+    C->>FE: Click "Xuất PDF"
+    FE->>FE: Open /resumes/:id/print?print=1
+    FE->>BE: GET /api/v1/resumes/:id
+    BE->>BE: Check owner/session
+    BE-->>FE: Resume data JSON
+    FE->>FE: Render ResumePrintDocument A4
+    FE->>FE: window.print() / Save as PDF
 ```
 
 ---
@@ -934,7 +935,7 @@ erDiagram
 | 36 | DELETE | /api/v1/jobs/:id | ADMIN | Xóa job |
 | 36b | POST | /api/v1/jobs/search-vector | Public | (RAG AI) Tìm semantic qua vector |
 
-#### Applications (7 endpoints)
+#### Applications (9 endpoints)
 
 | # | Method | Path | Auth | Mô tả |
 |---|--------|------|------|-------|
@@ -942,6 +943,8 @@ erDiagram
 | 38 | GET | /api/v1/applications/my | CANDIDATE | Đơn của tôi |
 | 39 | GET | /api/v1/applications/employer | EMPLOYER | Đơn cho employer |
 | 40 | GET | /api/v1/applications/job/:jobId | EMPLOYER | Đơn theo job |
+| 40a | GET | /api/v1/applications/:id/resume | EMPLOYER | Lấy dữ liệu CV theo application ownership |
+| 40b | GET | /api/v1/applications/:id/resume-file | EMPLOYER | Stream PDF upload qua backend proxy, trả inline |
 | 41 | PATCH | /api/v1/applications/:id/status | EMPLOYER | Cập nhật trạng thái |
 | 42 | PATCH | /api/v1/applications/:id/bookmark | EMPLOYER | Toggle bookmark |
 | 43 | DELETE | /api/v1/applications/:id | CANDIDATE | Rút đơn |
@@ -959,7 +962,7 @@ erDiagram
 | 50 | GET | /api/v1/resumes/:id | OWNER | Chi tiết CV |
 | 51 | GET | /api/v1/resumes/:id/render | OWNER | Render CV HTML |
 | 52 | POST | /api/v1/resumes/render-template | Public | Render template preview |
-| 53 | GET | /api/v1/resumes/:id/pdf | OWNER | Export PDF |
+| 53 | — | FE print route `/resumes/:id/print` | OWNER | Export PDF bằng browser print; backend không còn endpoint Puppeteer PDF |
 | 54 | POST | /api/v1/resumes | CANDIDATE | Tạo CV |
 | 55 | PATCH | /api/v1/resumes/:id | OWNER | Sửa CV |
 | 56 | DELETE | /api/v1/resumes/:id | OWNER | Xóa CV |
@@ -1162,3 +1165,33 @@ modules/<name>/
 - ✅ Cross-module query → SharedModule Contracts
 - ✅ Async events → Inngest
 - ❌ Import trực tiếp module khác
+
+---
+
+## Cập nhật kiến trúc CV/Application ngày 2026-07-01
+
+### Luồng CV hiện tại
+
+- Backend **không còn export PDF bằng Puppeteer**. Candidate export CV bằng route FE `/resumes/:id/print` hoặc `/candidate/resumes/:id/print`, render cùng `ResumePrintDocument` rồi dùng `window.print()` / Save as PDF của browser.
+- Backend `GET /api/v1/resumes/:id` chỉ trả dữ liệu CV và kiểm owner.
+- Employer không mở CV bằng `resumeId` trực tiếp. Employer phải đi qua application:
+  - `GET /api/v1/applications/:id/resume`: lấy payload `{ type: "resume" | "uploaded" }` sau khi backend kiểm tra application thuộc job của công ty employer.
+  - `GET /api/v1/applications/:id/resume-file`: stream PDF upload qua backend proxy, trả `Content-Disposition: inline`.
+- Candidate upload PDF ứng tuyển qua `POST /api/v1/upload/candidate-cv`, field form-data là `file`, chỉ nhận `application/pdf`, tối đa 10MB. Backend upload lên Cloudinary folder `job-phuquoc/candidate-cvs/{userId}`.
+- Cloudinary PDF upload mới dùng `resource_type: raw`; employer vẫn xem được trong iframe vì backend proxy ép `application/pdf` + `inline`. Với PDF cũ lỡ nằm ở `image/upload` và bị Cloudinary ACL chặn, backend tạo signed download URL nội bộ rồi stream lại.
+
+### Vòng đời đơn ứng tuyển
+
+- `PATCH /api/v1/applications/:id/status` chỉ cho employer owner cập nhật trạng thái hợp lệ.
+- `ACCEPTED` và `REJECTED` là terminal status: FE ẩn nút action và chỉ hiển thị nhãn kết thúc để tránh spam request.
+- Inngest vẫn tạo notification ngay cho candidate khi accepted/rejected.
+- Inngest cleanup tự động xoá application khỏi DB sau retention:
+  - `REJECTED`: 14 ngày.
+  - `ACCEPTED`: 30 ngày.
+- Cleanup chỉ xoá nếu record vẫn còn đúng terminal status tại thời điểm chạy.
+
+### Module boundary liên quan
+
+- `ApplicationsModule` sở hữu quyền xem CV theo application ownership.
+- `UploadModule`/`CloudinaryService` là technical storage adapter, dùng cho logo công ty và CV PDF upload.
+- FE không truyền `userId` để xem CV; quyền xem luôn dựa trên session/cookie và backend ownership check.

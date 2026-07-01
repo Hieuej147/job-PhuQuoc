@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Modern Navy CV preview">
+  <rect width="480" height="300" fill="#eef6ff"/>
+  <rect x="74" y="20" width="332" height="260" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="74" y="20" width="332" height="78" rx="10" fill="#1d4ed8"/>
+  <circle cx="122" cy="59" r="25" fill="#bfdbfe"/>
+  <rect x="162" y="43" width="130" height="12" rx="3" fill="#ffffff"/>
+  <rect x="162" y="64" width="180" height="8" rx="3" fill="#dbeafe"/>
+  <rect x="98" y="124" width="92" height="11" rx="3" fill="#1e40af"/>
+  <rect x="98" y="146" width="120" height="7" rx="3" fill="#94a3b8"/>
+  <rect x="98" y="162" width="104" height="7" rx="3" fill="#cbd5e1"/>
+  <rect x="250" y="124" width="120" height="11" rx="3" fill="#0f172a"/>
+  <rect x="250" y="148" width="112" height="7" rx="3" fill="#94a3b8"/>
+  <rect x="250" y="164" width="90" height="7" rx="3" fill="#cbd5e1"/>
+  <rect x="250" y="198" width="126" height="11" rx="3" fill="#0f172a"/>
+  <rect x="250" y="222" width="104" height="7" rx="3" fill="#94a3b8"/>
+</svg>

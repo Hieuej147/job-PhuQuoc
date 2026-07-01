@@ -187,49 +187,4 @@ export class ResumesService {
     return { message: 'Template deleted' };
   }
 
-  async generatePdf(id: string, userId?: string, userRole?: string): Promise<Buffer> {
-    const resume = await this.prisma.candidateResume.findUnique({
-      where: { id },
-      include: { template: { select: { id: true } } },
-    });
-    if (!resume) throw new NotFoundException('Resume not found');
-    if (userId && userRole !== 'EMPLOYER' && userRole !== 'ADMIN' && resume.userId !== userId) {
-      throw new ForbiddenException('Not your resume');
-    }
-
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    const printUrl = `${frontendUrl}/resumes/${id}/print?bypass=puppeteer_bypass_key`;
-
-    let puppeteer: typeof import('puppeteer');
-    try {
-      puppeteer = await import('puppeteer');
-    } catch {
-      throw new Error('Puppeteer is not installed. Run: pnpm add puppeteer');
-    }
-
-    let browser;
-    try {
-      browser = await puppeteer.default.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
-
-      const page = await browser.newPage();
-      await page.goto(printUrl, { waitUntil: 'networkidle0', timeout: 30000 });
-
-      // Wait for template to render
-      await page.waitForSelector('[class*="cv"], [class*="resume"], [class*="template"]', { timeout: 10000 }).catch(() => {});
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      const pdf = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: { top: '0', right: '0', bottom: '0', left: '0' },
-      });
-
-      return Buffer.from(pdf);
-    } finally {
-      if (browser) await browser.close();
-    }
-  }
 }
