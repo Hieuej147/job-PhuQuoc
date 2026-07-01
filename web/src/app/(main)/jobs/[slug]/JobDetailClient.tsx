@@ -82,6 +82,22 @@ interface JobDetailClientProps {
   relatedJobs: RelatedJob[];
 }
 
+function extractResumeList(payload: any): any[] {
+  const candidates = [
+    payload?.data?.data?.items,
+    payload?.data?.data,
+    payload?.data?.items,
+    payload?.data,
+    payload?.items,
+    payload,
+  ];
+
+  const list = candidates.find(Array.isArray);
+  if (!list) return [];
+
+  return list.filter((resume: any) => resume?.id && resume?.title !== "PROFILE_MASTER");
+}
+
 const TYPE_LABELS: Record<string, string> = {
   FULL_TIME: "Full-time",
   PART_TIME: "Part-time",
@@ -276,7 +292,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       const res = await fetch("/api/v1/resumes/my", { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
-        const list = d.data?.items || d.data || [];
+        const list = extractResumeList(d);
         setResumes(list);
         const defaultResume = list.find((r: any) => r.isDefault);
         if (defaultResume) setSelectedResumeId(defaultResume.id);
@@ -292,6 +308,29 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       const body: Record<string, unknown> = { jobId: job.id };
       if (coverLetter) body.coverLetter = coverLetter;
       if (applyTab === "select" && selectedResumeId) body.resumeId = selectedResumeId;
+      if (applyTab === "upload") {
+        if (!uploadedFile) {
+          throw new Error("Vui lòng chọn file CV PDF");
+        }
+
+        const formData = new FormData();
+        formData.append("file", uploadedFile);
+        const uploadRes = await fetch("/api/v1/upload/candidate-cv", {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        });
+        const uploadBody = await uploadRes.json().catch(() => ({}));
+        if (!uploadRes.ok) {
+          throw new Error(uploadBody?.message || "Upload CV thất bại");
+        }
+
+        const uploadData = uploadBody?.data?.data ?? uploadBody?.data;
+        if (!uploadData?.cvUrl) {
+          throw new Error("Upload CV không trả về URL hợp lệ");
+        }
+        body.cvUrl = uploadData.cvUrl;
+      }
 
       const res = await fetch("/api/v1/applications", {
         method: "POST",
@@ -306,6 +345,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       setApplySuccess(true);
       setShowApplyModal(false);
       setCoverLetter("");
+      setUploadedFile(null);
     } catch (e) {
       setApplyError(e instanceof Error ? e.message : "Ứng tuyển thất bại");
     } finally {
