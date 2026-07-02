@@ -21,17 +21,22 @@ async function proxyRequest(request: NextRequest, slug: string[]) {
       credentials: "include",
     };
 
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      fetchOptions.body = await request.text();
+    if (["POST", "PUT", "PATCH"].includes(request.method)) {
+      fetchOptions.body = await request.arrayBuffer();
     }
 
     const response = await fetch(backendUrl, fetchOptions);
-    const data = await response.text();
+    const data = await response.arrayBuffer();
 
     const nextResponse = new NextResponse(data, {
       status: response.status,
       statusText: response.statusText,
     });
+
+    for (const headerName of ["content-type", "content-disposition", "cache-control"]) {
+      const value = response.headers.get(headerName);
+      if (value) nextResponse.headers.set(headerName, value);
+    }
 
     // Forward Set-Cookie headers
     const setCookies = response.headers.getSetCookie();

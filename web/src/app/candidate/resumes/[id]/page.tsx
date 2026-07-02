@@ -7,15 +7,27 @@ import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Trash2, Star, Download } from "lucide-react";
 import { toast } from "sonner";
+import { ResumePrintDocument } from "@/components/resume/resume-print-document";
 
 interface ResumeData {
   id: string;
   title: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  avatar: string | null;
+  address: string | null;
   summary: string | null;
   skills: string | null;
+  degree: string | null;
   languages: string | null;
+  socialLinks: any;
+  education: any;
+  experience: any;
+  projects: any;
   isDefault: boolean;
   template: { id: string; name: string };
+  user: { name: string; email: string; phone: string | null; image: string | null };
 }
 
 export default function ResumeDetailPage() {
@@ -23,26 +35,16 @@ export default function ResumeDetailPage() {
   const router = useRouter();
   const id = params.id as string;
   const [resume, setResume] = useState<ResumeData | null>(null);
-  const [renderedHtml, setRenderedHtml] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [resumeRes, renderRes] = await Promise.all([
-          fetch(`/api/v1/resumes/${id}`, { credentials: "include" }),
-          fetch(`/api/v1/resumes/${id}/render`, { credentials: "include" }),
-        ]);
+        const resumeRes = await fetch(`/api/v1/resumes/${id}`, { credentials: "include" });
 
         if (resumeRes.ok) {
           const d = await resumeRes.json();
           setResume(d.data?.data ?? d.data);
-        }
-
-        if (renderRes.ok) {
-          const d = await renderRes.json();
-          setRenderedHtml(d.data?.data?.html ?? d.data?.html ?? d.html ?? "");
         }
       } catch {
         toast.error("Không thể tải CV");
@@ -54,10 +56,24 @@ export default function ResumeDetailPage() {
   }, [id]);
 
   const handleDelete = async () => {
-    if (!confirm("Xác nhận xóa hồ sơ này?")) return;
-    await fetch(`/api/v1/resumes/${id}`, { method: "DELETE", credentials: "include" });
-    toast.success("Đã xóa CV");
-    router.push("/candidate/resumes");
+    if (!window.confirm("Xác nhận xóa hồ sơ này?")) return;
+    try {
+      const res = await fetch(`/api/v1/resumes/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const body = await res.text();
+      if (!res.ok) {
+        toast.error(`Xóa thất bại (${res.status}): ${body}`);
+        console.error("Delete failed:", res.status, body);
+        return;
+      }
+      toast.success("Đã xóa CV");
+      router.push("/candidate/resumes");
+    } catch (err) {
+      toast.error(`Lỗi kết nối: ${String(err)}`);
+      console.error("Delete error:", err);
+    }
   };
 
   const handleSetDefault = async () => {
@@ -72,29 +88,31 @@ export default function ResumeDetailPage() {
   };
 
   const handleExportPdf = async () => {
-    setExporting(true);
-    try {
-      const response = await fetch(`/api/v1/resumes/${id}/pdf`, {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to export PDF");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `cv-${resume?.title || id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Đã tải PDF");
-    } catch {
-      toast.error("Không thể tạo PDF");
-    } finally {
-      setExporting(false);
-    }
+    window.open(`/resumes/${id}/print?print=1`, "_blank", "noopener,noreferrer");
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
   if (!resume) return <div className="p-6"><p>Không tìm thấy hồ sơ</p></div>;
+
+  const userProps = {
+    name: resume.name || resume.user?.name || "Họ và Tên",
+    email: resume.email || resume.user?.email || "",
+    phone: resume.phone || resume.user?.phone || "",
+    avatar: resume.avatar || resume.user?.image || "",
+  };
+
+  const resumeProps = {
+    title: resume.title,
+    address: resume.address || "",
+    summary: resume.summary || "",
+    degree: resume.degree || "",
+    languages: resume.languages || "",
+    skills: resume.skills || "",
+    socialLinks: resume.socialLinks || [],
+    education: resume.education || [],
+    experience: resume.experience || [],
+    projects: resume.projects || [],
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -115,8 +133,8 @@ export default function ResumeDetailPage() {
           <Button variant="outline" size="sm" onClick={() => router.push(`/candidate/resumes/${id}/edit`)}>
             <Edit className="size-4 mr-1" /> Sửa
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={exporting}>
-            <Download className="size-4 mr-1" /> {exporting ? "Đang xuất..." : "Export PDF"}
+          <Button variant="outline" size="sm" onClick={handleExportPdf}>
+            <Download className="size-4 mr-1" /> Xem/In PDF
           </Button>
           <Button variant="destructive" size="sm" onClick={handleDelete}>
             <Trash2 className="size-4 mr-1" /> Xóa
@@ -129,21 +147,9 @@ export default function ResumeDetailPage() {
         {resume.languages && <span> • {resume.languages}</span>}
       </div>
 
-      {/* CV Preview */}
-      {renderedHtml ? (
-        <div className="border rounded-xl overflow-hidden bg-white shadow-sm">
-          <iframe
-            srcDoc={renderedHtml}
-            className="w-full"
-            style={{ height: "1200px", border: "none" }}
-            title="CV Preview"
-          />
-        </div>
-      ) : (
-        <div className="bg-muted rounded-xl p-8 text-center">
-          <p className="text-muted-foreground">Không thể tải preview CV.</p>
-        </div>
-      )}
+      <div className="overflow-auto rounded-xl border bg-slate-100 py-8 shadow-inner">
+        <ResumePrintDocument user={userProps} resume={resumeProps} templateId={resume.template?.id} />
+      </div>
     </div>
   );
 }

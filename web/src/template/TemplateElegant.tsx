@@ -3,11 +3,15 @@
 import type { TemplateProps, UserData, ResumeData } from "./index";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { downloadResumePdf } from "@/lib/resume-pdf";
 
 /**
  * TemplateElegant — Phong cách sang trọng, tối giản, thanh lịch, sử dụng Google Material Symbols
  */
-export default function TemplateElegant({ user = {} as Partial<UserData>, resume = {} as Partial<ResumeData> }: TemplateProps) {
+export default function TemplateElegant({ user = {} as Partial<UserData>, resume = {} as Partial<ResumeData>, resumeId, readOnly = false }: TemplateProps) {
+    const router = useRouter();
     const [userData, setUserData] = useState({
         name: user.name || "Họ và Tên",
         email: user.email || "",
@@ -16,6 +20,7 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
     });
 
     const [resumeData, setResumeData] = useState({
+        title: resume.title || "CV của tôi",
         address: resume.address || "",
         summary: resume.summary || "",
         degree: resume.degree || "",
@@ -28,9 +33,42 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
 
     const [showSaveToast, setShowSaveToast] = useState(false);
 
-    const handleSave = () => {
-        setShowSaveToast(true);
-        setTimeout(() => setShowSaveToast(false), 2500);
+    const handleSave = async () => {
+        const isNew = !resumeId;
+        const url = isNew ? "/api/v1/resumes" : `/api/v1/resumes/${resumeId}`;
+        const method = isNew ? "POST" : "PATCH";
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: resumeData.title || "CV của tôi",
+                    templateId: "tpl-elegant-03", // Placeholder for elegant
+                    name: userData.name,
+                    email: userData.email,
+                    phone: userData.phone,
+                    avatar: userData.avatar,
+                    address: resumeData.address,
+                    summary: resumeData.summary,
+                    skills: resume.skills || "",
+                    degree: resumeData.degree,
+                    languages: resumeData.languages,
+                    socialLinks: resumeData.socialLinks,
+                    education: resumeData.education,
+                    experience: resumeData.experience,
+                    projects: resumeData.projects,
+                }),
+            });
+            if (response.ok) {
+                toast.success(isNew ? "Tạo CV thành công!" : "Lưu CV thành công!");
+                router.push("/candidate/resumes");
+            } else {
+                toast.error("Lưu CV thất bại!");
+            }
+        } catch (err) {
+            toast.error("Lỗi khi lưu dữ liệu CV");
+        }
     };
 
     const handleUserChange = (field: string, value: string) => {
@@ -66,29 +104,39 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
     return (
         <div className="min-h-screen bg-stone-50 py-8 px-4 print:p-0">
             {/* Control Panel (Hidden when printing) */}
-            <div className="max-w-4xl mx-auto mb-6 bg-white p-4 rounded-lg shadow-sm border border-stone-200 flex justify-between items-center print:hidden">
-                <span className="text-sm font-semibold text-stone-600 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                    Chế độ chỉnh sửa trực quan (Template Elegant)
-                </span>
-                <div className="flex gap-2">
-                    <button
-                        onClick={handleSave}
-                        className="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-emerald-700 transition"
-                    >
-                        Lưu thay đổi
-                    </button>
-                    <button
-                        onClick={() => window.print()}
-                        className="bg-stone-800 text-white px-4 py-2 rounded text-sm font-medium hover:bg-stone-700 transition"
-                    >
-                        In / Xuất PDF
-                    </button>
+            {!readOnly && (
+                <div className="max-w-4xl mx-auto mb-6 bg-white p-4 rounded-lg shadow-sm border border-stone-200 flex justify-between items-center print:hidden">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Tên CV:</span>
+                        <input
+                            type="text"
+                            value={resumeData.title}
+                            onChange={(e) => handleResumeChange("title", e.target.value)}
+                            className="bg-stone-50 border border-stone-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 w-52 font-medium transition text-stone-850"
+                            placeholder="Nhập tên CV..."
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleSave}
+                            className="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-emerald-700 transition"
+                        >
+                            Lưu thay đổi
+                        </button>
+                        {resumeId && (
+                            <button
+                                onClick={() => downloadResumePdf(resumeId, resumeData.title)}
+                                className="bg-stone-800 text-white px-4 py-2 rounded text-sm font-medium hover:bg-stone-700 transition"
+                            >
+                                Xuất PDF
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Resume Sheet */}
-            <div className="max-w-4xl mx-auto bg-white shadow-xl border border-stone-200 min-h-[1100px] font-sans text-stone-850 p-12 print:shadow-none print:border-none print:my-0 print:p-0">
+            <div className={`max-w-4xl mx-auto bg-white shadow-xl border border-stone-200 min-h-[1100px] font-sans text-stone-850 p-12 print:shadow-none print:border-none print:my-0 print:p-0 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                 
                 {/* ── Top Header Section ───────────────────────────────────── */}
                 <header className="border-b border-stone-300 pb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-6">
@@ -159,8 +207,11 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
                                 onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
-                                        const url = URL.createObjectURL(file);
-                                        handleUserChange("avatar", url);
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                            handleUserChange("avatar", reader.result as string);
+                                        };
+                                        reader.readAsDataURL(file);
                                     }
                                 }}
                                 className="hidden"

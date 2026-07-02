@@ -29,6 +29,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { JobDetailType } from "@/types/job";
+import { CompanyLogo } from "@/components/company/company-logo";
 
 // Định nghĩa kiểu dữ liệu cho props của component JobDetailHero
 interface JobDetailHeroProps {
@@ -73,12 +74,12 @@ export default function JobDetailHero({
           {/* 2. Tiêu đề công việc, logo và các nút thao tác chính */}
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 animate-fadeUp animation-delay-100">
             <div className="flex items-start gap-4">
-              {/* Logo công ty viết tắt với màu chữ động */}
-              <div className="w-16 h-16 md:w-20 md:h-20 bg-white dark:bg-[#0d2137] rounded-2xl flex items-center justify-center shadow-lg border border-transparent dark:border-[#1a3d5c] flex-shrink-0">
-                <span className={`text-2xl font-bold ${job.textColor}`}>
-                  {job.companyInitials}
-                </span>
-              </div>
+              <CompanyLogo
+                name={job.company}
+                logo={job.companyLogo}
+                className="w-16 h-16 md:w-20 md:h-20 rounded-2xl shadow-lg border border-transparent dark:border-[#1a3d5c] flex-shrink-0"
+                textClassName="text-2xl"
+              />
 
               {/* Tiêu đề công việc & tên công ty */}
               <div>

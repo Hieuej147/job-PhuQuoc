@@ -35,13 +35,13 @@ export class CompaniesService {
   ) { }
 
   async findAll(query: CompanyQueryDto) {
-    const { search } = query;
+    const { search, industry, orderBy } = query;
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
 
     const cacheKey = this.cache.generateKey(
       this.CACHE_PREFIX, 'list',
-      String(page), String(limit), search || ''
+      String(page), String(limit), search || '', industry || '', orderBy || ''
     );
 
     const cached = await this.cache.get(cacheKey);
@@ -49,6 +49,14 @@ export class CompaniesService {
 
     const where: Prisma.CompanyWhereInput = {};
     if (search) where.name = { contains: search, mode: 'insensitive' };
+    if (industry) where.industry = industry;
+
+    let prismaOrderBy: Prisma.CompanyOrderByWithRelationInput | Prisma.CompanyOrderByWithRelationInput[] = { createdAt: 'desc' };
+    if (orderBy === 'jobs') {
+      prismaOrderBy = { jobs: { _count: 'desc' } };
+    } else if (orderBy === 'name') {
+      prismaOrderBy = { name: 'asc' };
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.company.findMany({
@@ -57,7 +65,7 @@ export class CompaniesService {
           ward: { include: { district: { include: { province: true } } } },
           _count: { select: { jobs: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: prismaOrderBy,
       }),
       this.prisma.company.count({ where }),
     ]);

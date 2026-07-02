@@ -42,6 +42,22 @@ export class CreateResumeDto {
   languages?: string;
 
   @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  avatar?: string;
+
+  @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
 
@@ -91,6 +107,22 @@ export class UpdateResumeDto {
   languages?: string;
 
   @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  avatar?: string;
+
+  @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
 
@@ -107,15 +139,13 @@ export class CreateTemplateDto {
   @IsString()
   description?: string;
 
-  @IsString()
-  htmlTemplate: string;
-
-  @IsString()
-  cssTemplate: string;
-
   @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
+
+  @IsOptional()
+  @IsString()
+  previewUrl?: string;
 }
 
 export class UpdateTemplateDto {
@@ -129,11 +159,7 @@ export class UpdateTemplateDto {
 
   @IsOptional()
   @IsString()
-  htmlTemplate?: string;
-
-  @IsOptional()
-  @IsString()
-  cssTemplate?: string;
+  previewUrl?: string;
 
   @IsOptional()
   @IsBoolean()

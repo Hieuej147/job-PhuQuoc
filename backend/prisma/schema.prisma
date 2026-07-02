@@ -238,6 +238,7 @@ model Company {
   name          String
   slug          String      @unique
   logo          String?
+  logoPublicId  String?
   website       String?
   description   String?
   wardId        String?
@@ -353,6 +354,10 @@ model CandidateResume {
   skills      String?
   degree      String?
   languages   String?
+  name        String?
+  email       String?
+  phone       String?
+  avatar      String?
   isDefault   Boolean  @default(false)
   templateId  String
   createdAt   DateTime @default(now())
@@ -371,8 +376,6 @@ model ResumeTemplate {
   name         String
   description  String?
   previewUrl   String?
-  htmlTemplate String   @db.Text
-  cssTemplate  String   @db.Text
   isPublic     Boolean  @default(false)
   userId       String?
   isActive     Boolean  @default(true)

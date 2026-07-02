@@ -94,7 +94,7 @@ Backend API cho website tìm việc làm tại Phú Quốc, xây dựng với Ne
 │  │  │ RESUMES  │ │  BLOGS   │ │ CATEGORIES│ │  SAVED   │      │   │
 │  │  │          │ │          │ │          │ │          │      │   │
 │  │  │ CRUD     │ │ CRUD     │ │ CRUD     │ │ Toggle   │      │   │
-│  │  │ PDF Gen  │ │ Publish  │ │ Cascade  │ │ Jobs     │      │   │
+│  │  │ Data API │ │ Publish  │ │ Cascade  │ │ Jobs     │      │   │
 │  │  │ Templates│ │ Views    │ │ Protect  │ │ Companies│      │   │
 │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘      │   │
 │  │                                                              │   │
@@ -138,8 +138,8 @@ Backend API cho website tìm việc làm tại Phú Quốc, xây dựng với Ne
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘│
 │                                                                     │
 │  ┌──────────┐ ┌──────────┐                                        │
-│  │  Google  │ │ Puppeteer│                                        │
-│  │  OAuth   │ │ PDF Gen  │                                        │
+│  │  Google  │ │Cloudinary│                                        │
+│  │  OAuth   │ │Uploads   │                                        │
 │  └──────────┘ └──────────┘                                        │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -839,6 +839,8 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | GET | /api/v1/applications/employer | EMPLOYER | Tất cả đơn cho jobs của employer |
 | GET | /api/v1/applications/job/:jobId | EMPLOYER | Đơn theo job |
 | PATCH | /api/v1/applications/:id/status | EMPLOYER | Duyệt/từ chối (REVIEWING/ACCEPTED/REJECTED) |
+| GET | /api/v1/applications/:id/resume | EMPLOYER | Lấy CV theo application ownership |
+| GET | /api/v1/applications/:id/resume-file | EMPLOYER | Stream PDF upload inline qua backend proxy |
 | PATCH | /api/v1/applications/:id/bookmark | EMPLOYER | Toggle bookmark |
 | DELETE | /api/v1/applications/:id | CANDIDATE | Rút đơn |
 
@@ -855,7 +857,7 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | GET | /api/v1/resumes/:id | OWNER | Chi tiết CV (ownership check) |
 | GET | /api/v1/resumes/:id/render | OWNER | Render CV HTML |
 | POST | /api/v1/resumes/render-template | PUBLIC | Render template với sample data |
-| GET | /api/v1/resumes/:id/pdf | OWNER | Export CV PDF (Puppeteer) |
+| — | FE route `/resumes/:id/print` | OWNER | Export CV bằng browser print; backend không còn endpoint PDF Puppeteer |
 | POST | /api/v1/resumes | CANDIDATE | Tạo CV |
 | PATCH | /api/v1/resumes/:id | OWNER | Cập nhật CV |
 | DELETE | /api/v1/resumes/:id | OWNER | Xóa CV |
@@ -868,7 +870,7 @@ Payment ── N:1 ──► PricingPackage (packageId)
 4. Backend validate HTML/CSS; nếu không hợp lệ thì trả `400` và không tạo record.
 5. Prisma/DB sinh `ResumeTemplate.id`; agent chỉ được dùng id backend trả về.
 6. Agent gọi `POST /api/v1/resumes` với `templateId` đó.
-7. Export PDF chỉ dùng `GET /api/v1/resumes/:id/pdf` sau khi resume đã lưu.
+7. Export PDF dùng FE print route `/resumes/:id/print`; backend chỉ trả dữ liệu CV và kiểm quyền.
 
 `templateId` là DB-generated. FE/agent không được tự tạo hoặc dùng id giả.
 
@@ -965,21 +967,20 @@ Payment ── N:1 ──► PricingPackage (packageId)
 
 ## Inngest Event System
 
-### Events (16 loại)
+### Events
 
 | Event | Trigger | Handler |
 |-------|---------|---------|
 | application.created | Candidate nộp CV | Notification cho employer |
-| application.accepted | Employer chấp nhận | Notification cho candidate |
-| application.rejected | Employer từ chối | Notification cho candidate |
+| application.accepted | Employer chấp nhận | Notification cho candidate + schedule cleanup 30 ngày |
+| application.rejected | Employer từ chối | Notification cho candidate + schedule cleanup 14 ngày |
 | user.registered | User đăng ký | Welcome notification |
 | job.activated | Payment thành công | Notification + schedule expiry |
 | job.expiring-soon | 3 ngày trước deadline | Notify users đã lưu job |
 | job.expired | Đến deadline | Đóng job + notify owner |
-| audit/* (wildcard) | Mọi mutation | Ghi AuditLog vào DB |
 | weekly-employer-summary | Cron Thu+Sat 9AM | Tổng hợp CV cho employer |
 
-### Functions (10)
+### Functions (11)
 
 | Function ID | Trigger | Hành động |
 |-------------|---------|-----------|
@@ -988,10 +989,11 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | on-application-created | application.created | APPLICATION_RECEIVED notification |
 | on-application-accepted | application.accepted | APPLICATION_ACCEPTED notification |
 | on-application-rejected | application.rejected | APPLICATION_REJECTED notification |
+| cleanup-accepted-application | application.accepted | Xoá application sau 30 ngày nếu vẫn ACCEPTED |
+| cleanup-rejected-application | application.rejected | Xoá application sau 14 ngày nếu vẫn REJECTED |
 | schedule-job-expiry | job.activated | Schedule job.expiring-soon + job.expired |
 | on-job-expiring-soon | job.expiring-soon | Notify saved-job users |
 | on-job-expired | job.expired | Close job + notify owner |
-| write-audit-log | audit/* | Write AuditLog row |
 | weekly-employer-summary | Cron 0 9 * * 4,6 | Summary notifications |
 
 ---
@@ -1040,6 +1042,18 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | STRIPE_WEBHOOK_SECRET | ❌ | — | Stripe webhook secret |
 | INNGEST_EVENT_KEY | ❌ | — | Inngest event key |
 | INNGEST_SIGNING_KEY | ❌ | — | Inngest signing key |
+| CLOUDINARY_CLOUD_NAME | ❌ | — | Cloudinary cloud name, bắt buộc khi dùng upload logo công ty hoặc CV PDF upload |
+| CLOUDINARY_API_KEY | ❌ | — | Cloudinary API key, bắt buộc khi dùng upload logo công ty hoặc CV PDF upload |
+| CLOUDINARY_API_SECRET | ❌ | — | Cloudinary API secret, bắt buộc khi dùng upload logo công ty hoặc CV PDF upload |
+
+### Cloudinary Uploads
+
+- Logo công ty được upload qua `POST /api/v1/upload/company-logo`.
+- DB lưu URL hiển thị ở `Company.logo` và Cloudinary public id ở `Company.logoPublicId`.
+- Khi employer đổi logo, backend upload ảnh mới, cập nhật DB thành công rồi mới xoá logo cũ bằng `logoPublicId`.
+- CV PDF ứng tuyển được upload qua `POST /api/v1/upload/candidate-cv`, form-data field `file`, chỉ nhận PDF tối đa 10MB.
+- CV PDF được lưu trên Cloudinary `image/upload` trong folder `job-phuquoc/candidate-cvs/{userId}`; employer xem qua `GET /api/v1/applications/:id/resume-file`, không mở URL Cloudinary trực tiếp.
+- Nếu gặp CV cũ ở `image/upload` bị Cloudinary chặn public delivery, backend tạo signed download URL nội bộ rồi stream PDF inline.
 
 ### Setup
 

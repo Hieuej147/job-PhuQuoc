@@ -6,23 +6,8 @@ import Link from "next/link"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
 
-interface Company {
-  id: string
-  name: string
-  slug: string
-  logo?: string | null
-  industry: string
-  size: string
-  wardId?: string
-  isApproved?: boolean
-  jobCount?: number
-  isHot?: boolean
-  isFeatured?: boolean
-  coverGradient?: string
-  initials?: string
-  logoColor?: string
-  location?: string
-}
+import { Company } from "@/types/company"
+import { CompanyLogo } from "@/components/company/company-logo"
 
 interface CompanyCardProps {
   company: Company
@@ -61,8 +46,6 @@ export default function CompanyCard({ company, index = 0, isFollowed = false }: 
   };
 
   const gradient = company.coverGradient || "linear-gradient(135deg,#0E7490,#0D9488)"
-  const initials = company.initials || company.name.slice(0, 2).toUpperCase()
-  const logoColor = company.logoColor || "#0E7490"
   const location = company.location || "Phú Quốc"
   const jobCount = company.jobCount || 0
   const isHot = company.isHot || false
@@ -99,15 +82,12 @@ export default function CompanyCard({ company, index = 0, isFollowed = false }: 
 
       {/* Logo */}
       <div className="px-5 -mt-7 mb-3 relative z-10">
-        <div className="w-14 h-14 bg-white dark:bg-[#0a1929] rounded-xl border-2 border-white dark:border-[#1e3a4f] shadow-md flex items-center justify-center">
-          {company.logo ? (
-            <img src={company.logo} alt={company.name} className="w-10 h-10 object-contain rounded-lg" />
-          ) : (
-            <span className="text-xl font-black" style={{ color: logoColor }}>
-              {initials}
-            </span>
-          )}
-        </div>
+        <CompanyLogo
+          name={company.name}
+          logo={company.logo}
+          className="w-14 h-14 rounded-xl border-2 border-white dark:border-[#1e3a4f] shadow-md"
+          textClassName="text-xl"
+        />
       </div>
 
       {/* Content */}

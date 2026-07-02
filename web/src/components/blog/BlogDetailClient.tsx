@@ -1,8 +1,3 @@
-/**
- * @file BlogDetailClient.tsx
- * @description Component Client-side để hiển thị nội dung chi tiết bài viết Blog.
- * @note [HuynhhThanh] Trao đổi dữ liệu: Nhận đối tượng `blog` (chứa content, views, date thực tế) từ Database thông qua page.tsx. Các thông số như "lượt xem", "thời gian đọc", "số liệu liên quan" đã được tính toán từ dữ liệu thật.
- */
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -10,29 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
 import { toast } from "sonner";
-import Header from "@/components/common/Header";
-import Footer from "@/components/common/Footer";
 import { RichContent } from "@/components/ui/rich-content";
+import { Blog } from "@/types/blog";
 
 interface BlogDetailClientProps {
-  blog: {
-    id: string;
-    title: string;
-    slug: string;
-    type: "NORMAL" | "LANDING_PAGE";
-    content: string | null;
-    thumbnail: string;
-    excerpt: string;
-    categoryId: string;
-    authorId: string;
-    views: number;
-    createdAt: string;
-  };
+  blog: Blog;
   categoryName: string;
   authorName: string;
-  // don'y should use any
-  relatedBlogs: any[];
-  popularBlogs: any[];
+  relatedBlogs: Blog[];
+  popularBlogs: Blog[];
 }
 
 export default function BlogDetailClient({
@@ -165,8 +146,6 @@ export default function BlogDetailClient({
     ? authorName.slice(0, 2).toUpperCase()
     : "BB";
 
-  const readTime = Math.max(1, Math.ceil((blog.content?.length || 0) / 800));
-
   return (
     <div className="min-h-screen bg-[#f7f9ff] text-[#001e30] dark:bg-[#071a2b] dark:text-[#e0f2fe] font-sans antialiased overflow-x-hidden">
       {/* Reading progress bar */}
@@ -175,8 +154,6 @@ export default function BlogDetailClient({
         className="fixed top-16 left-0 right-0 h-[3px] bg-gradient-to-r from-[#0e7490] to-[#0d9488] z-40 origin-left transition-transform duration-100"
         style={{ transform: "scaleX(0)" }}
       />
-
-      <Header />
 
       {/* HERO */}
       <div className="pt-0">
@@ -238,12 +215,7 @@ export default function BlogDetailClient({
                     </span>{" "}
                     {formattedDate}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">
-                      schedule
-                    </span>{" "}
-                    {readTime} phút đọc
-                  </span>
+
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">
                       visibility
@@ -315,7 +287,7 @@ export default function BlogDetailClient({
                   </span>
                   <span>{likeCount}</span> Yêu thích
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     navigator.clipboard.writeText(window.location.href);
                     toast.success("Đã sao chép đường dẫn bài viết!");
@@ -327,7 +299,7 @@ export default function BlogDetailClient({
                   </span>{" "}
                   Chia sẻ
                 </button>
-                <button 
+                <button
                   onClick={handleSave}
                   className="flex items-center gap-1.5 px-[18px] py-2 border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-full text-xs font-semibold cursor-pointer bg-white dark:bg-[#0d2137] text-slate-500 dark:text-[#94a3b8] hover:border-[#0e7490] hover:text-[#0e7490] transition-colors duration-200"
                 >
@@ -486,11 +458,11 @@ export default function BlogDetailClient({
                 placeholder="Email của bạn..."
                 className="w-full text-sm border border-slate-200 dark:border-[#1a3d5c] rounded-xl px-3 py-2 bg-[#f7f9ff] dark:bg-[#0a1e30] text-[#001e30] dark:text-[#e0f2fe] focus:ring-2 focus:ring-[#005a71]/30 focus:outline-none mb-2"
               />
-              <button 
+              <button
                 onClick={() => {
-                   if (!email) return toast.error("Vui lòng nhập email hợp lệ!");
-                   toast.success("Đăng ký nhận bài thành công!");
-                   setEmail("");
+                  if (!email) return toast.error("Vui lòng nhập email hợp lệ!");
+                  toast.success("Đăng ký nhận bài thành công!");
+                  setEmail("");
                 }}
                 className="w-full bg-[#005a71] dark:bg-[#0e7490] text-white font-semibold text-sm py-2.5 rounded-xl hover:opacity-90 transition-opacity"
               >
@@ -530,8 +502,6 @@ export default function BlogDetailClient({
           </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 }

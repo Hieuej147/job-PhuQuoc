@@ -104,4 +104,12 @@ export class CompanyQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsString()
+  industry?: string;
+
+  @IsOptional()
+  @IsString()
+  orderBy?: string;
 }

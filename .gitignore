@@ -34,13 +34,13 @@ pnpm-debug.log*
 .pm2/
 dump.pm2
 
-# Prisma migrations (gen từ schema)
-backend/prisma/migrations/
-
 # Backup data
 backup/
+backups/
 backend/prisma/*.sql
 
+# Local uploaded files
+web/public/uploads/
 
 # IDE
 .vscode/
@@ -76,8 +76,11 @@ AGENTS.md
 
 docs/AI_CO_WORKER_ARCHITECTURE.md
 docs/HOMEPAGE_JOBS_REVIEW.md
-
+agents.md
+agents .md
 CayThuMuc.txt
+GiaoDienPQJobs
+.claude/skills
 
 docs/CV_MCP_SERVER_PLAN.md
 docs/rag-job-agent-architecture.md
@@ -93,3 +96,4 @@ docs/PRODUCTION_SCALE_ARCHITECTURE.md
 docs/API_ENDPOINT_FE_USAGE_AUDIT.md
 docs/UNUSED_ENDPOINTS_USAGE.md
 docs/APPLICATIONS_BY_JOB_ENDPOINT_GUIDE.md
+docs/ai_cv_agent_architecture.md

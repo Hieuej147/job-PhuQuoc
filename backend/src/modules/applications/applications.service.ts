@@ -23,6 +23,7 @@ export class ApplicationsService {
     const job = await this.jobContract.findById(data.jobId);
     if (!job) throw new NotFoundException('Job not found');
     if (job.status !== 'ACTIVE') throw new ConflictException('Job is not active');
+    if (data.cvUrl) this.assertAllowedUploadedCvUrl(data.cvUrl);
 
     const existing = await this.prisma.jobApplication.findUnique({ where: { userId_jobId: { userId, jobId: data.jobId } } });
     if (existing) throw new ConflictException('Already applied to this job');
@@ -32,7 +33,8 @@ export class ApplicationsService {
       include: { job: { include: { company: true } } },
     });
 
-    await this.inngest.send({
+    // Gửi Inngest event (non-blocking — nếu Inngest không chạy thì bỏ qua)
+    this.inngest.send({
       name: 'application.created',
       data: {
         applicationId: application.id,
@@ -40,6 +42,8 @@ export class ApplicationsService {
         companyName: application.job.company.name,
         employerId: application.job.company.ownerId,
       },
+    }).catch((err: Error) => {
+      console.warn('[InngestService] Failed to send application.created:', err?.message);
     });
 
     await this.auditWriteContract.log({
@@ -77,13 +81,13 @@ export class ApplicationsService {
         include: {
           user: { select: { id: true, name: true, email: true, phone: true } },
           job: { select: { id: true, title: true, company: { select: { name: true } } } },
-          resume: true,
+          resume: { select: { id: true, title: true, name: true, email: true, phone: true } },
         },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.jobApplication.count({ where: { job: { company: { ownerId: employerId } } } }),
     ]);
-    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { data: { items, total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
   async findByJob(jobId: string, userId: string, query: ApplicationQueryDto) {
@@ -99,12 +103,77 @@ export class ApplicationsService {
     const [items, total] = await Promise.all([
       this.prisma.jobApplication.findMany({
         where: { jobId }, skip: (page - 1) * limit, take: limit,
-        include: { user: { select: { id: true, name: true, email: true, phone: true } }, resume: true },
+        include: {
+          user: { select: { id: true, name: true, email: true, phone: true } },
+          resume: { select: { id: true, title: true, name: true, email: true, phone: true } },
+        },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.jobApplication.count({ where: { jobId } }),
     ]);
-    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { data: { items, total, page, limit, totalPages: Math.ceil(total / limit) } };
+  }
+
+  async getResumeForEmployer(applicationId: string, employerId: string) {
+    const app = await this.prisma.jobApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        job: { include: { company: true } },
+        resume: {
+          include: {
+            template: { select: { id: true, name: true, description: true, previewUrl: true, isPublic: true } },
+            user: { select: { id: true, name: true, email: true, phone: true, image: true } },
+          },
+        },
+      },
+    });
+
+    if (!app) throw new NotFoundException('Application not found');
+    if (app.job.company.ownerId !== employerId) throw new ForbiddenException('Not company owner');
+
+    if (app.cvUrl) {
+      this.assertAllowedUploadedCvUrl(app.cvUrl);
+      return { data: { type: 'uploaded', url: app.cvUrl } };
+    }
+
+    if (app.resume) {
+      return { data: { type: 'resume', resume: app.resume } };
+    }
+
+    throw new NotFoundException('No CV found for this application');
+  }
+
+  async getUploadedCvUrlForEmployer(applicationId: string, employerId: string) {
+    const app = await this.prisma.jobApplication.findUnique({
+      where: { id: applicationId },
+      include: { job: { include: { company: true } } },
+    });
+
+    if (!app) throw new NotFoundException('Application not found');
+    if (app.job.company.ownerId !== employerId) throw new ForbiddenException('Not company owner');
+    if (!app.cvUrl) throw new NotFoundException('No uploaded CV found for this application');
+
+    this.assertAllowedUploadedCvUrl(app.cvUrl);
+    return { url: app.cvUrl };
+  }
+
+  private assertAllowedUploadedCvUrl(url: string) {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new BadRequestException('CV upload URL không hợp lệ');
+    }
+
+    const isCloudinaryCandidateCv =
+      parsed.protocol === 'https:' &&
+      parsed.hostname === 'res.cloudinary.com' &&
+      (parsed.pathname.includes('/image/upload/') || parsed.pathname.includes('/raw/upload/')) &&
+      parsed.pathname.includes('/job-phuquoc/candidate-cvs/');
+
+    if (!isCloudinaryCandidateCv) {
+      throw new BadRequestException('CV upload URL không thuộc storage hợp lệ của hệ thống');
+    }
   }
 
   async updateStatus(id: string, userId: string, status: UpdateApplicationStatusDto['status']) {
@@ -131,7 +200,7 @@ export class ApplicationsService {
     const updated = await this.prisma.jobApplication.update({ where: { id }, data: { status: status as ApplicationStatus } });
 
     if (status === 'ACCEPTED') {
-      await this.inngest.send({
+      this.inngest.send({
         name: 'application.accepted',
         data: {
           applicationId: id,
@@ -139,9 +208,11 @@ export class ApplicationsService {
           companyName: app.job.company.name,
           candidateId: app.userId,
         },
+      }).catch((err: Error) => {
+        console.warn('[InngestService] Failed to send application.accepted:', err?.message);
       });
     } else if (status === 'REJECTED') {
-      await this.inngest.send({
+      this.inngest.send({
         name: 'application.rejected',
         data: {
           applicationId: id,
@@ -149,6 +220,8 @@ export class ApplicationsService {
           companyName: app.job.company.name,
           candidateId: app.userId,
         },
+      }).catch((err: Error) => {
+        console.warn('[InngestService] Failed to send application.rejected:', err?.message);
       });
     }
 

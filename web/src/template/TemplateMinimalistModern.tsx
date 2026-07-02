@@ -3,11 +3,15 @@
 import type { TemplateProps, UserData, ResumeData } from "./index";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { downloadResumePdf } from "@/lib/resume-pdf";
 
 /**
  * TemplateMinimalistModern — Phong cách tối giản hiện đại (Minimalist Modern), siêu sạch, thanh thoát
  */
-export default function TemplateMinimalistModern({ user = {} as Partial<UserData>, resume = {} as Partial<ResumeData> }: TemplateProps) {
+export default function TemplateMinimalistModern({ user = {} as Partial<UserData>, resume = {} as Partial<ResumeData>, resumeId, readOnly = false }: TemplateProps) {
+    const router = useRouter();
     const [userData, setUserData] = useState({
         name: user.name || "Họ và Tên",
         email: user.email || "",
@@ -16,6 +20,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
     });
 
     const [resumeData, setResumeData] = useState({
+        title: resume.title || "CV của tôi",
         address: resume.address || "",
         summary: resume.summary || "",
         degree: resume.degree || "",
@@ -28,9 +33,42 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
 
     const [showSaveToast, setShowSaveToast] = useState(false);
 
-    const handleSave = () => {
-        setShowSaveToast(true);
-        setTimeout(() => setShowSaveToast(false), 2500);
+    const handleSave = async () => {
+        const isNew = !resumeId;
+        const url = isNew ? "/api/v1/resumes" : `/api/v1/resumes/${resumeId}`;
+        const method = isNew ? "POST" : "PATCH";
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: resumeData.title || "CV của tôi",
+                    templateId: "tpl-minimal-03",
+                    name: userData.name,
+                    email: userData.email,
+                    phone: userData.phone,
+                    avatar: userData.avatar,
+                    address: resumeData.address,
+                    summary: resumeData.summary,
+                    skills: resume.skills || "",
+                    degree: resumeData.degree,
+                    languages: resumeData.languages,
+                    socialLinks: resumeData.socialLinks,
+                    education: resumeData.education,
+                    experience: resumeData.experience,
+                    projects: resumeData.projects,
+                }),
+            });
+            if (response.ok) {
+                toast.success(isNew ? "Tạo CV thành công!" : "Lưu CV thành công!");
+                router.push("/candidate/resumes");
+            } else {
+                toast.error("Lưu CV thất bại!");
+            }
+        } catch (err) {
+            toast.error("Lỗi khi lưu dữ liệu CV");
+        }
     };
 
     const handleUserChange = (field: string, value: string) => {
@@ -66,29 +104,39 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
     return (
         <div className="min-h-screen bg-[#f3f4f6] py-8 px-4 print:p-0">
             {/* Control Panel (Hidden when printing) */}
-            <div className="max-w-3xl mx-auto mb-6 bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center print:hidden">
-                <span className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-sm">filter_vintage</span>
-                    Chế độ chỉnh sửa trực quan (Template Minimalist Modern)
-                </span>
-                <div className="flex gap-2">
-                    <button
-                        onClick={handleSave}
-                        className="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-emerald-700 transition"
-                    >
-                        Lưu thay đổi
-                    </button>
-                    <button
-                        onClick={() => window.print()}
-                        className="bg-slate-800 text-white px-4 py-2 rounded text-sm font-medium hover:bg-slate-900 transition"
-                    >
-                        In / Xuất PDF
-                    </button>
+            {!readOnly && (
+                <div className="max-w-3xl mx-auto mb-6 bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center print:hidden">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tên CV:</span>
+                        <input
+                            type="text"
+                            value={resumeData.title}
+                            onChange={(e) => handleResumeChange("title", e.target.value)}
+                            className="bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 w-52 font-medium transition text-slate-800"
+                            placeholder="Nhập tên CV..."
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleSave}
+                            className="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-emerald-700 transition"
+                        >
+                            Lưu thay đổi
+                        </button>
+                        {resumeId && (
+                            <button
+                                onClick={() => downloadResumePdf(resumeId, resumeData.title)}
+                                className="bg-slate-800 text-white px-4 py-2 rounded text-sm font-medium hover:bg-slate-900 transition"
+                            >
+                                Xuất PDF
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Resume Sheet */}
-            <div className="max-w-3xl mx-auto bg-white shadow-xl border border-slate-100 min-h-[1100px] font-sans text-slate-800 p-16 print:shadow-none print:border-none print:my-0 print:p-0">
+            <div className={`max-w-3xl mx-auto bg-white shadow-xl border border-slate-100 min-h-[1100px] font-sans text-slate-800 p-16 print:shadow-none print:border-none print:my-0 print:p-0 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                 
                 {/* ── Minimal Header ───────────────────────────────────────── */}
                 <header className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 pb-10 border-b border-slate-100">
@@ -159,8 +207,11 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
                                 onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
-                                        const url = URL.createObjectURL(file);
-                                        handleUserChange("avatar", url);
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                            handleUserChange("avatar", reader.result as string);
+                                        };
+                                        reader.readAsDataURL(file);
                                     }
                                 }}
                                 className="hidden"

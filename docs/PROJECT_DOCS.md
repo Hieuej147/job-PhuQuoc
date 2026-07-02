@@ -634,6 +634,10 @@ UpdateApplicationStatusDto:
 
 ### 4.8 Resumes Module
 
+
+> Cập nhật 2026-07-01: Luồng CV hiện tại chọn hướng **FE render - BE trả dữ liệu**. Employer xem CV qua `GET /api/v1/applications/:id/resume` và PDF upload qua `GET /api/v1/applications/:id/resume-file`. Backend không còn export PDF bằng Puppeteer.
+
+
 | Method | Path | Auth | Roles | Body/Query | Mô tả |
 |--------|------|------|-------|------------|--------|
 | `GET` | `/resumes/templates` | `@Public()` | - | `?public=true` | Danh sách template (public + của user) |
@@ -645,7 +649,7 @@ UpdateApplicationStatusDto:
 | `GET` | `/resumes/:id` | Có | Any | - | CV theo ID (kiểm tra owner) |
 | `GET` | `/resumes/:id/render` | Có | Any | `?mode=view\|edit` | Render CV ra HTML |
 | `POST` | `/resumes/render-template` | `@Public()` | - | `{ templateId, data, mode }` | Render template với dữ liệu mẫu |
-| `GET` | `/resumes/:id/pdf` | Có | Any | - | Export CV thành PDF (Puppeteer) |
+| `—` | FE route `/resumes/:id/print` | Có | Owner | - | Export CV bằng browser print; backend không còn endpoint PDF Puppeteer |
 | `POST` | `/resumes` | Có | CANDIDATE | `CreateResumeDto` | Tạo CV |
 | `PATCH` | `/resumes/:id` | Có | Owner | `UpdateResumeDto` | Cập nhật CV |
 | `DELETE` | `/resumes/:id` | Có | Owner | - | Xóa CV |

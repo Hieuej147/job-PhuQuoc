@@ -25,6 +25,8 @@ export class CompaniesController {
   @ApiQuery({ name: 'search', required: false, description: 'Tìm theo tên công ty' })
   @ApiQuery({ name: 'page', required: false, description: 'Trang' })
   @ApiQuery({ name: 'limit', required: false, description: 'Số item/trang' })
+  @ApiQuery({ name: 'industry', required: false, description: 'Ngành nghề' })
+  @ApiQuery({ name: 'orderBy', required: false, description: 'Sắp xếp (featured, jobs, name)' })
   @ApiResponse({ status: 200, description: 'Danh sách companies phân trang' })
   findAll(@Query() query: CompanyQueryDto) {
     return this.companiesService.findAll(query);

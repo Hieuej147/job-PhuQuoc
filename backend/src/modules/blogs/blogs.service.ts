@@ -28,10 +28,11 @@ export class BlogsService {
     page?: number;
     limit?: number;
     search?: string;
-    categoryId?: string;
+    category?: string;
+    orderBy?: string;
     isPublished?: boolean;
   }) {
-    const { search, categoryId, isPublished } = query;
+    const { search, category, orderBy, isPublished } = query;
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
 
@@ -41,7 +42,8 @@ export class BlogsService {
       String(page),
       String(limit),
       search || "",
-      categoryId || "",
+      category || "",
+      orderBy || "",
       String(isPublished),
     );
     const cached = await this.cache.get(cacheKey);
@@ -50,12 +52,24 @@ export class BlogsService {
     const where: Prisma.BlogPostWhereInput = {};
     if (isPublished !== undefined) where.isPublished = isPublished;
     else where.isPublished = true; // Default: chỉ trả blog đã publish cho public queries
-    if (categoryId) where.categoryId = categoryId;
+    if (category) {
+      const slugs = category.split(',');
+      where.category = slugs.length > 1 ? { slug: { in: slugs } } : { slug: slugs[0] };
+    }
     if (search)
       where.OR = [
         { title: { contains: search, mode: "insensitive" } },
         { excerpt: { contains: search, mode: "insensitive" } },
       ];
+
+    let prismaOrderBy: Prisma.BlogPostOrderByWithRelationInput | Prisma.BlogPostOrderByWithRelationInput[] = { createdAt: "desc" };
+    if (orderBy === 'views') {
+      prismaOrderBy = [{ views: 'desc' }, { createdAt: 'desc' }];
+    } else if (orderBy === 'oldest') {
+      prismaOrderBy = { createdAt: 'asc' };
+    } else if (orderBy === 'newest') {
+      prismaOrderBy = { createdAt: 'desc' };
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.blogPost.findMany({
@@ -66,7 +80,7 @@ export class BlogsService {
           category: true,
           author: { select: { id: true, name: true, image: true } },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: prismaOrderBy,
       }),
       this.prisma.blogPost.count({ where }),
     ]);

@@ -5,9 +5,6 @@ describe('ResumesService', () => {
   let service: ResumesService;
   let prismaMock: any;
   let loggerMock: any;
-  let templateValidatorMock: any;
-  let templateEngineMock: any;
-  let userContractMock: any;
 
   beforeEach(() => {
     prismaMock = {
@@ -37,17 +34,7 @@ describe('ResumesService', () => {
       warn: vi.fn(),
       debug: vi.fn(),
     };
-    templateValidatorMock = {
-      validate: vi.fn().mockReturnValue({ valid: true, errors: [], sanitizedHtml: '', sanitizedCss: '' }),
-    };
-    templateEngineMock = {
-      renderForView: vi.fn().mockReturnValue('<html></html>'),
-      renderForEdit: vi.fn().mockReturnValue('<html></html>'),
-    };
-    userContractMock = {
-      findById: vi.fn(),
-    };
-    service = new ResumesService(prismaMock as any, loggerMock, templateValidatorMock, templateEngineMock, userContractMock as any);
+    service = new ResumesService(prismaMock as any, loggerMock);
   });
 
   it('should be defined', () => {

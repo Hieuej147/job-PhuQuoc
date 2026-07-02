@@ -16,6 +16,7 @@
 import Link from 'next/link';
 import { Bookmark, MapPin, Clock } from 'lucide-react';
 import { JobType } from '@/types/job';
+import { CompanyLogo } from '@/components/company/company-logo';
 
 // Định nghĩa kiểu dữ liệu cho các props đầu vào của component JobCard
 interface JobCardProps {
@@ -47,11 +48,12 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
       <div className={`flex gap-4 ${job.isFeatured ? 'pt-3' : ''}`}>
 
         {/* 2. Logo đại diện của công ty tuyển dụng */}
-        <div
-          className={`w-14 h-14 ${job.logoColor} rounded-xl flex items-center justify-center border border-gray-100 dark:border-[#1a3d5c] flex-shrink-0 shadow-sm`}
-        >
-          <span className={`text-xl font-bold ${job.textColor}`}>{job.companyInitials}</span>
-        </div>
+        <CompanyLogo
+          name={job.company}
+          logo={job.companyLogo}
+          className="w-14 h-14 rounded-xl border border-gray-100 dark:border-[#1a3d5c] flex-shrink-0 shadow-sm"
+          textClassName="text-xl"
+        />
 
         {/* 3. Khối nội dung thông tin chi tiết */}
         <div className="flex-1 min-w-0">
