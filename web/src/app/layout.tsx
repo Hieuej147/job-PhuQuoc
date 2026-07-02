@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   },
 };
 
-import Header from "@/components/common/Header";
+import HeaderGate from "@/components/common/HeaderGate";
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const initialUser = await getServerAuthUser();
@@ -53,7 +53,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       </head>
       <body className="antialiased min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary font-body">
         <Providers initialUser={initialUser}>
-          <Header />
+          <HeaderGate />
           {children}
         </Providers>
       </body>

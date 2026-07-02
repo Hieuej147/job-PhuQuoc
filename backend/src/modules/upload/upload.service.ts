@@ -62,7 +62,7 @@ export class UploadService {
   async uploadCandidateCv(userId: string, file: Express.Multer.File) {
     const result = await this.cloudinaryService.uploadFile(file, {
       folder: `${CANDIDATE_CV_FOLDER}/${userId}`,
-      resource_type: 'raw',
+      resource_type: 'image',
       allowed_formats: ['pdf'],
       use_filename: true,
       unique_filename: true,

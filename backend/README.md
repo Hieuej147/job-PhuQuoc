@@ -1052,7 +1052,7 @@ Payment ── N:1 ──► PricingPackage (packageId)
 - DB lưu URL hiển thị ở `Company.logo` và Cloudinary public id ở `Company.logoPublicId`.
 - Khi employer đổi logo, backend upload ảnh mới, cập nhật DB thành công rồi mới xoá logo cũ bằng `logoPublicId`.
 - CV PDF ứng tuyển được upload qua `POST /api/v1/upload/candidate-cv`, form-data field `file`, chỉ nhận PDF tối đa 10MB.
-- CV PDF được lưu trên Cloudinary `raw/upload` trong folder `job-phuquoc/candidate-cvs/{userId}`; employer xem qua `GET /api/v1/applications/:id/resume-file`, không mở URL Cloudinary trực tiếp.
+- CV PDF được lưu trên Cloudinary `image/upload` trong folder `job-phuquoc/candidate-cvs/{userId}`; employer xem qua `GET /api/v1/applications/:id/resume-file`, không mở URL Cloudinary trực tiếp.
 - Nếu gặp CV cũ ở `image/upload` bị Cloudinary chặn public delivery, backend tạo signed download URL nội bộ rồi stream PDF inline.
 
 ### Setup
