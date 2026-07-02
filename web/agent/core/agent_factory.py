@@ -32,37 +32,14 @@ def create_recruiter_graph():
     )
     return RecruiterAgent(llm=llm, context=context).graph
 
+
 def create_candidate_job_graph():
-    """Graph tìm kiếm việc làm — dùng tạm candidate graph chính"""
-    settings = get_settings()
-    llm = ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key)
-    context = AgentContext(
-        user_id="default",
-        user_name="Candidate",
-        role="candidate",
-    )
-    return CandidateAgent(llm=llm, context=context).graph
+    return create_candidate_graph()
 
 
 def create_candidate_cv_graph():
-    """Graph thiết kế CV — dùng tạm candidate graph chính"""
-    settings = get_settings()
-    llm = ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key)
-    context = AgentContext(
-        user_id="default",
-        user_name="Candidate",
-        role="candidate",
-    )
-    return CandidateAgent(llm=llm, context=context).graph
+    return create_candidate_graph()
 
 
 def create_candidate_advisor_graph():
-    """Graph tư vấn nghề nghiệp — dùng tạm candidate graph chính"""
-    settings = get_settings()
-    llm = ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key)
-    context = AgentContext(
-        user_id="default",
-        user_name="Candidate",
-        role="candidate",
-    )
-    return CandidateAgent(llm=llm, context=context).graph
+    return create_candidate_graph()

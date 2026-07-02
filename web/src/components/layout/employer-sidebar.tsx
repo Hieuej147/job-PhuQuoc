@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CompanyLogo } from "@/components/company/company-logo";
 
 interface WardData {
   name?: string;
@@ -55,6 +54,7 @@ export function EmployerSidebar() {
   }, []);
 
   const companyName = company?.name || "Công ty";
+  const initials = companyName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   const locationLabel = company?.ward
     ? [company.ward.name, company.ward.district?.name].filter(Boolean).join(", ")
@@ -110,12 +110,13 @@ export function EmployerSidebar() {
 
       {/* Profile Summary */}
       <div className="flex flex-col items-center text-center mb-6 pb-6 border-b border-[#e1efff] dark:border-[#1E5F74]/50">
-        <CompanyLogo
-          name={companyName}
-          logo={company?.logo}
-          className="w-20 h-20 rounded-2xl border-[3px] border-[#F59E0B] mb-3"
-          textClassName="text-2xl text-[#D97706]"
-        />
+        <div className="w-20 h-20 rounded-2xl border-[3px] border-[#F59E0B] bg-[#FEF3C7] overflow-hidden text-[#D97706] font-bold text-2xl flex items-center justify-center mb-3">
+          {company?.logo ? (
+            <img src={company.logo} alt="" className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
+        </div>
         <p className="font-bold text-[#001e30] dark:text-[#E0F2FE] text-sm">{companyName}</p>
         <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">
           {[company?.industry, locationLabel].filter(Boolean).join(" • ") || "Nhà tuyển dụng"}
@@ -150,13 +151,7 @@ export function EmployerSidebar() {
               {group.label}
             </p>
             {group.items.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (pathname.startsWith(item.href + "/") &&
-                  !(
-                    item.href === "/employer/jobs" &&
-                    pathname.startsWith("/employer/jobs/create")
-                  ));
+              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
               return (
                 <Link
                   key={item.label}

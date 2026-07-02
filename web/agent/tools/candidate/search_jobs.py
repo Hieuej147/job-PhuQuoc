@@ -113,15 +113,16 @@ class SearchJobsTool(BaseTool):
 
         try:
             response = await self.api_client.post("/jobs/search-vector", json=payload)
-            # Backend bọc response trong {"data": [...], "timestamp": "..."}
-            # Cần bóc tách đúng phần data ra
             jobs = response.get("data", response) if isinstance(response, dict) else response
-            print(f"[DEBUG] jobs received: {jobs}")  # debug tạm
+            if isinstance(jobs, dict):
+                jobs = jobs.get("items", [])
+            if not isinstance(jobs, list):
+                jobs = []
             return {
                 "jobs": [
                     {
                         "id": j.get("id"),
-                        "slug": j.get("slug"),  # thêm dòng này
+                        "slug": j.get("slug"),
                         "title": j.get("title"),
                         "company": j.get("company"),
                         "salary": j.get("salary"),

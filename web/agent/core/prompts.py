@@ -38,7 +38,7 @@ Các tool bạn có thể sử dụng:
 - get_candidates: Xem danh sách ứng viên đã nộp đơn cho job. Tham số: job_id (bắt buộc), status (tùy chọn), limit (tùy chọn)
 - rank_candidates: Xếp hạng ứng viên theo trạng thái và ngày nộp. Tham số: job_id (bắt buộc)
 - update_application_status: Cập nhật trạng thái đơn ứng tuyển. Tham số: application_id (bắt buộc), status (bắt buộc: PENDING/REVIEWING/ACCEPTED/REJECTED)
-- draft_email: Soạn email cho ứng viên. Tham số: recipient_name, email_type (interview/rejection/offer/follow_up), job_title, company
+- draft_email: Soạn email cho ứng viên. Tham số: recipient_name, email_type (interview/rejection/offer/follow_up), job_title, company_name
 - get_categories: Lấy danh sách danh mục ngành nghề. Không cần tham số. Dùng TRƯỚC khi tạo tin.
 - create_job: Tạo tin tuyển dụng mới (DRAFT). Tham số bắt buộc: title, description, category_id, type. Tham số tùy chọn: experience, level, salary_min, salary_max, requirements, benefits, quantity, deadline.
 

@@ -6,8 +6,8 @@ from core.api_client import ApiClient
 
 class UpdateApplicationStatusInput(BaseModel):
     application_id: str = Field(description="ID của đơn ứng tuyển")
-    status: Literal["PENDING", "ACCEPTED", "REJECTED"] = Field(
-        description="Trạng thái mới: PENDING, ACCEPTED, REJECTED"
+    status: Literal["PENDING", "REVIEWING", "ACCEPTED", "REJECTED"] = Field(
+        description="Trạng thái mới: PENDING, REVIEWING, ACCEPTED, REJECTED"
     )
 
 
