@@ -1178,7 +1178,7 @@ modules/<name>/
   - `GET /api/v1/applications/:id/resume`: lấy payload `{ type: "resume" | "uploaded" }` sau khi backend kiểm tra application thuộc job của công ty employer.
   - `GET /api/v1/applications/:id/resume-file`: stream PDF upload qua backend proxy, trả `Content-Disposition: inline`.
 - Candidate upload PDF ứng tuyển qua `POST /api/v1/upload/candidate-cv`, field form-data là `file`, chỉ nhận `application/pdf`, tối đa 10MB. Backend upload lên Cloudinary folder `job-phuquoc/candidate-cvs/{userId}`.
-- Cloudinary PDF upload mới dùng `resource_type: raw`; employer vẫn xem được trong iframe vì backend proxy ép `application/pdf` + `inline`. Với PDF cũ lỡ nằm ở `image/upload` và bị Cloudinary ACL chặn, backend tạo signed download URL nội bộ rồi stream lại.
+- Cloudinary PDF upload dùng `resource_type: image` sau khi bật setting **Allow delivery of PDF and ZIP files**. Employer vẫn xem qua backend proxy để kiểm quyền; nếu gặp PDF cũ bị ACL chặn, backend có signed-download fallback nội bộ.
 
 ### Vòng đời đơn ứng tuyển
 
