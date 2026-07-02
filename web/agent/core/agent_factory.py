@@ -31,3 +31,15 @@ def create_recruiter_graph():
         role="recruiter",
     )
     return RecruiterAgent(llm=llm, context=context).graph
+
+
+def create_candidate_job_graph():
+    return create_candidate_graph()
+
+
+def create_candidate_cv_graph():
+    return create_candidate_graph()
+
+
+def create_candidate_advisor_graph():
+    return create_candidate_graph()

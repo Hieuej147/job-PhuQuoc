@@ -8,6 +8,8 @@ from tools.recruiter.get_candidates import GetCandidatesTool
 from tools.recruiter.rank_candidates import RankCandidatesTool
 from tools.recruiter.update_application_status import UpdateApplicationStatusTool
 from tools.recruiter.draft_email import DraftEmailTool
+from tools.recruiter.get_categories import GetCategoriesTool   # thêm
+from tools.recruiter.create_job import CreateJobTool           # thêm
 
 
 class RecruiterAgent(BaseAgent):
@@ -21,6 +23,8 @@ class RecruiterAgent(BaseAgent):
             RankCandidatesTool(api_client=self.api_client),
             UpdateApplicationStatusTool(api_client=self.api_client),
             DraftEmailTool(),
+            GetCategoriesTool(api_client=self.api_client),  # thêm
+            CreateJobTool(api_client=self.api_client),      # thêm
         ]
 
     def _get_system_prompt(self) -> str:

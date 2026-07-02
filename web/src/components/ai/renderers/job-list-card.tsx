@@ -5,6 +5,7 @@ import { Briefcase, MapPin, DollarSign, Clock } from "lucide-react";
 
 interface Job {
   id: string;
+  slug: string;
   title: string;
   company: string;
   salary: string;
@@ -43,7 +44,9 @@ export function JobListCard({ jobs, total }: JobListCardProps) {
       {jobs.map((job) => (
         <Link
           key={job.id}
-          href={`/jobs/${job.id}`}
+          href={`/jobs/${job.slug || job.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="block p-3 rounded-xl border bg-card hover:bg-accent/50 transition-colors"
         >
           <div className="flex items-start justify-between gap-2">
