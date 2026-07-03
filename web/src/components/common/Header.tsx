@@ -30,6 +30,9 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Sheet, SheetTrigger, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { getNotificationHref } from "@/lib/notifications";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRecentNotifications, useUnreadNotifications } from "@/lib/dashboard-api";
 
 interface Notification {
   id: string;
@@ -38,6 +41,8 @@ interface Notification {
   content: string;
   isRead: boolean;
   createdAt: string;
+  refId?: string | null;
+  refType?: string | null;
 }
 
 function formatTimeAgo(dateStr: string) {
@@ -54,10 +59,13 @@ function formatTimeAgo(dateStr: string) {
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const pathname = usePathname();
   const { user: profile } = useAuth();
   const { setTheme } = useTheme();
+  const queryClient = useQueryClient();
+  const { data: unreadData } = useUnreadNotifications(!!profile);
+  const { data: recentNotifications } = useRecentNotifications(!!profile && notificationsOpen, 5);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -65,20 +73,9 @@ export default function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => {
-    if (!profile) {
-      setNotifications([]);
-      return;
-    }
-
-    fetch("/api/v1/notifications?limit=5", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setNotifications(d.data?.items || []))
-      .catch(() => { });
-  }, [profile?.id]);
-
   const isLoggedIn = !!profile;
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const notifications = recentNotifications?.items || [];
+  const unreadCount = unreadData?.count || 0;
   const initials = profile?.name
     ? profile.name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase()
     : "U";
@@ -114,6 +111,19 @@ export default function Header() {
 
   const role = profile?.role || "CANDIDATE";
   const dashboardLink = role === "EMPLOYER" ? "/employer/dashboard" : "/candidate/dashboard";
+  const notificationsHref = role === "EMPLOYER" ? "/employer/notifications" : "/candidate/notifications";
+
+  const markNotificationRead = (id: string) => {
+    queryClient.setQueryData(["notifications", "unread-count"], (current: { count: number } | undefined) => ({
+      count: Math.max((current?.count || 0) - 1, 0),
+    }));
+    fetch(`/api/v1/notifications/${id}/read`, { method: "PATCH", credentials: "include" })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      })
+      .catch(() => { });
+  };
 
   const userMenuItems = role === "EMPLOYER"
     ? [
@@ -191,7 +201,7 @@ export default function Header() {
             {isLoggedIn ? (
               <>
                 {/* Notification Popover */}
-                <Popover>
+                <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
                   <PopoverTrigger asChild>
                     <button
                       title="Thông báo"
@@ -223,8 +233,14 @@ export default function Header() {
                         <div className="flex flex-col">
                           {notifications.map((noti) => {
                             const style = getNotiStyle(noti.type);
+                            const href = getNotificationHref(noti, role);
                             return (
-                              <div key={noti.id} className="relative flex items-start gap-4 p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800/50 last:border-0 cursor-pointer">
+                              <Link
+                                key={noti.id}
+                                href={href}
+                                onClick={() => !noti.isRead && markNotificationRead(noti.id)}
+                                className="relative flex items-start gap-4 p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800/50 last:border-0 cursor-pointer"
+                              >
                                 {/* Icon */}
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${style.bg}`}>
                                   {style.icon}
@@ -247,7 +263,7 @@ export default function Header() {
                                 {!noti.isRead && (
                                   <span className="absolute right-5 top-6 w-2 h-2 rounded-full bg-[#F59E0B]" />
                                 )}
-                              </div>
+                              </Link>
                             );
                           })}
                         </div>
@@ -256,7 +272,7 @@ export default function Header() {
 
                     {/* Footer */}
                     <div className="p-4 border-t border-slate-100 dark:border-slate-800 text-center bg-slate-50/50 dark:bg-slate-900/20">
-                      <Link href="/notifications" className="text-[13px] font-semibold text-[#005a71] dark:text-[#67e8f9] hover:underline flex items-center justify-center gap-1">
+                      <Link href={notificationsHref} className="text-[13px] font-semibold text-[#005a71] dark:text-[#67e8f9] hover:underline flex items-center justify-center gap-1">
                         Xem tất cả thông báo <span className="text-[16px]">&rarr;</span>
                       </Link>
                     </div>

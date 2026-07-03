@@ -1,0 +1,64 @@
+import { useQuery } from "@tanstack/react-query";
+import { apiGet } from "@/lib/api-client";
+
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  refId?: string | null;
+  refType?: string | null;
+}
+
+export interface CandidateDashboardSummary {
+  applications: { total: number; recent: any[] };
+  savedJobs: { total: number; recent: any[] };
+  savedCompanies: { total: number };
+  resumes: { total: number; recent: any[] };
+  notifications: { unreadCount: number; recent: NotificationItem[] };
+}
+
+export interface EmployerDashboardSummary {
+  company: any | null;
+  jobs: { total: number; active: number; pending: number; draft: number; recent: any[] };
+  applications: { total: number; pending: number; recent: any[] };
+  notifications: { unreadCount: number; recent: NotificationItem[] };
+}
+
+export function useCandidateDashboardSummary(enabled = true) {
+  return useQuery({
+    queryKey: ["dashboard", "candidate-summary"],
+    queryFn: () => apiGet<CandidateDashboardSummary>("/api/v1/dashboard/candidate-summary"),
+    staleTime: 30_000,
+    enabled,
+  });
+}
+
+export function useEmployerDashboardSummary(enabled = true) {
+  return useQuery({
+    queryKey: ["dashboard", "employer-summary"],
+    queryFn: () => apiGet<EmployerDashboardSummary>("/api/v1/dashboard/employer-summary"),
+    staleTime: 30_000,
+    enabled,
+  });
+}
+
+export function useUnreadNotifications(enabled = true) {
+  return useQuery({
+    queryKey: ["notifications", "unread-count"],
+    queryFn: () => apiGet<{ count: number }>("/api/v1/notifications/unread-count"),
+    staleTime: 15_000,
+    enabled,
+  });
+}
+
+export function useRecentNotifications(enabled = true, limit = 5) {
+  return useQuery({
+    queryKey: ["notifications", "recent", limit],
+    queryFn: () => apiGet<{ items: NotificationItem[] }>(`/api/v1/notifications?limit=${limit}`),
+    staleTime: 10_000,
+    enabled,
+  });
+}

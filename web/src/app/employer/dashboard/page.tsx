@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import {
   Briefcase,
@@ -29,6 +29,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployerDashboardAiTab } from "@/components/ai/dashboard-ai-tab";
+import { useEmployerDashboardSummary } from "@/lib/dashboard-api";
 
 // ── Types ──
 
@@ -184,102 +185,58 @@ function getNotificationBg(type: Notification["type"]) {
 // ── Main Component ──
 
 export default function EmployerDashboard() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [applicants, setApplicants] = useState<Applicant[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [company, setCompany] = useState<{ name?: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: summary, isLoading: loading, error, refetch } = useEmployerDashboardSummary();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const errors: string[] = [];
+  const jobs = useMemo<Job[]>(() => (summary?.jobs.recent || []).map((j: Record<string, unknown>) => ({
+    id: j.id as string,
+    title: j.title as string,
+    status: j.status as string,
+    jobType: j.type as string,
+    level: j.level as string,
+    applicationCount: (j._count as { applications?: number })?.applications ?? 0,
+    deadline: j.deadline as string | undefined,
+  })), [summary?.jobs.recent]);
 
-      try {
-        const [jobsRes, appsRes, notifRes, companyRes] = await Promise.allSettled([
-          fetch("/api/v1/jobs/my?limit=100", { credentials: "include" }),
-          fetch("/api/v1/applications/employer?limit=10", { credentials: "include" }),
-          fetch("/api/v1/notifications?limit=4", { credentials: "include" }),
-          fetch("/api/v1/companies/my", { credentials: "include" }),
-        ]);
+  const applicants = useMemo<Applicant[]>(() => {
+    const colors = [
+      { gradientFrom: "from-[#0e7490]", gradientTo: "to-[#0d9488]" },
+      { gradientFrom: "from-[#F59E0B]", gradientTo: "to-[#D97706]" },
+      { gradientFrom: "from-[#059669]", gradientTo: "to-[#0d9488]" },
+      { gradientFrom: "from-[#6366f1]", gradientTo: "to-[#4f46e5]" },
+    ];
+    return (summary?.applications.recent || []).map((a: Record<string, unknown>, i: number) => {
+      const user = a.user as { name?: string; email?: string } | undefined;
+      const job = a.job as { title?: string } | undefined;
+      const name = user?.name || user?.email || "Ẩn danh";
+      return {
+        id: a.id as string,
+        name,
+        initials: name.split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase(),
+        jobTitle: job?.title || "",
+        timeAgo: timeAgo(a.createdAt as string),
+        status: a.status as Applicant["status"],
+        coverPreview: (a.coverLetter as string)?.slice(0, 80),
+        ...colors[i % colors.length],
+      };
+    });
+  }, [summary?.applications.recent]);
 
-        if (jobsRes.status === "fulfilled" && jobsRes.value.ok) {
-          const d = await jobsRes.value.json();
-          setJobs((d.data?.items ?? []).map((j: Record<string, unknown>) => ({
-            id: j.id as string,
-            title: j.title as string,
-            status: j.status as string,
-            jobType: j.type as string,
-            level: j.level as string,
-            applicationCount: (j._count as { applications?: number })?.applications ?? 0,
-            deadline: j.deadline as string | undefined,
-          })));
-        } else if (jobsRes.status === "fulfilled") {
-          errors.push(`Jobs: HTTP ${jobsRes.value.status}`);
-        }
+  const notifications = useMemo<Notification[]>(() => (summary?.notifications.recent || []).map((n: Record<string, unknown>) => ({
+    id: n.id as string,
+    type: n.type as Notification["type"],
+    title: n.title as string,
+    message: n.content as string,
+    timeAgo: timeAgo(n.createdAt as string),
+  })), [summary?.notifications.recent]);
 
-        if (appsRes.status === "fulfilled" && appsRes.value.ok) {
-          const d = await appsRes.value.json();
-          const colors = [
-            { gradientFrom: "from-[#0e7490]", gradientTo: "to-[#0d9488]" },
-            { gradientFrom: "from-[#F59E0B]", gradientTo: "to-[#D97706]" },
-            { gradientFrom: "from-[#059669]", gradientTo: "to-[#0d9488]" },
-            { gradientFrom: "from-[#6366f1]", gradientTo: "to-[#4f46e5]" },
-          ];
-          setApplicants((d.data?.items ?? []).map((a: Record<string, unknown>, i: number) => {
-            const user = a.user as { name?: string; email?: string } | undefined;
-            const job = a.job as { title?: string } | undefined;
-            const name = user?.name || user?.email || "Ẩn danh";
-            return {
-              id: a.id as string,
-              name,
-              initials: name.split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase(),
-              jobTitle: job?.title || "",
-              timeAgo: timeAgo(a.createdAt as string),
-              status: a.status as Applicant["status"],
-              coverPreview: (a.coverLetter as string)?.slice(0, 80),
-              ...colors[i % colors.length],
-            };
-          }));
-        } else if (appsRes.status === "fulfilled") {
-          errors.push(`Applications: HTTP ${appsRes.value.status}`);
-        }
-
-        if (notifRes.status === "fulfilled" && notifRes.value.ok) {
-          const d = await notifRes.value.json();
-          setNotifications((d.data?.items ?? []).map((n: Record<string, unknown>) => ({
-            id: n.id as string,
-            type: n.type as Notification["type"],
-            title: n.title as string,
-            message: n.content as string,
-            timeAgo: timeAgo(n.createdAt as string),
-          })));
-        } else if (notifRes.status === "fulfilled") {
-          errors.push(`Notifications: HTTP ${notifRes.value.status}`);
-        }
-
-        if (companyRes.status === "fulfilled" && companyRes.value.ok) {
-          const d = await companyRes.value.json();
-          if (d.data) setCompany(d.data);
-        }
-
-        if (errors.length > 0) setError(errors.join("; "));
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to fetch data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const company = summary?.company as { name?: string } | null | undefined;
 
   const stats = useMemo(() => {
-    const activeJobs = jobs.filter((j) => j.status === "ACTIVE").length;
-    const totalApplicants = jobs.reduce((sum, j) => sum + (j.applicationCount ?? 0), 0);
-    const pendingCount = applicants.filter((a) => a.status === "PENDING").length;
+    const activeJobs = summary?.jobs.active ?? jobs.filter((j) => j.status === "ACTIVE").length;
+    const totalApplicants = summary?.applications.total ?? jobs.reduce((sum, j) => sum + (j.applicationCount ?? 0), 0);
+    const pendingCount = summary?.applications.pending ?? applicants.filter((a) => a.status === "PENDING").length;
     return { activeJobs, totalApplicants, pendingCount };
-  }, [jobs, applicants]);
+  }, [summary?.jobs.active, summary?.applications.total, summary?.applications.pending, jobs, applicants]);
 
   if (loading) {
     return (
@@ -293,9 +250,11 @@ export default function EmployerDashboard() {
     return (
       <div className="p-6 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
         <h2 className="text-lg font-bold text-red-700 dark:text-red-400 mb-2">Lỗi tải dữ liệu</h2>
-        <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
+        <p className="text-sm text-red-600 dark:text-red-300">
+          {error instanceof Error ? error.message : "Không thể tải dữ liệu dashboard"}
+        </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => refetch()}
           className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
         >
           Thử lại

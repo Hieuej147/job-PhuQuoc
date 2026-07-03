@@ -4,11 +4,10 @@ import { JobsService } from '../src/modules/jobs/jobs.service';
 describe('JobsService', () => {
   let service: JobsService;
   let prismaMock: any;
-  let inngestMock: any;
   let auditServiceMock: any;
   let cacheMock: any;
   let companyContractMock: any;
-  let embeddingServiceMock: any;
+  let jobBackgroundMock: any;
 
   beforeEach(() => {
     prismaMock = {
@@ -24,9 +23,6 @@ describe('JobsService', () => {
         findUnique: vi.fn(),
       },
     };
-    inngestMock = {
-      send: vi.fn().mockResolvedValue(undefined),
-    };
     auditServiceMock = {
       log: vi.fn().mockResolvedValue(undefined),
     };
@@ -41,10 +37,10 @@ describe('JobsService', () => {
       findById: vi.fn(),
       findByOwnerId: vi.fn(),
     };
-    embeddingServiceMock = {
-      syncJobEmbedding: vi.fn().mockResolvedValue(undefined),
+    jobBackgroundMock = {
+      syncEmbedding: vi.fn(),
     };
-    service = new JobsService(prismaMock as any, inngestMock, auditServiceMock, cacheMock as any, companyContractMock, embeddingServiceMock);
+    service = new JobsService(prismaMock as any, auditServiceMock, cacheMock as any, companyContractMock, jobBackgroundMock);
   });
 
   it('should be defined', () => {

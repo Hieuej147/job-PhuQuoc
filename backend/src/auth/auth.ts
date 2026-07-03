@@ -3,13 +3,13 @@ import { prismaAdapter } from "@better-auth/prisma-adapter";
 import { jwt, emailOTP } from "better-auth/plugins";
 import { redisStorage } from "@better-auth/redis-storage";
 import { Redis } from "ioredis";
-import { PrismaClient } from "@prisma/client";
 import { resendClient } from "../common/email/resend.client";
 import { verifyOtpTemplate } from "./templates/verify-otp";
 import { resetPasswordOtpTemplate } from "./templates/reset-password-otp";
 import { inngest } from "../inngest/client";
+import { createPrismaClient } from "../prisma/prisma-client.factory";
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 
 export const auth = betterAuth({

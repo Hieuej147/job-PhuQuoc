@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, CheckCircle2, Clock, ShieldAlert, Info, RefreshCw } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { timeAgo } from "@/lib/utils/date";
+import { getNotificationHref } from "@/lib/notifications";
 
 interface Notification {
   id: string;
@@ -12,6 +14,8 @@ interface Notification {
   content: string;
   isRead: boolean;
   createdAt: string;
+  refId?: string | null;
+  refType?: string | null;
 }
 
 function getNotiIcon(type: string) {
@@ -25,6 +29,7 @@ function getNotiIcon(type: string) {
 }
 
 export default function NotificationsPage() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,6 +44,11 @@ export default function NotificationsPage() {
   const markAsRead = async (id: string) => {
     await fetch(`/api/v1/notifications/${id}/read`, { method: "PATCH", credentials: "include" });
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+  };
+
+  const openNotification = async (notification: Notification) => {
+    if (!notification.isRead) await markAsRead(notification.id);
+    router.push(getNotificationHref(notification, "CANDIDATE"));
   };
 
   const markAllAsRead = async () => {
@@ -69,7 +79,7 @@ export default function NotificationsPage() {
             return (
               <div
                 key={n.id}
-                onClick={() => !n.isRead && markAsRead(n.id)}
+                onClick={() => openNotification(n)}
                 className={`flex items-start gap-3 p-4 rounded-xl border transition-colors cursor-pointer ${
                   n.isRead
                     ? "bg-white dark:bg-[#0d2d42] border-gray-200 dark:border-gray-700"

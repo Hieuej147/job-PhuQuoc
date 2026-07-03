@@ -1,21 +1,21 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { InngestService } from '../../inngest/inngest.service';
 import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { JobContractService } from '../shared/contracts/job.contract';
 import { CompanyContractService } from '../shared/contracts/company.contract';
 import { ApplicationStatus } from '@prisma/client';
 import { CreateApplicationDto, UpdateApplicationStatusDto } from './dto/application.dto';
 import { ApplicationQueryDto } from './dto/application-query.dto';
+import { ApplicationEventsPublisher } from './infrastructure/application-events.publisher';
 
 @Injectable()
 export class ApplicationsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly inngest: InngestService,
     private readonly auditWriteContract: AuditWriteContractService,
     private readonly jobContract: JobContractService,
     private readonly companyContract: CompanyContractService,
+    private readonly eventsPublisher: ApplicationEventsPublisher,
   ) {}
 
   async apply(userId: string, data: CreateApplicationDto) {
@@ -33,17 +33,11 @@ export class ApplicationsService {
       include: { job: { include: { company: true } } },
     });
 
-    // Gửi Inngest event (non-blocking — nếu Inngest không chạy thì bỏ qua)
-    this.inngest.send({
-      name: 'application.created',
-      data: {
-        applicationId: application.id,
-        jobTitle: application.job.title,
-        companyName: application.job.company.name,
-        employerId: application.job.company.ownerId,
-      },
-    }).catch((err: Error) => {
-      console.warn('[InngestService] Failed to send application.created:', err?.message);
+    this.eventsPublisher.applicationCreated({
+      applicationId: application.id,
+      jobTitle: application.job.title,
+      companyName: application.job.company.name,
+      employerId: application.job.company.ownerId,
     });
 
     await this.auditWriteContract.log({
@@ -200,28 +194,18 @@ export class ApplicationsService {
     const updated = await this.prisma.jobApplication.update({ where: { id }, data: { status: status as ApplicationStatus } });
 
     if (status === 'ACCEPTED') {
-      this.inngest.send({
-        name: 'application.accepted',
-        data: {
-          applicationId: id,
-          jobTitle: app.job.title,
-          companyName: app.job.company.name,
-          candidateId: app.userId,
-        },
-      }).catch((err: Error) => {
-        console.warn('[InngestService] Failed to send application.accepted:', err?.message);
+      this.eventsPublisher.applicationAccepted({
+        applicationId: id,
+        jobTitle: app.job.title,
+        companyName: app.job.company.name,
+        candidateId: app.userId,
       });
     } else if (status === 'REJECTED') {
-      this.inngest.send({
-        name: 'application.rejected',
-        data: {
-          applicationId: id,
-          jobTitle: app.job.title,
-          companyName: app.job.company.name,
-          candidateId: app.userId,
-        },
-      }).catch((err: Error) => {
-        console.warn('[InngestService] Failed to send application.rejected:', err?.message);
+      this.eventsPublisher.applicationRejected({
+        applicationId: id,
+        jobTitle: app.job.title,
+        companyName: app.job.company.name,
+        candidateId: app.userId,
       });
     }
 

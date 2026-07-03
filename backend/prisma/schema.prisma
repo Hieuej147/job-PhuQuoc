@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  url        = env("DATABASE_URL")
   extensions = [vector]
 }
 
@@ -403,11 +402,17 @@ model Notification {
   refId     String?
   refType   String?
   isRead    Boolean          @default(false)
+  readAt    DateTime?
+  expiresAt DateTime?
+  dedupeKey String?
   createdAt DateTime         @default(now())
 
   user user @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@unique([userId, dedupeKey])
+  @@index([userId, createdAt])
+  @@index([userId, isRead, createdAt])
+  @@index([expiresAt])
   @@index([refType, refId])
   @@map("notification")
 }

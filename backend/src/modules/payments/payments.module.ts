@@ -3,10 +3,11 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { StripeGateway } from './gateways/stripe.gateway';
 import { MockGateway } from './gateways/mock.gateway';
+import { PaymentCompletionService } from './application/payment-completion.service';
 
 @Module({
   controllers: [PaymentsController],
-  providers: [PaymentsService, StripeGateway, MockGateway],
+  providers: [PaymentsService, PaymentCompletionService, StripeGateway, MockGateway],
   exports: [PaymentsService],
 })
 export class PaymentsModule {}

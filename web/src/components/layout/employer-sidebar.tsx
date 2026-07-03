@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEmployerDashboardSummary } from "@/lib/dashboard-api";
 
 interface WardData {
   name?: string;
@@ -22,36 +22,11 @@ interface CompanyData {
 
 export function EmployerSidebar() {
   const pathname = usePathname();
-  const [company, setCompany] = useState<CompanyData | null>(null);
-  const [jobsCount, setJobsCount] = useState(0);
-  const [applicantsCount, setApplicantsCount] = useState(0);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    Promise.allSettled([
-      fetch("/api/v1/companies/my", { credentials: "include" }),
-      fetch("/api/v1/jobs/my?limit=1", { credentials: "include" }),
-      fetch("/api/v1/applications/employer?limit=1", { credentials: "include" }),
-      fetch("/api/v1/notifications/unread-count", { credentials: "include" }),
-    ]).then(async ([companyRes, jobsRes, appsRes, unreadRes]) => {
-      if (companyRes.status === "fulfilled" && companyRes.value.ok) {
-        const d = await companyRes.value.json();
-        if (d.data) setCompany(d.data);
-      }
-      if (jobsRes.status === "fulfilled" && jobsRes.value.ok) {
-        const d = await jobsRes.value.json();
-        setJobsCount(d.data?.total ?? d.total ?? 0);
-      }
-      if (appsRes.status === "fulfilled" && appsRes.value.ok) {
-        const d = await appsRes.value.json();
-        setApplicantsCount(d.data?.total ?? d.total ?? 0);
-      }
-      if (unreadRes.status === "fulfilled" && unreadRes.value.ok) {
-        const d = await unreadRes.value.json();
-        setUnreadCount(d.data?.count ?? d.count ?? 0);
-      }
-    }).catch(() => { });
-  }, []);
+  const { data: summary } = useEmployerDashboardSummary();
+  const company = summary?.company as CompanyData | null | undefined;
+  const jobsCount = summary?.jobs.total || 0;
+  const applicantsCount = summary?.applications.total || 0;
+  const unreadCount = summary?.notifications.unreadCount || 0;
 
   const companyName = company?.name || "Công ty";
   const initials = companyName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();

@@ -8,7 +8,9 @@ export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findByUser(userId: string, query: NotificationQueryDto) {
-    const { page = 1, limit = 20, isRead } = query;
+    const page = Number(query.page) || 1;
+    const limit = Math.min(Number(query.limit) || 20, 50);
+    const { isRead } = query;
     const where: Prisma.NotificationWhereInput = { userId };
     if (isRead !== undefined) where.isRead = isRead;
     const [items, total] = await Promise.all([
@@ -21,15 +23,27 @@ export class NotificationsService {
   async markAsRead(id: string, userId: string) {
     const notification = await this.prisma.notification.findFirst({ where: { id, userId } });
     if (!notification) throw new NotFoundException('Notification not found');
-    return this.prisma.notification.update({ where: { id }, data: { isRead: true } });
+    return this.prisma.notification.update({ where: { id }, data: { isRead: true, readAt: new Date() } });
   }
 
   async markAllAsRead(userId: string) {
-    await this.prisma.notification.updateMany({ where: { userId, isRead: false }, data: { isRead: true } });
+    await this.prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true, readAt: new Date() },
+    });
     return { message: 'All notifications marked as read' };
   }
 
-  async create(data: { userId: string; type: NotificationType; title: string; content: string; refId?: string; refType?: string }) {
+  async create(data: {
+    userId: string;
+    type: NotificationType;
+    title: string;
+    content: string;
+    refId?: string | null;
+    refType?: string | null;
+    expiresAt?: Date | null;
+    dedupeKey?: string | null;
+  }) {
     return this.prisma.notification.create({ data });
   }
 

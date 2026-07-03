@@ -1,4 +1,4 @@
-import { IsOptional, IsInt, IsBoolean, Min } from 'class-validator';
+import { IsOptional, IsInt, IsBoolean, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class NotificationQueryDto {
@@ -12,6 +12,7 @@ export class NotificationQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(50)
   limit?: number;
 
   @IsOptional()
