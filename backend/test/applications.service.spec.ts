@@ -4,10 +4,10 @@ import { ApplicationsService } from '../src/modules/applications/applications.se
 describe('ApplicationsService', () => {
   let service: ApplicationsService;
   let prismaMock: any;
-  let inngestMock: any;
   let auditServiceMock: any;
   let jobContractMock: any;
   let companyContractMock: any;
+  let eventsPublisherMock: any;
 
   beforeEach(() => {
     prismaMock = {
@@ -23,9 +23,6 @@ describe('ApplicationsService', () => {
         findUnique: vi.fn(),
       },
     };
-    inngestMock = {
-      send: vi.fn().mockResolvedValue(undefined),
-    };
     auditServiceMock = {
       log: vi.fn().mockResolvedValue(undefined),
     };
@@ -38,7 +35,18 @@ describe('ApplicationsService', () => {
       findById: vi.fn(),
       findByOwnerId: vi.fn(),
     };
-    service = new ApplicationsService(prismaMock as any, inngestMock, auditServiceMock, jobContractMock, companyContractMock);
+    eventsPublisherMock = {
+      applicationCreated: vi.fn(),
+      applicationAccepted: vi.fn(),
+      applicationRejected: vi.fn(),
+    };
+    service = new ApplicationsService(
+      prismaMock as any,
+      auditServiceMock,
+      jobContractMock,
+      companyContractMock,
+      eventsPublisherMock,
+    );
   });
 
   it('should be defined', () => {
@@ -65,15 +73,12 @@ describe('ApplicationsService', () => {
       const result = await service.apply('user1', { jobId: 'job1' });
 
       expect(result).toEqual(mockApplication);
-      expect(inngestMock.send).toHaveBeenCalledWith(
+      expect(eventsPublisherMock.applicationCreated).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: 'application.created',
-          data: expect.objectContaining({
-            applicationId: 'app1',
-            jobTitle: 'Job 1',
-            companyName: 'Company 1',
-            employerId: 'employer1',
-          }),
+          applicationId: 'app1',
+          jobTitle: 'Job 1',
+          companyName: 'Company 1',
+          employerId: 'employer1',
         }),
       );
     });
@@ -167,13 +172,10 @@ describe('ApplicationsService', () => {
 
       await service.updateStatus('app1', 'employer1', 'ACCEPTED');
 
-      expect(inngestMock.send).toHaveBeenCalledWith(
+      expect(eventsPublisherMock.applicationAccepted).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: 'application.accepted',
-          data: expect.objectContaining({
-            applicationId: 'app1',
-            candidateId: 'user1',
-          }),
+          applicationId: 'app1',
+          candidateId: 'user1',
         }),
       );
     });
@@ -193,10 +195,8 @@ describe('ApplicationsService', () => {
 
       await service.updateStatus('app1', 'employer1', 'REJECTED');
 
-      expect(inngestMock.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'application.rejected',
-        }),
+      expect(eventsPublisherMock.applicationRejected).toHaveBeenCalledWith(
+        expect.objectContaining({ applicationId: 'app1' }),
       );
     });
 

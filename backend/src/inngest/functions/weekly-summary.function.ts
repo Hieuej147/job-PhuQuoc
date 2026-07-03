@@ -1,5 +1,6 @@
 import { inngest } from '../client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { createNotificationInboxItem } from './notification-inbox.helper';
 
 export function createWeeklySummaryFunction(prisma: PrismaService) {
   return inngest.createFunction(
@@ -38,15 +39,16 @@ export function createWeeklySummaryFunction(prisma: PrismaService) {
           .map((j) => `${j.title}: ${j._count.applications} CV`)
           .join('\n');
 
-        await prisma.notification.create({
-          data: {
-            userId: employer.id,
-            type: 'SYSTEM',
-            title: 'Báo cáo tuần',
-            content: `Tổng hợp ứng viên tuần này:\n${summary}`,
-            refId: null,
-            refType: null,
-          },
+        const week = new Date().toISOString().slice(0, 10);
+        await createNotificationInboxItem(prisma, {
+          userId: employer.id,
+          type: 'SYSTEM',
+          title: 'Báo cáo tuần',
+          content: `Tổng hợp ứng viên tuần này:\n${summary}`,
+          refId: null,
+          refType: null,
+          dedupeKey: `weekly-employer-summary:${week}:${employer.id}`,
+          expiresInDays: 90,
         });
       }
     },

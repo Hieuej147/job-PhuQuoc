@@ -11,6 +11,7 @@ module.exports = {
       name: "backend",
       script: "dist/src/main.js",
       cwd: path.join(root, "backend"),
+      node_args: "-r dotenv/config",
       env: { NODE_ENV: "development" },
     },
     {

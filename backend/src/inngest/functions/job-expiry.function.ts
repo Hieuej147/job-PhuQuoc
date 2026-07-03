@@ -1,6 +1,7 @@
 import { inngest } from '../client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { TypedInngestContext, CronInngestContext } from '../inngest.types';
+import { createNotificationInboxItem } from './notification-inbox.helper';
 
 export function createJobExpiryFunctions(prisma: PrismaService) {
   const onJobActivated = inngest.createFunction(
@@ -45,15 +46,15 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
       });
 
       for (const saved of savedJobs) {
-        await prisma.notification.create({
-          data: {
-            userId: saved.userId,
-            type: 'JOB_DEADLINE',
-            title: 'Job sắp hết hạn',
-            content: `Vị trí "${job.title}" sẽ hết hạn sau 3 ngày. Nộp CV ngay!`,
-            refId: jobId,
-            refType: 'job',
-          },
+        await createNotificationInboxItem(prisma, {
+          userId: saved.userId,
+          type: 'JOB_DEADLINE',
+          title: 'Job sắp hết hạn',
+          content: `Vị trí "${job.title}" sẽ hết hạn sau 3 ngày. Nộp CV ngay!`,
+          refId: jobId,
+          refType: 'job',
+          dedupeKey: `job.expiring-soon:${jobId}:${saved.userId}`,
+          expiresInDays: 180,
         });
       }
     },
@@ -76,15 +77,15 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
         data: { status: 'CLOSED' },
       });
 
-      await prisma.notification.create({
-        data: {
-          userId: job.company.ownerId,
-          type: 'SYSTEM',
-          title: 'Tin tuyển dụng đã hết hạn',
-          content: `Tin "${job.title}" đã hết hạn và đã đóng.`,
-          refId: jobId,
-          refType: 'job',
-        },
+      await createNotificationInboxItem(prisma, {
+        userId: job.company.ownerId,
+        type: 'SYSTEM',
+        title: 'Tin tuyển dụng đã hết hạn',
+        content: `Tin "${job.title}" đã hết hạn và đã đóng.`,
+        refId: jobId,
+        refType: 'job',
+        dedupeKey: `job.expired:${jobId}:${job.company.ownerId}`,
+        expiresInDays: 180,
       });
     },
   );

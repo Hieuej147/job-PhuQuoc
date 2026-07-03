@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useCandidateDashboardSummary } from "@/lib/dashboard-api";
 
 export function CandidateSidebar() {
   const pathname = usePathname();
@@ -12,24 +12,9 @@ export function CandidateSidebar() {
   const userName = u?.name || "Ứng viên";
   const initials = userName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
-  const [applicationsCount, setApplicationsCount] = useState(0);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    Promise.allSettled([
-      fetch("/api/v1/applications/my?limit=1", { credentials: "include" }),
-      fetch("/api/v1/notifications/unread-count", { credentials: "include" }),
-    ]).then(async ([appsRes, unreadRes]) => {
-      if (appsRes.status === "fulfilled" && appsRes.value.ok) {
-        const d = await appsRes.value.json();
-        setApplicationsCount(d.data?.total ?? d.total ?? 0);
-      }
-      if (unreadRes.status === "fulfilled" && unreadRes.value.ok) {
-        const d = await unreadRes.value.json();
-        setUnreadCount(d.data?.count ?? d.count ?? 0);
-      }
-    }).catch(() => { });
-  }, []);
+  const { data: summary } = useCandidateDashboardSummary(!!user);
+  const applicationsCount = summary?.applications.total || 0;
+  const unreadCount = summary?.notifications.unreadCount || 0;
 
   // Profile completion
   const checklist = [

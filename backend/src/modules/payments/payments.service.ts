@@ -1,27 +1,23 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { InngestService } from '../../inngest/inngest.service';
-import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { JobContractService } from '../shared/contracts/job.contract';
 import { CompanyContractService } from '../shared/contracts/company.contract';
 import { PricingContractService } from '../shared/contracts/pricing.contract';
 import { StripeGateway } from './gateways/stripe.gateway';
 import { MockGateway } from './gateways/mock.gateway';
-import { PinoLoggerService } from '../../common/logger/pino-logger.service';
 import { PaymentQueryDto } from './dto/payment.dto';
+import { PaymentCompletionService } from './application/payment-completion.service';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly inngest: InngestService,
-    private readonly auditWriteContract: AuditWriteContractService,
-    private readonly logger: PinoLoggerService,
     private readonly jobContract: JobContractService,
     private readonly companyContract: CompanyContractService,
     private readonly pricingContract: PricingContractService,
     private readonly stripeGateway: StripeGateway,
     private readonly mockGateway: MockGateway,
+    private readonly paymentCompletion: PaymentCompletionService,
   ) {}
 
   async createCheckout(userId: string, jobId: string, packageId: string) {
@@ -110,7 +106,7 @@ export class PaymentsService {
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
-      await this.completePayment(session.id, session.metadata);
+      await this.paymentCompletion.completeBySession(session.id, false);
     }
 
     return { received: true };
@@ -121,137 +117,21 @@ export class PaymentsService {
     const { sessionId, userId, jobId, packageId } = data;
 
     if (!sessionId) {
-      return this.completePaymentByJob(jobId);
+      return this.paymentCompletion.completeByJob(jobId);
     }
 
-    await this.completePayment(sessionId, { userId, jobId, packageId });
+    await this.paymentCompletion.completeBySession(sessionId, false);
     return { received: true };
   }
 
   async mockCompletePayment(jobId?: string, sessionId?: string) {
     if (jobId) {
-      return this.completePaymentByJob(jobId);
+      return this.paymentCompletion.completeByJob(jobId);
     }
     if (sessionId) {
-      return this.completePaymentBySession(sessionId);
+      return this.paymentCompletion.completeBySession(sessionId);
     }
     throw new BadRequestException('Missing jobId or sessionId');
-  }
-
-  private async completePaymentBySession(sessionId: string) {
-    const payment = await this.prisma.payment.findFirst({
-      where: { gatewayRef: sessionId, status: 'PENDING' },
-      include: { package: true },
-    });
-
-    if (!payment) throw new NotFoundException('No pending payment found for this session');
-
-    await this.prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: 'COMPLETED', completedAt: new Date() },
-    });
-
-    const deadline = new Date();
-    deadline.setDate(deadline.getDate() + payment.package.days);
-
-    await this.jobContract.activateJob(payment.jobId, deadline);
-
-    await this.inngest.send({
-      name: 'job.activated',
-      data: { jobId: payment.jobId, deadline: deadline.toISOString() },
-    });
-
-    await this.auditWriteContract.log({
-      action: 'job.activated',
-      entityType: 'Job',
-      entityId: payment.jobId,
-      actorId: payment.userId,
-      newValue: 'ACTIVE',
-      metadata: { packageId: payment.packageId, days: payment.package.days },
-    });
-
-    this.logger.log(`Payment completed via session ${sessionId}, job: ${payment.jobId}, deadline: ${deadline.toISOString()}`, 'PaymentsService');
-    return { message: 'Payment completed', deadline };
-  }
-
-  private async completePaymentByJob(jobId: string) {
-    const payment = await this.prisma.payment.findFirst({
-      where: { jobId, status: 'PENDING' },
-      include: { package: true },
-    });
-
-    if (!payment) throw new NotFoundException('No pending payment found for this job');
-
-    await this.prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: 'COMPLETED', completedAt: new Date() },
-    });
-
-    const deadline = new Date();
-    deadline.setDate(deadline.getDate() + payment.package.days);
-
-    await this.jobContract.activateJob(payment.jobId, deadline);
-
-    await this.inngest.send({
-      name: 'job.activated',
-      data: { jobId, deadline: deadline.toISOString() },
-    });
-
-    await this.auditWriteContract.log({
-      action: 'job.activated',
-      entityType: 'Job',
-      entityId: payment.jobId,
-      actorId: payment.userId,
-      newValue: 'ACTIVE',
-      metadata: { packageId: payment.packageId, days: payment.package.days },
-    });
-
-    this.logger.log(`Payment completed for job ${jobId}, deadline: ${deadline.toISOString()}`, 'PaymentsService');
-    return { message: 'Payment completed', deadline };
-  }
-
-  private async completePayment(sessionId: string, metadata: Record<string, string>) {
-    const payment = await this.prisma.payment.findFirst({
-      where: { gatewayRef: sessionId },
-      include: { package: true },
-    });
-
-    if (!payment) {
-      this.logger.warn(`Payment not found for session ${sessionId}`, 'PaymentsService');
-      return;
-    }
-
-    if (payment.status === 'COMPLETED') {
-      this.logger.log(`Payment already completed: ${payment.id}`, 'PaymentsService');
-      return;
-    }
-
-    await this.prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: 'COMPLETED', completedAt: new Date() },
-    });
-
-    const deadline = new Date();
-    deadline.setDate(deadline.getDate() + payment.package.days);
-
-    await this.jobContract.activateJob(payment.jobId, deadline);
-
-    await this.inngest.send({
-      name: 'job.activated',
-      data: { jobId: payment.jobId, deadline: deadline.toISOString() },
-    });
-
-    await this.auditWriteContract.log({
-      action: 'job.activated',
-      entityType: 'Job',
-      entityId: payment.jobId,
-      actorId: payment.userId,
-      newValue: 'ACTIVE',
-      metadata: { packageId: payment.packageId, days: payment.package.days },
-    });
-
-    this.logger.log(`Payment completed: ${payment.id}, job: ${payment.jobId}`, 'PaymentsService');
-    return { message: 'Payment completed' };
   }
 
   async findByUser(userId: string, query: PaymentQueryDto) {

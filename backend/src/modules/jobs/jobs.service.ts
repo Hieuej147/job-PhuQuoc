@@ -1,12 +1,11 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { InngestService } from '../../inngest/inngest.service';
 import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { CacheService } from '../../common/cache/cache.service';
 import { CompanyContractService } from '../shared/contracts/company.contract';
 import { Prisma, JobStatus, JobType, ExperienceLevel, JobLevel } from '@prisma/client';
 import { CreateJobDto, JobQueryDto, MyJobsQueryDto, UpdateJobDto } from './dto/job.dto';
-import { EmbeddingService } from './services/embedding.service';
+import { JobBackgroundService } from './background/job-background.service';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -26,11 +25,10 @@ export class JobsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly inngest: InngestService,
     private readonly auditWriteContract: AuditWriteContractService,
     private readonly cache: CacheService,
     private readonly companyContract: CompanyContractService,
-    private readonly embeddingService: EmbeddingService,
+    private readonly jobBackground: JobBackgroundService,
   ) { }
 
   async findAll(query: JobQueryDto) {
@@ -225,8 +223,7 @@ export class JobsService {
     });
     await this.invalidateCache();
 
-    // Sync embedding async without blocking response
-    this.embeddingService.syncJobEmbedding(job.id, job.title, job.description, job.benefits || undefined).catch(e => console.error(e));
+    this.jobBackground.syncEmbedding(job);
 
     return job;
   }
@@ -241,13 +238,7 @@ export class JobsService {
     const updated = await this.prisma.job.update({ where: { id }, data: data as Prisma.JobUpdateInput });
     await this.invalidateCache();
 
-    // Sync embedding async without blocking response
-    this.embeddingService.syncJobEmbedding(
-      updated.id,
-      updated.title,
-      updated.description,
-      updated.benefits || undefined
-    ).catch(e => console.error(e));
+    this.jobBackground.syncEmbedding(updated);
 
     return updated;
   }

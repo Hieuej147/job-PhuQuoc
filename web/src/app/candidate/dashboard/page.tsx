@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,10 +13,11 @@ import { CandidateDashboardAiTab } from "@/components/ai/dashboard-ai-tab";
 import { timeAgo } from "@/lib/utils/date";
 import { formatSalary, jobTypeLabel, companyInitials } from "@/lib/utils/format";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useCandidateDashboardSummary } from "@/lib/dashboard-api";
 
 interface Application { id: string; job: { title: string; company: { name: string } }; createdAt: string; status: "PENDING" | "REVIEWING" | "ACCEPTED" | "REJECTED"; }
 interface SavedJob { id: string; job: { id: string; title: string; company: { name: string }; jobType: string; salaryMin?: number; salaryMax?: number }; createdAt: string; }
-interface Notification { id: string; type: string; title: string; message: string; createdAt: string; read: boolean; }
+interface Notification { id: string; type: string; title: string; content: string; createdAt: string; isRead: boolean; }
 interface Resume { id: string; }
 
 interface ProfileChecklistItem { label: string; done: boolean; href: string; }
@@ -35,58 +36,32 @@ function computeChecklist(profile: Record<string, unknown> | null): ProfileCheck
 
 export default function CandidateDashboard() {
   const { user } = useAuth();
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
-  const [savedCompanies, setSavedCompanies] = useState<any[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [resumes, setResumes] = useState<Resume[]>([]);
   const [profile, setProfile] = useState<Record<string, unknown> | null>(user as Record<string, unknown> | null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: summary, isLoading: loading, error, refetch } = useCandidateDashboardSummary(!!user);
 
   useEffect(() => {
     setProfile(user as Record<string, unknown> | null);
   }, [user]);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [appsRes, savedRes, companiesRes, notifRes, resumesRes] = await Promise.allSettled([
-        fetch("/api/v1/applications/my?limit=5", { credentials: "include" }),
-        fetch("/api/v1/saved/jobs?limit=3", { credentials: "include" }),
-        fetch("/api/v1/saved/companies", { credentials: "include" }),
-        fetch("/api/v1/notifications?limit=4", { credentials: "include" }),
-        fetch("/api/v1/resumes/my", { credentials: "include" }),
-      ]);
-
-      const errors: string[] = [];
-      if (appsRes.status === "fulfilled" && appsRes.value.ok) { const d = await appsRes.value.json(); setApplications(d.data?.items ?? d.data ?? []); }
-      if (savedRes.status === "fulfilled" && savedRes.value.ok) { const d = await savedRes.value.json(); setSavedJobs(d.data?.items ?? d.data ?? []); }
-      if (companiesRes.status === "fulfilled" && companiesRes.value.ok) {
-        const d = await companiesRes.value.json();
-        const items = d.data?.items ?? d.data ?? d ?? [];
-        setSavedCompanies(Array.isArray(items) ? items : []);
-      }
-      if (notifRes.status === "fulfilled" && notifRes.value.ok) { const d = await notifRes.value.json(); setNotifications(d.data?.items ?? d.data ?? []); }
-      if (resumesRes.status === "fulfilled" && resumesRes.value.ok) { const d = await resumesRes.value.json(); setResumes(d.data?.items ?? d.data ?? []); }
-      if (errors.length > 0) setError(errors.join("; "));
-    } catch (e) { setError(e instanceof Error ? e.message : "Failed to fetch data"); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const applications = (summary?.applications.recent || []) as Application[];
+  const savedJobs = (summary?.savedJobs.recent || []) as SavedJob[];
+  const savedCompanies = Array.from({ length: summary?.savedCompanies.total || 0 });
+  const notifications = (summary?.notifications.recent || []) as Notification[];
+  const resumes = (summary?.resumes.recent || []) as Resume[];
 
   if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
   if (error) return (
     <div className="p-6 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
       <h2 className="text-lg font-bold text-red-700 dark:text-red-400 mb-2">Lỗi tải dữ liệu</h2>
-      <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
-      <button onClick={() => { setLoading(true); setError(null); fetchData(); }} className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">Thử lại</button>
+      <p className="text-sm text-red-600 dark:text-red-300">{error instanceof Error ? error.message : "Failed to fetch data"}</p>
+      <button onClick={() => refetch()} className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">Thử lại</button>
     </div>
   );
 
   const checklist = computeChecklist(profile);
   const completedCount = checklist.filter((c) => c.done).length;
   const completionPct = Math.round((completedCount / checklist.length) * 100);
-  const unreadNotifs = notifications.filter((n) => !n.read).length;
+  const unreadNotifs = summary?.notifications.unreadCount || 0;
 
   return (
     <Tabs defaultValue="overview" className="space-y-6">
@@ -110,10 +85,10 @@ export default function CandidateDashboard() {
       <TabsContent value="overview" className="space-y-6">
         {/* Stats */}
         <StatsCards
-          applicationsCount={applications.length}
-          savedJobsCount={savedJobs.length}
-          followedCompaniesCount={savedCompanies.length}
-          resumesCount={resumes.length}
+          applicationsCount={summary?.applications.total || applications.length}
+          savedJobsCount={summary?.savedJobs.total || savedJobs.length}
+          followedCompaniesCount={summary?.savedCompanies.total || savedCompanies.length}
+          resumesCount={summary?.resumes.total || resumes.length}
         />
 
         {/* Profile + Quick Actions */}
@@ -226,7 +201,7 @@ export default function CandidateDashboard() {
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800"><Circle className="size-4 text-gray-500" /></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-[#E0F2FE]">{notif.title}</p>
-                      <p className="mt-0.5 text-xs text-gray-500 dark:text-[#94A3B8] line-clamp-2">{notif.message}</p>
+                      <p className="mt-0.5 text-xs text-gray-500 dark:text-[#94A3B8] line-clamp-2">{notif.content}</p>
                       <p className="mt-1 text-xs text-gray-400">{timeAgo(notif.createdAt)}</p>
                     </div>
                   </div>

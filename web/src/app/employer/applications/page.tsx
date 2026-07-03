@@ -9,6 +9,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,8 @@ function formatTimeAgo(dateStr: string) {
 }
 
 export default function EmployerApplicationsPage() {
+  const searchParams = useSearchParams();
+  const focusedApplicationId = searchParams.get("applicationId");
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -120,6 +123,19 @@ export default function EmployerApplicationsPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!focusedApplicationId || loading) return;
+    setSelectedJobId("ALL");
+    setStatusFilter("ALL");
+    setSearchQuery("");
+    window.requestAnimationFrame(() => {
+      document.getElementById(`application-${focusedApplicationId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  }, [focusedApplicationId, loading]);
 
   const handleStatus = async (id: string, status: string) => {
     const res = await fetch(`/api/v1/applications/${id}/status`, {
@@ -541,8 +557,11 @@ export default function EmployerApplicationsPage() {
             return (
               <Card
                 key={app.id}
+                id={`application-${app.id}`}
                 className={`bg-[#0d2334]/80 border border-slate-800/80 hover:border-blue-500/30 transition-all duration-200 rounded-2xl overflow-hidden ${
                   app.isBookmarked ? "ring-1 ring-yellow-500/20" : ""
+                } ${
+                  focusedApplicationId === app.id ? "ring-2 ring-blue-400 ring-offset-2 ring-offset-[#071927]" : ""
                 }`}
               >
                 <CardContent className="p-6 space-y-4">

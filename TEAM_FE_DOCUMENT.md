@@ -1,6 +1,6 @@
 # Phú Quốc Jobs — Tài liệu cho Team FE
 
-*Cập nhật: 2026-07-01*
+*Cập nhật: 2026-07-03*
 
 ---
 
@@ -14,6 +14,7 @@
 6. [Known Issues](#6-known-issues)
 7. [Docker & Database](#7-docker--database)
 8. [Tài khoản test](#8-tài-khoản-test)
+9. [Ghi chú BE Architecture cho FE](#9-ghi-chú-be-architecture-cho-fe)
 
 ---
 
@@ -98,6 +99,10 @@ job-phuquoc/
 │   │   ├── inngest/           # Event-driven system (@Global)
 │   │   ├── prisma/            # Database (@Global)
 │   │   └── modules/           # 15 feature modules
+│   │       ├── */dto/         # Request/response DTO
+│   │       ├── */application/ # Use case orchestration, transaction workflow
+│   │       ├── */background/  # Non-blocking background work
+│   │       └── */infrastructure/ # Adapters: event publisher, provider gateway
 │   └── prisma/
 │       ├── schema.prisma      # 22 tables, 10 enums
 │       └── seed.ts            # Seed data
@@ -128,6 +133,25 @@ job-phuquoc/
 - **Tách Component:** Các trang lớn (`PageClient`) cần được tách thành các sub-components (như `Hero`, `FilterBar`, `List`) và đặt trong thư mục riêng thuộc `components/` để dễ bảo trì.
 - **Type Safety:** Hạn chế tối đa việc sử dụng `any`. Cần định nghĩa rõ các interface/type dùng chung tại thư mục `src/types/`.
 - **Layout Management:** Sử dụng Route Groups của Next.js App Router (như `(main)`) để tránh việc Unmount Context Providers khi điều hướng và tránh hiển thị Layout Header/Footer sai vị trí.
+
+### Backend Layer Note
+
+Backend vẫn là **modular monolith**, nhưng các module quan trọng đã bắt đầu tách layer theo tài liệu architecture:
+
+| Layer | Ý nghĩa | Ví dụ hiện tại |
+|---|---|---|
+| Presentation | Controller + DTO validation | `*.controller.ts`, `dto/` |
+| Application | Use case orchestration, transaction workflow | `payments/application/payment-completion.service.ts` |
+| Background | Việc chạy nền không block request | `jobs/background/job-background.service.ts` |
+| Infrastructure | Adapter ra hệ thống ngoài/event bus | `applications/infrastructure/application-events.publisher.ts`, `payments/gateways/*` |
+| Data | Prisma/Postgres/Redis qua service/contract | `PrismaService`, `CacheService`, shared contracts |
+
+Điều FE cần nhớ:
+
+- API response không phụ thuộc vào việc gửi notification/event thành công nếu side effect là non-critical.
+- Apply job, accept/reject application, complete payment có thể phát sinh Inngest event ở phía BE.
+- Job embedding sync là background work; FE không nên chờ embedding xong sau khi tạo/sửa job.
+- FE tiếp tục gọi same-origin BFF `/api/v1/*`, `/api/auth/*`, `/api/copilotkit`; layer nội bộ BE không đổi contract API nếu không có note riêng.
 
 ### Cài đặt
 

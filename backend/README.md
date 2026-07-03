@@ -22,6 +22,34 @@ Backend API cho website tìm việc làm tại Phú Quốc, xây dựng với Ne
 
 ## Kiến trúc tổng quan
 
+Backend hiện là **Modular Monolith theo bounded context**. Không tách microservice sớm; thay vào đó mỗi module được tách layer nội bộ theo hướng trong `docs/BE_ARCHITECTURE_PRODUCTION_AWS_REVIEW*.md`.
+
+### Layer chuẩn trong mỗi module
+
+| Layer | Vị trí | Trách nhiệm |
+|---|---|---|
+| Presentation | `*.controller.ts`, `dto/` | HTTP route, params/query/body, DTO validation, auth decorators. |
+| Application | `application/`, hoặc service chính khi module còn nhỏ | Use case orchestration, transaction workflow, authorization orchestration, state transition flow. |
+| Domain | function/constant gần use case hoặc `domain/` khi phình to | State machine, ownership rules, invariants, policy thuần business. |
+| Infrastructure | `infrastructure/`, `gateways/`, provider adapter | Adapter ra hệ thống ngoài như Inngest, Stripe, Cloudinary/S3, email, model provider. |
+| Background | `background/` hoặc `src/inngest/functions/` | Công việc non-blocking, scheduled jobs, retry-safe handlers. |
+| Data | `PrismaService`, `CacheService`, shared contracts | PostgreSQL/Redis access và query contract giữa module. |
+
+Ví dụ đã áp dụng:
+
+- `applications/infrastructure/application-events.publisher.ts`: publish application events ra Inngest, không để `ApplicationsService` gọi event bus trực tiếp.
+- `jobs/background/job-background.service.ts`: sync embedding chạy nền, không block create/update job response.
+- `payments/application/payment-completion.service.ts`: use case hoàn tất payment -> active job -> emit event -> audit log.
+
+Quy tắc maintain:
+
+- Controller không gọi Prisma/cache/event bus trực tiếp.
+- Service chính của module chỉ nên điều phối use case public của module.
+- Cross-module read đi qua `modules/shared/contracts`.
+- Cross-module side effect đi qua event hoặc application use case rõ ràng.
+- Infrastructure adapter phải thay được khi đổi provider, ví dụ Stripe/mock, Cloudinary/S3, Inngest/EventBridge.
+- Background work phải non-blocking với request path và có log khi fail.
+
 ### Hệ thống phân tầng
 
 ```
@@ -121,6 +149,7 @@ Backend API cho website tìm việc làm tại Phú Quốc, xây dựng với Ne
 │  Rules:                                                             │
 │  ✅ Cross-module via Inngest events (async)                        │
 │  ✅ Cross-module queries via Shared contracts (sync, read-only)    │
+│  ✅ Heavy/non-critical work via background/application layer        │
 │  ✅ PrismaModule @Global() - inject anywhere                      │
 │  ❌ Direct module service imports (forbidden)                      │
 └─────────────────────────────────────────────────────────────────────┘
@@ -240,11 +269,11 @@ Client Request
      ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │ 4. SERVICE                                                       │
-│    ├── Business logic validation                                │
-│    ├── Cache check (CacheService)                               │
-│    ├── Prisma queries                                           │
-│    ├── Cache write (if applicable)                              │
-│    ├── Inngest events (async side effects)                      │
+│    ├── Application orchestration                                │
+│    ├── Domain rule validation                                   │
+│    ├── Shared contract reads if another module owns the data    │
+│    ├── Infrastructure adapter calls if needed                   │
+│    ├── Background publisher for non-critical side effects       │
 │    └── Return result                                            │
 └─────────────────────────────────────────────────────────────────┘
      │

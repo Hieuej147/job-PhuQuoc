@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
@@ -59,6 +60,8 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
 };
 
 export default function ApplicationsPage() {
+  const searchParams = useSearchParams();
+  const focusedApplicationId = searchParams.get("applicationId");
   const [items, setItems] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -75,6 +78,17 @@ export default function ApplicationsPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!focusedApplicationId || loading) return;
+    setStatusFilter("ALL");
+    window.requestAnimationFrame(() => {
+      document.getElementById(`application-${focusedApplicationId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  }, [focusedApplicationId, loading]);
 
   const counts = useMemo(() => {
     return {
@@ -188,7 +202,10 @@ export default function ApplicationsPage() {
             return (
               <Card 
                 key={a.id} 
-                className="overflow-hidden hover:shadow-md transition-all duration-200 border border-slate-100 dark:border-slate-800/80 hover:border-[#005a71]/30 group"
+                id={`application-${a.id}`}
+                className={`overflow-hidden hover:shadow-md transition-all duration-200 border border-slate-100 dark:border-slate-800/80 hover:border-[#005a71]/30 group ${
+                  focusedApplicationId === a.id ? "ring-2 ring-[#005a71] ring-offset-2 dark:ring-offset-slate-950" : ""
+                }`}
               >
                 <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-4">
                   <div className="flex items-start gap-4">
