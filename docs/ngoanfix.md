@@ -34,13 +34,10 @@ Tài liệu này ghi lại toàn bộ các thay đổi và cải tiến phần g
 ### A. Tinh chỉnh Màu sắc Skeleton
 *   **[MODIFY]** [skeleton.tsx](file:///home/ngoan/Downloads/thuctap/job-PhuQuoc/web/src/components/ui/skeleton.tsx): Thay đổi màu nền mặc định từ `bg-accent` (bị lệch màu hoặc quá tối tùy thuộc vào theme) sang màu xám/trắng trung tính (`bg-slate-200/70 dark:bg-slate-800/70`) giúp hiệu ứng tải nhìn nhẹ nhàng, cao cấp và thống nhất hơn.
 
-### B. Sửa Lỗi Crash Khi Backend Offline
-*   **[MODIFY]** [server-auth.ts](file:///home/ngoan/Downloads/thuctap/job-PhuQuoc/web/src/lib/server-auth.ts): Bao bọc hàm `fetch` lấy thông tin user đăng nhập (`/api/v1/auth/me`) trong khối lệnh `try/catch`. Khi server backend không hoạt động, hàm sẽ trả về `null` thay vì ném lỗi mạng (`TypeError: fetch failed`) gây sập ứng dụng Next.js.
-
-### C. Quản Lý Việc Làm Đã Lưu Hết Hạn
+### B. Quản Lý Việc Làm Đã Lưu Hết Hạn
 *   **[MODIFY]** [page.tsx (việc làm đã lưu của ứng viên)](file:///home/ngoan/Downloads/thuctap/job-PhuQuoc/web/src/app/candidate/saved/page.tsx): Kiểm tra hạn chót nộp hồ sơ (`deadline`) của từng công việc đã lưu. Nếu công việc đã hết hạn (`days < 0`), nút **Ứng tuyển** sẽ tự động được chuyển sang trạng thái vô hiệu hóa và hiển thị nhãn **Hết hạn** (màu xám, không thể bấm), đồng thời người dùng vẫn có thể bấm nút **Bỏ lưu** để dọn dẹp danh sách.
 
-### D. Hiển Thị Đúng Giao Diện Mẫu CV Đã Chọn
+### C. Hiển Thị Đúng Giao Diện Mẫu CV Đã Chọn
 *   **[MODIFY]** [page.tsx (trang xem chi tiết CV)](file:///home/ngoan/Downloads/thuctap/job-PhuQuoc/web/src/app/candidate/resumes/[id]/page.tsx): Thay thế việc sử dụng trang in chung chung mặc định bằng việc tải đúng component của mẫu CV mà ứng viên đã chọn (`TEMPLATE_MAP`). Thiết lập chế độ `readOnly={true}` và ẩn đi các đường viền nhập liệu, giúp CV hiển thị đúng thiết kế (màu sắc, cấu trúc cột, font chữ) như lúc soạn thảo.
 
 ---
@@ -49,11 +46,7 @@ Tài liệu này ghi lại toàn bộ các thay đổi và cải tiến phần g
 
 Ghi nhận các cải tiến lớn liên quan đến cấu trúc trang in CV (Print Page), thiết lập database Docker toàn cục, khởi động backend và sửa lỗi lệch màu nền giao diện tối.
 
-### A. Thiết Lập & Khởi Động Hệ Thống (Database & Backend)
-*   **[DOCKER]** Khởi tạo PostgreSQL (pgvector/pg16) và Redis chạy background thông qua docker-compose toàn cục (`sudo docker compose -f docker/docker-compose.yml up -d`). Chạy Prisma db push và db seed để nạp dữ liệu mẫu ban đầu.
-*   **[BACKEND]** Khắc phục lỗi crash khởi động NestJS backend do dịch vụ gửi mail Resend khởi chạy trước cấu hình bằng cách preload biến môi trường thông qua `dotenv` (`NODE_OPTIONS="-r dotenv/config"`).
-
-### B. Sửa Lỗi Vỡ Bố Cục Khi In CV & Xuất PDF
+### A. Sửa Lỗi Vỡ Bố Cục Khi In CV & Xuất PDF
 *   **[MODIFY]** [page.tsx (In CV Ứng Viên)](file:///home/ngoan/Downloads/thuctap/job-PhuQuoc/web/src/app/resumes/[id]/print/page.tsx) & [page.tsx (In CV Đơn Tuyển Dụng)](file:///home/ngoan/Downloads/thuctap/job-PhuQuoc/web/src/app/applications/[id]/resume/print/page.tsx):
     *   Tải động các mẫu CV của ứng viên sử dụng cấu trúc `TEMPLATE_MAP` thay vì giao diện tài liệu in tĩnh cũ.
     *   Ẩn toàn bộ thanh công cụ, thanh Header/Footer mặc định của trình duyệt, thanh điều hướng và khung trò chuyện CopilotKit khi nhấn in.
