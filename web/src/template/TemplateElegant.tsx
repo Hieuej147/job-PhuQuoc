@@ -102,7 +102,7 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
     };
 
     return (
-        <div className="min-h-screen bg-stone-50 py-8 px-4 print:p-0">
+        <div className="min-h-screen bg-stone-50 dark:bg-slate-950 py-8 px-4 print:p-0">
             {/* Control Panel (Hidden when printing) */}
             {!readOnly && (
                 <div className="max-w-4xl mx-auto mb-6 bg-white p-4 rounded-lg shadow-sm border border-stone-200 flex justify-between items-center print:hidden">

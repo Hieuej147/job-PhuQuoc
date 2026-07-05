@@ -102,7 +102,7 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 py-8 px-4 print:p-0">
+        <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-8 px-4 print:p-0">
             {/* Control Panel (Hidden when printing) */}
             {!readOnly && (
                 <div className="max-w-4xl mx-auto mb-6 bg-slate-900/80 p-4 rounded-xl border border-cyan-500/20 backdrop-blur-md flex justify-between items-center print:hidden">
@@ -139,7 +139,7 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
             <div className={`max-w-4xl mx-auto bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl overflow-hidden min-h-[1100px] font-sans p-10 print:border-none print:bg-slate-900 print:my-0 print:p-0 print:rounded-none ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                 
                 {/* ── Futuristic Header ────────────────────────────────────── */}
-                <header className="flex flex-col md:flex-row items-center justify-between gap-6 border-b border-cyan-500/20 pb-8">
+                <header className="futuristic-cv-header flex flex-col md:flex-row items-center justify-between gap-6 border-b border-cyan-500/20 pb-8">
                     <div className="flex-grow text-center md:text-left space-y-3 w-full">
                         <div className="relative inline-block md:block">
                             <input
@@ -225,7 +225,7 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
                 </header>
 
                 {/* ── Content Layout ───────────────────────────────────────── */}
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-8 pt-8">
+                <div className="futuristic-cv-grid grid grid-cols-1 md:grid-cols-[1fr_260px] gap-8 pt-8">
                     
                     {/* Left Column (Experiences & Projects) */}
                     <div className="space-y-8">

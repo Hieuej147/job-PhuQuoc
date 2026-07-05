@@ -1,5 +1,7 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import CompaniesPageClient from "@/components/company/CompaniesPageClient";
+import Loading from "./loading";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
 
@@ -61,7 +63,7 @@ async function fetchIndustries() {
   }
 }
 
-export default async function CompaniesPage({
+async function CompaniesPageContent({
   searchParams,
 }: {
   searchParams: Promise<{ search?: string; industry?: string; sort?: string; page?: string }>;
@@ -108,5 +110,17 @@ export default async function CompaniesPage({
         }}
       />
     </>
+  );
+}
+
+export default function CompaniesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string; industry?: string; sort?: string; page?: string }>;
+}) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <CompaniesPageContent searchParams={searchParams} />
+    </Suspense>
   );
 }

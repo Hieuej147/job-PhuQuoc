@@ -83,6 +83,26 @@ export class ResumesController {
     return { data: resumes };
   }
 
+  @Get('profile')
+  @Roles('CANDIDATE')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Lấy hồ sơ cá nhân (gốc) của ứng viên' })
+  @ApiResponse({ status: 200, description: 'Dữ liệu hồ sơ gốc' })
+  async getProfile(@CurrentUser() user: UserSession) {
+    const profile = await this.resumesService.getProfile(user.user.id);
+    return { data: profile };
+  }
+
+  @Patch('profile')
+  @Roles('CANDIDATE')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Cập nhật hồ sơ cá nhân (gốc)' })
+  @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
+  async updateProfile(@CurrentUser() user: UserSession, @Body() body: any) {
+    const profile = await this.resumesService.updateProfile(user.user.id, body);
+    return { data: profile };
+  }
+
   @Get(':id')
   @Roles('CANDIDATE', 'EMPLOYER', 'ADMIN')
   @ApiBearerAuth('better-auth.session_token')

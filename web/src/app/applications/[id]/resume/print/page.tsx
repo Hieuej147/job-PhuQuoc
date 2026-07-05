@@ -104,19 +104,27 @@ export default function EmployerApplicationResumePrintPage() {
       <style>{`
         @media print {
           @page { size: A4; margin: 0; }
-          html, body { margin: 0 !important; padding: 0 !important; background: #ffffff !important; }
-          .print-toolbar { display: none !important; }
-          body * {
-            visibility: hidden !important;
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
-          .resume-print-page,
-          .resume-print-page * {
-            visibility: visible !important;
+          header,
+          footer,
+          .print-toolbar,
+          .print\:hidden,
+          [class*="copilotkit"],
+          [class*="CopilotKit"],
+          [id*="copilotkit"],
+          .copilotkit-chat-button,
+          iframe {
+            display: none !important;
           }
           .resume-print-page {
-            position: absolute !important;
-            inset: 0 auto auto 0 !important;
             width: 210mm !important;
+            margin: 0 auto !important;
             background: #ffffff !important;
           }
           .resume-print-page article {

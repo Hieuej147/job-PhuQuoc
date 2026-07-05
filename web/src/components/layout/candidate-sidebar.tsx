@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -16,16 +17,41 @@ export function CandidateSidebar() {
   const applicationsCount = summary?.applications.total || 0;
   const unreadCount = summary?.notifications.unreadCount || 0;
 
-  // Profile completion
-  const checklist = [
-    { done: Boolean(u?.name && u?.phone) },
-    { done: Boolean(u?.image) },
-    { done: Boolean(u?.experience && Array.isArray(u.experience) && u.experience.length > 0) },
-    { done: Boolean(u?.education && Array.isArray(u.education) && u.education.length > 0) },
-    { done: Boolean(u?.summary) },
-    { done: Boolean(u?.socialLinks && String(u.socialLinks).length > 0) },
+  // Fetch full profile data for accurate completion calculation
+  const [profile, setProfile] = useState<Record<string, any> | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/v1/resumes/profile", { credentials: "include" })
+      .then(res => res.ok ? res.json() : null)
+      .then(payload => {
+        if (payload) {
+          const p = payload?.data?.data || payload?.data || {};
+          setProfile(p);
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
+  // Profile completion — count individual filled inputs (same logic as profile & dashboard pages)
+  const p = profile || u || {};
+  const socialLinks = (p?.socialLinks && typeof p.socialLinks === 'object') ? p.socialLinks : {};
+  const experience = Array.isArray(p?.experience) ? p.experience : [];
+  const education = Array.isArray(p?.education) ? p.education : [];
+  const allFields = [
+    // basic (7)
+    Boolean(p?.name), Boolean(p?.phone), Boolean(p?.email), Boolean(p?.address), Boolean(p?.degree), Boolean(p?.languages), Boolean(p?.skills),
+    // avatar (1)
+    Boolean(p?.image || p?.avatar),
+    // experience (1)
+    experience.length > 0,
+    // education (1)
+    education.length > 0,
+    // summary (1)
+    Boolean(p?.summary),
+    // socials (4)
+    Boolean(socialLinks.facebook), Boolean(socialLinks.linkedin), Boolean(socialLinks.github), Boolean(socialLinks.website),
   ];
-  const completionPct = Math.round((checklist.filter(c => c.done).length / checklist.length) * 100);
+  const completionPct = Math.round((allFields.filter(Boolean).length / allFields.length) * 100);
 
   const navGroups = [
     {

@@ -359,6 +359,7 @@ model CandidateResume {
   avatar      String?
   isDefault   Boolean  @default(false)
   templateId  String
+  isProfile   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

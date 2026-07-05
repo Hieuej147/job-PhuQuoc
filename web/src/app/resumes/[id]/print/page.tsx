@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { ResumePrintDocument } from "@/components/resume/resume-print-document";
+import { TEMPLATE_MAP } from "@/template";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 
@@ -119,7 +119,6 @@ export default function PublicPrintResumePage() {
           html, body {
             margin: 0 !important;
             padding: 0 !important;
-            background: #ffffff !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             overflow: visible !important;
@@ -134,12 +133,24 @@ export default function PublicPrintResumePage() {
           *::-webkit-scrollbar {
             display: none !important;
           }
+          /* Hide non-printable elements */
+          header,
+          footer,
+          .print-toolbar,
+          .print\:hidden,
+          [class*="copilotkit"],
+          [class*="CopilotKit"],
+          [id*="copilotkit"],
+          .copilotkit-chat-button,
+          iframe {
+            display: none !important;
+          }
           .readonly-cv-view {
             padding: 0 !important;
             margin: 0 !important;
-            background: #ffffff !important;
-            min-height: 0 !important;
-            height: auto !important;
+            min-height: 297mm !important;
+            height: 100% !important;
+            background: transparent !important;
           }
           .readonly-cv-view > div {
             background: transparent !important;
@@ -158,37 +169,82 @@ export default function PublicPrintResumePage() {
             min-height: 0 !important;
             height: auto !important;
           }
-          .print-toolbar {
-            display: none !important;
-          }
-          body * {
-            visibility: hidden !important;
-          }
-          .resume-print-page,
-          .resume-print-page * {
-            visibility: visible !important;
-          }
           .resume-print-page {
-            position: absolute !important;
-            inset: 0 auto auto 0 !important;
-            width: 210mm !important;
-            background: #ffffff !important;
+            width: 100% !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
           }
           .resume-print-page article {
             margin: 0 !important;
             box-shadow: none !important;
           }
+          
+          /* Force desktop responsive styles to be active during print preview */
+          .resume-print-page .md\:flex-row {
+            flex-direction: row !important;
+          }
+          .resume-print-page .md\:text-left {
+            text-align: left !important;
+          }
+          .resume-print-page .md\:items-start {
+            align-items: flex-start !important;
+          }
+          .resume-print-page .md\:items-center {
+            align-items: center !important;
+          }
+          .resume-print-page .md\:grid-cols-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .resume-print-page .sm\:grid-cols-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .resume-print-page .md\:grid-cols-\[1fr_260px\] {
+            grid-template-columns: 1fr 260px !important;
+          }
+          .resume-print-page .md\:grid-cols-\[280px_1fr\] {
+            grid-template-columns: 280px 1fr !important;
+          }
+          
+          /* Semantic overrides for TemplateFuturistic (Tech Developer Pro) */
+          .resume-print-page .futuristic-cv-header {
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            text-align: left !important;
+          }
+          .resume-print-page .futuristic-cv-header .flex-grow {
+            text-align: left !important;
+          }
+          .resume-print-page .futuristic-cv-header input {
+            text-align: left !important;
+          }
+          .resume-print-page .futuristic-cv-header .justify-center {
+            justify-content: flex-start !important;
+          }
+          .resume-print-page .futuristic-cv-grid {
+            grid-template-columns: 1fr 260px !important;
+            display: grid !important;
+          }
+          .resume-print-page .futuristic-cv-grid > div:first-child {
+            grid-column: span 1 !important;
+          }
+          .resume-print-page .futuristic-cv-grid > aside {
+            grid-column: span 1 !important;
+          }
         }
       `}</style>
-      <div className="print-toolbar sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-3 shadow-sm">
+      <div className="print-toolbar print:hidden sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-3 shadow-sm">
         <div>
           <p className="text-sm font-semibold text-slate-900">{resume.title || "CV"}</p>
           <p className="text-xs text-slate-500">Dùng Ctrl+P hoặc nút In/Lưu PDF để lưu file.</p>
         </div>
         <Button onClick={() => window.print()}>In / Lưu PDF</Button>
       </div>
-      <div className="resume-print-page py-8 print:py-0">
-        <ResumePrintDocument user={user} resume={resumeData} templateId={resume.template?.id} />
+      <div className="resume-print-page">
+        {(() => {
+          const SelectedTemplate = TEMPLATE_MAP[resume.template?.id || ""] || TEMPLATE_MAP["tpl-minimal-03"];
+          return <SelectedTemplate user={user} resume={resumeData} readOnly={true} />;
+        })()}
       </div>
     </div>
   );

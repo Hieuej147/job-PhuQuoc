@@ -158,21 +158,38 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
   const router = useRouter();
   const { user } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
+  const [isApplied, setIsApplied] = useState(false);
 
   useEffect(() => {
     if (!user) {
       setIsSaved(false);
+      setIsApplied(false);
       return;
     }
     let active = true;
     (async () => {
       try {
-        const res = await fetch("/api/v1/saved/jobs?limit=200", { credentials: "include" });
-        if (!res.ok) return;
-        const data = await res.json();
-        const items = data.data?.items || data.items || [];
-        if (active) {
-          setIsSaved(items.some((item: any) => item.jobId === job.id));
+        // Kiểm tra đã lưu việc làm chưa
+        const resSaved = await fetch("/api/v1/saved/jobs?limit=200", { credentials: "include" });
+        if (resSaved.ok) {
+          const dataSaved = await resSaved.json();
+          const itemsSaved = dataSaved.data?.items || dataSaved.items || [];
+          if (active) {
+            setIsSaved(itemsSaved.some((item: any) => item.jobId === job.id));
+          }
+        }
+      } catch {}
+
+      try {
+        // Kiểm tra đã ứng tuyển việc làm chưa
+        const resApp = await fetch("/api/v1/applications/my?limit=100", { credentials: "include" });
+        if (resApp.ok) {
+          const dataApp = await resApp.json();
+          const itemsApp = dataApp.data?.items || dataApp.data || dataApp.items || dataApp || [];
+          const listApp = Array.isArray(itemsApp) ? itemsApp : (Array.isArray(itemsApp.items) ? itemsApp.items : []);
+          if (active) {
+            setIsApplied(listApp.some((item: any) => item.jobId === job.id));
+          }
         }
       } catch {}
     })();
@@ -343,6 +360,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         throw new Error(data.message || `HTTP ${res.status}`);
       }
       setApplySuccess(true);
+      setIsApplied(true);
       setShowApplyModal(false);
       setCoverLetter("");
       setUploadedFile(null);
@@ -368,7 +386,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
           </div>
 
           <div className="space-y-5">
-            <JobApplySidebar onApply={openApplyModal} onSave={toggleSave} isSaved={isSaved} />
+            <JobApplySidebar onApply={openApplyModal} onSave={toggleSave} isSaved={isSaved} isApplied={isApplied} />
             <JobOverviewSidebar items={overviewItems} />
             <JobCompanySidebar
               companyLogo={job.company.logo}
@@ -386,7 +404,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         <RelatedJobs jobs={mappedRelated} />
       </div>
 
-      <JobStickyBarMobile onApply={() => setShowApplyModal(true)} onBookmark={toggleSave} isBookmarked={isSaved} />
+      <JobStickyBarMobile onApply={() => { if (!isApplied) setShowApplyModal(true); }} onBookmark={toggleSave} isBookmarked={isSaved} isApplied={isApplied} />
 
       {/* Apply Modal */}
       {showApplyModal && (

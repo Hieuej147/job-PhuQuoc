@@ -90,7 +90,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function BlogDetailPage({ params }: RouteProps) {
+import { Suspense } from "react";
+import Loading from "./loading";
+
+async function BlogDetailPageContent({ params }: RouteProps) {
   const { slug } = await params;
   const blog = await fetchBlog(slug);
 
@@ -221,5 +224,13 @@ export default async function BlogDetailPage({ params }: RouteProps) {
         />
       )}
     </div>
+  );
+}
+
+export default function BlogDetailPage({ params }: RouteProps) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <BlogDetailPageContent params={params} />
+    </Suspense>
   );
 }

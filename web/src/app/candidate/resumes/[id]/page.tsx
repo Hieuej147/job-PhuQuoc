@@ -9,6 +9,8 @@ import { ArrowLeft, Edit, Trash2, Star, Download } from "lucide-react";
 import { toast } from "sonner";
 import { ResumePrintDocument } from "@/components/resume/resume-print-document";
 
+import { TEMPLATE_MAP } from "@/template";
+
 interface ResumeData {
   id: string;
   title: string;
@@ -26,6 +28,7 @@ interface ResumeData {
   experience: any;
   projects: any;
   isDefault: boolean;
+  templateId?: string;
   template: { id: string; name: string };
   user: { name: string; email: string; phone: string | null; image: string | null };
 }
@@ -147,8 +150,30 @@ export default function ResumeDetailPage() {
         {resume.languages && <span> • {resume.languages}</span>}
       </div>
 
-      <div className="overflow-auto rounded-xl border bg-slate-100 py-8 shadow-inner">
-        <ResumePrintDocument user={userProps} resume={resumeProps} templateId={resume.template?.id} />
+      <div className="overflow-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 py-8 shadow-inner readonly-cv-view">
+        <style>{`
+          .readonly-cv-view input, 
+          .readonly-cv-view textarea {
+            border: none !important;
+            background: transparent !important;
+            outline: none !important;
+            pointer-events: none !important;
+            resize: none !important;
+          }
+          .readonly-cv-view button,
+          .readonly-cv-view .print\\:hidden,
+          .readonly-cv-view label {
+            display: none !important;
+          }
+        `}</style>
+        {(() => {
+          const tId = resume.templateId || resume.template?.id || "tpl-minimal-03";
+          const TemplateComponent = TEMPLATE_MAP[tId];
+          if (TemplateComponent) {
+            return <TemplateComponent user={userProps} resume={resumeProps} resumeId={id} readOnly={true} />;
+          }
+          return <ResumePrintDocument user={userProps} resume={resumeProps} templateId={tId} />;
+        })()}
       </div>
     </div>
   );

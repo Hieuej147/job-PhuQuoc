@@ -81,6 +81,40 @@ export class UploadService {
     };
   }
 
+  async uploadCandidateAvatar(userId: string, file: Express.Multer.File) {
+    const result = await this.cloudinaryService.uploadImage(file, {
+      folder: `job-phuquoc/candidate-avatars/${userId}`,
+      resource_type: 'image',
+      transformation: [
+        { width: 500, height: 500, crop: 'fill', gravity: 'face' },
+        { quality: 'auto', fetch_format: 'auto' },
+      ],
+    });
+
+    if (!result.secure_url || !result.public_id) {
+      throw new BadRequestException('Cloudinary không trả về URL ảnh hợp lệ');
+    }
+
+    // Update user table
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { image: result.secure_url },
+    });
+
+    // Also update any profile resume if exists
+    await this.prisma.candidateResume.updateMany({
+      where: { userId, isProfile: true },
+      data: { avatar: result.secure_url },
+    });
+
+    return {
+      message: 'Upload avatar thành công',
+      data: {
+        avatar: result.secure_url,
+      },
+    };
+  }
+
   private async deleteOldLogo(publicId: string, companyId: string) {
     try {
       await this.cloudinaryService.deleteFile(publicId);

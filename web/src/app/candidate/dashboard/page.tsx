@@ -16,23 +16,54 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useCandidateDashboardSummary } from "@/lib/dashboard-api";
 
 interface Application { id: string; job: { title: string; company: { name: string } }; createdAt: string; status: "PENDING" | "REVIEWING" | "ACCEPTED" | "REJECTED"; }
-interface SavedJob { id: string; job: { id: string; title: string; company: { name: string }; jobType: string; salaryMin?: number; salaryMax?: number }; createdAt: string; }
+interface SavedJob { id: string; job: { id: string; title: string; company: { name: string }; jobType: string; salaryMin?: number; salaryMax?: number; deadline?: string | null }; createdAt: string; }
 interface Notification { id: string; type: string; title: string; content: string; createdAt: string; isRead: boolean; }
 interface Resume { id: string; }
 
 interface ProfileChecklistItem { label: string; done: boolean; href: string; }
 
-function computeChecklist(profile: Record<string, unknown> | null): ProfileChecklistItem[] {
-  const p = profile ?? {};
-  return [
-    { label: "Thông tin cơ bản (tên, email, SĐT)", done: Boolean(p.name && p.phone), href: "/candidate/profile" },
-    { label: "Ảnh đại diện", done: Boolean(p.image), href: "/candidate/profile" },
-    { label: "Kinh nghiệm làm việc", done: Boolean(p.experience && (p.experience as unknown[]).length > 0), href: "/candidate/profile" },
-    { label: "Học vấn & bằng cấp", done: Boolean(p.education && (p.education as unknown[]).length > 0), href: "/candidate/profile" },
-    { label: "Tóm tắt bản thân (resume summary)", done: Boolean(p.summary), href: "/candidate/resumes" },
-    { label: "Liên kết mạng xã hội", done: Boolean(p.socialLinks && (p.socialLinks as string).length > 0), href: "/candidate/profile" },
-  ];
+function daysLeft(deadline?: string | null): number | null {
+  if (!deadline) return null;
+  const diff = new Date(deadline).getTime() - Date.now();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
+
+function computeChecklist(profile: Record<string, unknown> | null): { items: ProfileChecklistItem[]; completionPct: number } {
+  const p = profile ?? {};
+  const socialLinks = (p.socialLinks as Record<string, any>) || {};
+  const experience = Array.isArray(p.experience) ? p.experience : [];
+  const education = Array.isArray(p.education) ? p.education : [];
+
+  // All trackable fields per section (same as profile page)
+  const sectionFields: Record<string, boolean[]> = {
+    basic: [Boolean(p.name), Boolean(p.phone), Boolean(p.email), Boolean(p.address), Boolean(p.degree), Boolean(p.languages), Boolean(p.skills)],
+    avatar: [Boolean(p.avatar || p.image)],
+    experience: [experience.length > 0],
+    education: [education.length > 0],
+    summary: [Boolean(p.summary)],
+    socials: [Boolean(socialLinks.facebook), Boolean(socialLinks.linkedin), Boolean(socialLinks.github), Boolean(socialLinks.website)],
+  };
+
+  // Total filled / total fields → percentage
+  const allFields = Object.values(sectionFields).flat();
+  const filledFields = allFields.filter(Boolean).length;
+  const completionPct = Math.round((filledFields / allFields.length) * 100);
+
+  // Section is "done" only when ALL its fields are filled
+  const isSectionDone = (key: string) => sectionFields[key]?.every(Boolean) ?? false;
+
+  const items: ProfileChecklistItem[] = [
+    { label: "Thông tin cơ bản (tên, email, SĐT)", done: isSectionDone("basic"), href: "/candidate/profile" },
+    { label: "Ảnh đại diện", done: isSectionDone("avatar"), href: "/candidate/profile" },
+    { label: "Kinh nghiệm làm việc", done: isSectionDone("experience"), href: "/candidate/profile" },
+    { label: "Học vấn & bằng cấp", done: isSectionDone("education"), href: "/candidate/profile" },
+    { label: "Tóm tắt bản thân (resume summary)", done: isSectionDone("summary"), href: "/candidate/profile" },
+    { label: "Liên kết mạng xã hội", done: isSectionDone("socials"), href: "/candidate/profile" },
+  ];
+
+  return { items, completionPct };
+}
+
 
 export default function CandidateDashboard() {
   const { user } = useAuth();
@@ -40,7 +71,21 @@ export default function CandidateDashboard() {
   const { data: summary, isLoading: loading, error, refetch } = useCandidateDashboardSummary(!!user);
 
   useEffect(() => {
-    setProfile(user as Record<string, unknown> | null);
+    async function fetchProfileResume() {
+      try {
+        const res = await fetch("/api/v1/resumes/profile", { credentials: "include" });
+        if (res.ok) {
+          const payload = await res.json();
+          const profileData = payload?.data?.data || payload?.data || {};
+          setProfile(profileData);
+        }
+      } catch (err) {
+        console.error("Error fetching profile resume on dashboard:", err);
+      }
+    }
+    if (user) {
+      fetchProfileResume();
+    }
   }, [user]);
 
   const applications = (summary?.applications.recent || []) as Application[];
@@ -58,9 +103,7 @@ export default function CandidateDashboard() {
     </div>
   );
 
-  const checklist = computeChecklist(profile);
-  const completedCount = checklist.filter((c) => c.done).length;
-  const completionPct = Math.round((completedCount / checklist.length) * 100);
+  const { items: checklist, completionPct } = computeChecklist(profile);
   const unreadNotifs = summary?.notifications.unreadCount || 0;
 
   return (
@@ -165,25 +208,33 @@ export default function CandidateDashboard() {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="flex flex-col gap-3">
-                {savedJobs.map((sj) => {
-                  const job = sj.job;
-                  const company = job?.company?.name || "N/A";
-                  return (
-                    <Link key={sj.id} href={`/jobs/${job?.id || ""}`} className="flex items-start gap-3 rounded-xl border border-[#e1efff] dark:border-[#1E5F74]/50 bg-white dark:bg-[#0d2d42]/40 p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#005a71]/10 text-sm font-bold text-[#005a71] dark:text-[#67E8F9]">{companyInitials(company)}</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold leading-snug text-gray-900 dark:text-[#E0F2FE]">{job?.title || "N/A"}</p>
-                        <p className="text-xs text-gray-500 dark:text-[#94A3B8]">{company}</p>
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          <span className="rounded-md bg-[#0d9488]/10 px-2 py-0.5 text-xs font-medium text-[#0d9488]">{jobTypeLabel(job?.jobType || "")}</span>
-                          <span className="rounded-md bg-[#0d9488]/10 px-2 py-0.5 text-xs font-medium text-[#0d9488]">{formatSalary(job?.salaryMin, job?.salaryMax)}</span>
+                {savedJobs
+                  .filter((sj) => {
+                    const days = daysLeft(sj.job?.deadline);
+                    return days === null || days >= 0;
+                  })
+                  .map((sj) => {
+                    const job = sj.job;
+                    const company = job?.company?.name || "N/A";
+                    return (
+                      <Link key={sj.id} href={`/jobs/${job?.id || ""}`} className="flex items-start gap-3 rounded-xl border border-[#e1efff] dark:border-[#1E5F74]/50 bg-white dark:bg-[#0d2d42]/40 p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#005a71]/10 text-sm font-bold text-[#005a71] dark:text-[#67E8F9]">{companyInitials(company)}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold leading-snug text-gray-900 dark:text-[#E0F2FE]">{job?.title || "N/A"}</p>
+                          <p className="text-xs text-gray-500 dark:text-[#94A3B8]">{company}</p>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            <span className="rounded-md bg-[#0d9488]/10 px-2 py-0.5 text-xs font-medium text-[#0d9488]">{jobTypeLabel(job?.jobType || "")}</span>
+                            <span className="rounded-md bg-[#0d9488]/10 px-2 py-0.5 text-xs font-medium text-[#0d9488]">{formatSalary(job?.salaryMin, job?.salaryMax)}</span>
+                          </div>
                         </div>
-                      </div>
-                      <span className="text-xs text-gray-400">{timeAgo(sj.createdAt)}</span>
-                    </Link>
-                  );
-                })}
-                {savedJobs.length === 0 && <p className="py-8 text-center text-sm text-gray-400">Chưa lưu việc làm nào</p>}
+                        <span className="text-xs text-gray-400">{timeAgo(sj.createdAt)}</span>
+                      </Link>
+                    );
+                  })}
+                {savedJobs.filter((sj) => {
+                  const days = daysLeft(sj.job?.deadline);
+                  return days === null || days >= 0;
+                }).length === 0 && <p className="py-8 text-center text-sm text-gray-400">Chưa lưu việc làm nào</p>}
               </div>
             </CardContent>
           </Card>

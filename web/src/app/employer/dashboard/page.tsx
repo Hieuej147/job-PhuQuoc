@@ -221,7 +221,7 @@ export default function EmployerDashboard() {
     });
   }, [summary?.applications.recent]);
 
-  const notifications = useMemo<Notification[]>(() => (summary?.notifications.recent || []).map((n: Record<string, unknown>) => ({
+  const notifications = useMemo<Notification[]>(() => (summary?.notifications.recent || []).map((n: any) => ({
     id: n.id as string,
     type: n.type as Notification["type"],
     title: n.title as string,
