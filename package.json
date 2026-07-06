@@ -18,7 +18,7 @@
     "db:up": "docker compose -f docker/docker-compose.yml up -d",
     "db:down": "docker compose -f docker/docker-compose.yml down",
     "db:reset": "cd backend && npx prisma migrate reset --force && npx prisma db seed",
-    "db:studio": "cd backend && npx prisma studio",
+    "db:studio": "pnpm --dir backend exec prisma studio --browser none",
     "redis:ui": "pnpm dlx redis-commander --redis-host 127.0.0.1 --redis-port 6381"
   },
   "devDependencies": {},

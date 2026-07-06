@@ -58,7 +58,11 @@ interface Applicant {
 
 interface Notification {
   id: string;
-  type: "APPLICATION_RECEIVED" | "JOB_APPROVED" | "JOB_DEADLINE" | "COMPANY_APPROVED";
+  type:
+    | "APPLICATION_RECEIVED"
+    | "JOB_APPROVED"
+    | "JOB_DEADLINE"
+    | "COMPANY_APPROVED";
   title: string;
   message: string;
   timeAgo: string;
@@ -130,13 +134,29 @@ function getStatusBadge(status: string) {
 function getApplicantStatusBadge(status: Applicant["status"]) {
   switch (status) {
     case "PENDING":
-      return <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#FEF3C7] text-[#D97706] dark:bg-[#D97706]/20 dark:text-[#FCD34D]">Mới</span>;
+      return (
+        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#FEF3C7] text-[#D97706] dark:bg-[#D97706]/20 dark:text-[#FCD34D]">
+          Mới
+        </span>
+      );
     case "REVIEWING":
-      return <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#DBEAFE] text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#93C5FD]">Đang xem</span>;
+      return (
+        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#DBEAFE] text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#93C5FD]">
+          Đang xem
+        </span>
+      );
     case "ACCEPTED":
-      return <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#D1FAE5] text-[#059669] dark:bg-[#059669]/20 dark:text-[#34D399]">Đã duyệt</span>;
+      return (
+        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#D1FAE5] text-[#059669] dark:bg-[#059669]/20 dark:text-[#34D399]">
+          Đã duyệt
+        </span>
+      );
     case "REJECTED":
-      return <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#FEE2E2] text-[#DC2626] dark:bg-[#DC2626]/20 dark:text-[#FCA5A5]">Từ chối</span>;
+      return (
+        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#FEE2E2] text-[#DC2626] dark:bg-[#DC2626]/20 dark:text-[#FCA5A5]">
+          Từ chối
+        </span>
+      );
   }
 }
 
@@ -185,17 +205,27 @@ function getNotificationBg(type: Notification["type"]) {
 // ── Main Component ──
 
 export default function EmployerDashboard() {
-  const { data: summary, isLoading: loading, error, refetch } = useEmployerDashboardSummary();
+  const {
+    data: summary,
+    isLoading: loading,
+    error,
+    refetch,
+  } = useEmployerDashboardSummary();
 
-  const jobs = useMemo<Job[]>(() => (summary?.jobs.recent || []).map((j: Record<string, unknown>) => ({
-    id: j.id as string,
-    title: j.title as string,
-    status: j.status as string,
-    jobType: j.type as string,
-    level: j.level as string,
-    applicationCount: (j._count as { applications?: number })?.applications ?? 0,
-    deadline: j.deadline as string | undefined,
-  })), [summary?.jobs.recent]);
+  const jobs = useMemo<Job[]>(
+    () =>
+      (summary?.jobs.recent || []).map((j: Record<string, unknown>) => ({
+        id: j.id as string,
+        title: j.title as string,
+        status: j.status as string,
+        jobType: j.type as string,
+        level: j.level as string,
+        applicationCount:
+          (j._count as { applications?: number })?.applications ?? 0,
+        deadline: j.deadline as string | undefined,
+      })),
+    [summary?.jobs.recent],
+  );
 
   const applicants = useMemo<Applicant[]>(() => {
     const colors = [
@@ -204,39 +234,62 @@ export default function EmployerDashboard() {
       { gradientFrom: "from-[#059669]", gradientTo: "to-[#0d9488]" },
       { gradientFrom: "from-[#6366f1]", gradientTo: "to-[#4f46e5]" },
     ];
-    return (summary?.applications.recent || []).map((a: Record<string, unknown>, i: number) => {
-      const user = a.user as { name?: string; email?: string } | undefined;
-      const job = a.job as { title?: string } | undefined;
-      const name = user?.name || user?.email || "Ẩn danh";
-      return {
-        id: a.id as string,
-        name,
-        initials: name.split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase(),
-        jobTitle: job?.title || "",
-        timeAgo: timeAgo(a.createdAt as string),
-        status: a.status as Applicant["status"],
-        coverPreview: (a.coverLetter as string)?.slice(0, 80),
-        ...colors[i % colors.length],
-      };
-    });
+    return (summary?.applications.recent || []).map(
+      (a: Record<string, unknown>, i: number) => {
+        const user = a.user as { name?: string; email?: string } | undefined;
+        const job = a.job as { title?: string } | undefined;
+        const name = user?.name || user?.email || "Ẩn danh";
+        return {
+          id: a.id as string,
+          name,
+          initials: name
+            .split(" ")
+            .filter(Boolean)
+            .map((w: string) => w[0])
+            .slice(0, 2)
+            .join("")
+            .toUpperCase(),
+          jobTitle: job?.title || "",
+          timeAgo: timeAgo(a.createdAt as string),
+          status: a.status as Applicant["status"],
+          coverPreview: (a.coverLetter as string)?.slice(0, 80),
+          ...colors[i % colors.length],
+        };
+      },
+    );
   }, [summary?.applications.recent]);
 
-  const notifications = useMemo<Notification[]>(() => (summary?.notifications.recent || []).map((n: Record<string, unknown>) => ({
-    id: n.id as string,
-    type: n.type as Notification["type"],
-    title: n.title as string,
-    message: n.content as string,
-    timeAgo: timeAgo(n.createdAt as string),
-  })), [summary?.notifications.recent]);
+  const notifications = useMemo<Notification[]>(
+    () =>
+      (summary?.notifications.recent || []).map((n) => ({
+        id: n.id as string,
+        type: n.type as Notification["type"],
+        title: n.title as string,
+        message: n.content as string,
+        timeAgo: timeAgo(n.createdAt as string),
+      })),
+    [summary?.notifications.recent],
+  );
 
   const company = summary?.company as { name?: string } | null | undefined;
 
   const stats = useMemo(() => {
-    const activeJobs = summary?.jobs.active ?? jobs.filter((j) => j.status === "ACTIVE").length;
-    const totalApplicants = summary?.applications.total ?? jobs.reduce((sum, j) => sum + (j.applicationCount ?? 0), 0);
-    const pendingCount = summary?.applications.pending ?? applicants.filter((a) => a.status === "PENDING").length;
+    const activeJobs =
+      summary?.jobs.active ?? jobs.filter((j) => j.status === "ACTIVE").length;
+    const totalApplicants =
+      summary?.applications.total ??
+      jobs.reduce((sum, j) => sum + (j.applicationCount ?? 0), 0);
+    const pendingCount =
+      summary?.applications.pending ??
+      applicants.filter((a) => a.status === "PENDING").length;
     return { activeJobs, totalApplicants, pendingCount };
-  }, [summary?.jobs.active, summary?.applications.total, summary?.applications.pending, jobs, applicants]);
+  }, [
+    summary?.jobs.active,
+    summary?.applications.total,
+    summary?.applications.pending,
+    jobs,
+    applicants,
+  ]);
 
   if (loading) {
     return (
@@ -249,9 +302,13 @@ export default function EmployerDashboard() {
   if (error) {
     return (
       <div className="p-6 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-        <h2 className="text-lg font-bold text-red-700 dark:text-red-400 mb-2">Lỗi tải dữ liệu</h2>
+        <h2 className="text-lg font-bold text-red-700 dark:text-red-400 mb-2">
+          Lỗi tải dữ liệu
+        </h2>
         <p className="text-sm text-red-600 dark:text-red-300">
-          {error instanceof Error ? error.message : "Không thể tải dữ liệu dashboard"}
+          {error instanceof Error
+            ? error.message
+            : "Không thể tải dữ liệu dashboard"}
         </p>
         <button
           onClick={() => refetch()}
@@ -272,7 +329,13 @@ export default function EmployerDashboard() {
             Xin chào, {company?.name || "Công ty"} 👋
           </h1>
           <p className="text-sm text-[#3f484c] dark:text-[#94A3B8] mt-1">
-            {new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} • Phú Quốc
+            {new Date().toLocaleDateString("vi-VN", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}{" "}
+            • Phú Quốc
           </p>
         </div>
         <TabsList className="w-full md:w-fit">
@@ -293,14 +356,18 @@ export default function EmployerDashboard() {
               <div className="w-10 h-10 rounded-xl bg-[#F59E0B]/10 flex items-center justify-center">
                 <Briefcase className="w-5 h-5 text-[#F59E0B]" />
               </div>
-              {jobs.some(j => j.newApplicationCount) && (
+              {jobs.some((j) => j.newApplicationCount) && (
                 <span className="text-xs font-medium text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
                   Có cập nhật
                 </span>
               )}
             </div>
-            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.activeJobs}</p>
-            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Tin đang tuyển</p>
+            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">
+              {stats.activeJobs}
+            </p>
+            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">
+              Tin đang tuyển
+            </p>
           </div>
 
           {/* Total Applicants */}
@@ -315,8 +382,12 @@ export default function EmployerDashboard() {
                 </span>
               )}
             </div>
-            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.totalApplicants}</p>
-            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Tổng hồ sơ nhận</p>
+            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">
+              {stats.totalApplicants}
+            </p>
+            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">
+              Tổng hồ sơ nhận
+            </p>
           </div>
 
           {/* Pending Review */}
@@ -329,8 +400,12 @@ export default function EmployerDashboard() {
                 Chờ duyệt
               </span>
             </div>
-            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.pendingCount}</p>
-            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Cần xem xét</p>
+            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">
+              {stats.pendingCount}
+            </p>
+            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">
+              Cần xem xét
+            </p>
           </div>
 
           {/* Total Applications */}
@@ -340,8 +415,12 @@ export default function EmployerDashboard() {
                 <Eye className="w-5 h-5 text-[#0d9488] dark:text-[#2DD4BF]" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.totalApplicants}</p>
-            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Tổng ứng viên</p>
+            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">
+              {stats.totalApplicants}
+            </p>
+            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">
+              Tổng ứng viên
+            </p>
           </div>
         </div>
 
@@ -350,38 +429,60 @@ export default function EmployerDashboard() {
           {/* Stats Summary */}
           <div className="lg:col-span-2 bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
             <div className="mb-5">
-              <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">Tổng quan tuyển dụng</h2>
-              <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Thống kê từ dữ liệu thực</p>
+              <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">
+                Tổng quan tuyển dụng
+              </h2>
+              <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">
+                Thống kê từ dữ liệu thực
+              </p>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-4 rounded-lg bg-[#f7f9ff] dark:bg-[#071a2b]">
-                <p className="text-3xl font-bold text-[#0E7490] dark:text-[#67e8f9]">{stats.activeJobs}</p>
+                <p className="text-3xl font-bold text-[#0E7490] dark:text-[#67e8f9]">
+                  {stats.activeJobs}
+                </p>
                 <p className="text-sm text-gray-500">Tin đang tuyển</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-[#f7f9ff] dark:bg-[#071a2b]">
-                <p className="text-3xl font-bold text-[#F59E0B]">{stats.totalApplicants}</p>
+                <p className="text-3xl font-bold text-[#F59E0B]">
+                  {stats.totalApplicants}
+                </p>
                 <p className="text-sm text-gray-500">Tổng ứng viên</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-[#f7f9ff] dark:bg-[#071a2b]">
-                <p className="text-3xl font-bold text-green-600">{stats.pendingCount}</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {stats.pendingCount}
+                </p>
                 <p className="text-sm text-gray-500">Chờ duyệt</p>
               </div>
             </div>
             <div className="flex items-center gap-6 pt-4 border-t border-[#e1efff]/50 dark:border-[#1E5F74]/50 mt-4">
               <div>
-                <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">Tổng jobs</p>
-                <p className="font-bold text-[#001e30] dark:text-[#E0F2FE]">{jobs.length} tin</p>
+                <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
+                  Tổng jobs
+                </p>
+                <p className="font-bold text-[#001e30] dark:text-[#E0F2FE]">
+                  {jobs.length} tin
+                </p>
               </div>
               <div>
-                <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">Ứng viên/job</p>
-                <p className="font-bold text-[#F59E0B]">{jobs.length > 0 ? (stats.totalApplicants / jobs.length).toFixed(1) : 0}</p>
+                <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
+                  Ứng viên/job
+                </p>
+                <p className="font-bold text-[#F59E0B]">
+                  {jobs.length > 0
+                    ? (stats.totalApplicants / jobs.length).toFixed(1)
+                    : 0}
+                </p>
               </div>
             </div>
           </div>
 
           {/* Quick Actions */}
           <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
-            <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE] mb-5">Thao tác nhanh</h2>
+            <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE] mb-5">
+              Thao tác nhanh
+            </h2>
             <div className="flex flex-col gap-3">
               <Link
                 href="/employer/jobs/create"
@@ -391,8 +492,12 @@ export default function EmployerDashboard() {
                   <Plus className="w-5 h-5 text-[#F59E0B]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">Đăng tin mới</p>
-                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">Tạo tin tuyển dụng</p>
+                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">
+                    Đăng tin mới
+                  </p>
+                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
+                    Tạo tin tuyển dụng
+                  </p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-[#6f787d] group-hover:text-[#F59E0B] transition-colors" />
               </Link>
@@ -404,8 +509,12 @@ export default function EmployerDashboard() {
                   <Users className="w-5 h-5 text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">Xem hồ sơ</p>
-                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">{stats.pendingCount} hồ sơ mới chờ</p>
+                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">
+                    Xem hồ sơ
+                  </p>
+                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
+                    {stats.pendingCount} hồ sơ mới chờ
+                  </p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-[#6f787d] group-hover:text-blue-600 transition-colors" />
               </Link>
@@ -417,8 +526,12 @@ export default function EmployerDashboard() {
                   <Building2 className="w-5 h-5 text-[#0d9488] dark:text-[#2DD4BF]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">Hồ sơ công ty</p>
-                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">Cập nhật thông tin</p>
+                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">
+                    Hồ sơ công ty
+                  </p>
+                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
+                    Cập nhật thông tin
+                  </p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-[#6f787d] group-hover:text-[#0d9488] transition-colors" />
               </Link>
@@ -430,8 +543,12 @@ export default function EmployerDashboard() {
                   <BarChart3 className="w-5 h-5 text-[#005a71] dark:text-[#67E8F9]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">Quản lý tin đăng</p>
-                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">Xem toàn bộ tin</p>
+                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">
+                    Quản lý tin đăng
+                  </p>
+                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
+                    Xem toàn bộ tin
+                  </p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-[#6f787d] group-hover:text-[#005a71] transition-colors" />
               </Link>
@@ -442,8 +559,13 @@ export default function EmployerDashboard() {
         {/* ── Jobs Table ── */}
         <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">Tin tuyển dụng gần đây</h2>
-            <Link href="/employer/jobs" className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-80">
+            <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">
+              Tin tuyển dụng gần đây
+            </h2>
+            <Link
+              href="/employer/jobs"
+              className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-80"
+            >
               Quản lý tất cả →
             </Link>
           </div>
@@ -451,12 +573,24 @@ export default function EmployerDashboard() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#e1efff]/50 dark:border-[#1E5F74]/50">
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">Vị trí</th>
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">Loại</th>
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">Hồ sơ</th>
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">Hạn nộp</th>
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">Trạng thái</th>
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3">Thao tác</th>
+                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">
+                    Vị trí
+                  </th>
+                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">
+                    Loại
+                  </th>
+                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">
+                    Hồ sơ
+                  </th>
+                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">
+                    Hạn nộp
+                  </th>
+                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">
+                    Trạng thái
+                  </th>
+                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3">
+                    Thao tác
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e1efff]/30 dark:divide-[#1E5F74]/30">
@@ -466,9 +600,13 @@ export default function EmployerDashboard() {
                     className={`hover:bg-[#e1efff]/30 dark:hover:bg-[#1E5F74]/10 transition-colors ${job.status === "CLOSED" ? "opacity-60" : ""}`}
                   >
                     <td className="py-3 pr-4">
-                      <p className="font-semibold text-[#001e30] dark:text-[#E0F2FE]">{job.title}</p>
+                      <p className="font-semibold text-[#001e30] dark:text-[#E0F2FE]">
+                        {job.title}
+                      </p>
                       {job.level && (
-                        <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">jobs.level: {job.level}</p>
+                        <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
+                          jobs.level: {job.level}
+                        </p>
                       )}
                     </td>
                     <td className="py-3 pr-4">
@@ -478,11 +616,17 @@ export default function EmployerDashboard() {
                     </td>
                     <td className="py-3 pr-4">
                       {job.status === "PENDING" || job.status === "DRAFT" ? (
-                        <span className="text-xs text-[#3f484c] dark:text-[#94A3B8]">— chờ duyệt</span>
+                        <span className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
+                          — chờ duyệt
+                        </span>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#F59E0B]">{job.applicationCount ?? 0}</span>
-                          <span className="text-xs text-[#3f484c] dark:text-[#94A3B8]">hồ sơ</span>
+                          <span className="font-bold text-[#F59E0B]">
+                            {job.applicationCount ?? 0}
+                          </span>
+                          <span className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
+                            hồ sơ
+                          </span>
                           {(job.newApplicationCount ?? 0) > 0 && (
                             <span className="text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-bold">
                               {job.newApplicationCount} mới
@@ -492,17 +636,28 @@ export default function EmployerDashboard() {
                       )}
                     </td>
                     <td className="py-3 pr-4">
-                      <span className="text-xs text-[#3f484c] dark:text-[#94A3B8]">{job.deadline ?? "—"}</span>
+                      <span className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
+                        {job.deadline ?? "—"}
+                      </span>
                     </td>
                     <td className="py-3 pr-4">{getStatusBadge(job.status)}</td>
                     <td className="py-3">
                       <div className="flex items-center gap-2">
-                        <Link href={`/employer/jobs/${job.id}/edit`} className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-70">
+                        <Link
+                          href={`/employer/jobs/${job.id}/edit`}
+                          className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-70"
+                        >
                           Sửa
                         </Link>
-                        <span className="text-[#e1efff] dark:text-[#1E5F74]">|</span>
+                        <span className="text-[#e1efff] dark:text-[#1E5F74]">
+                          |
+                        </span>
                         <button className="text-xs text-red-500 font-semibold hover:opacity-70">
-                          {job.status === "ACTIVE" ? "Đóng" : job.status === "PENDING" ? "Xoá" : "Đăng lại"}
+                          {job.status === "ACTIVE"
+                            ? "Đóng"
+                            : job.status === "PENDING"
+                              ? "Xoá"
+                              : "Đăng lại"}
                         </button>
                       </div>
                     </td>
@@ -518,8 +673,13 @@ export default function EmployerDashboard() {
           {/* Recent Applicants */}
           <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">Hồ sơ mới nhất</h2>
-              <Link href="/employer/applications" className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-80">
+              <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">
+                Hồ sơ mới nhất
+              </h2>
+              <Link
+                href="/employer/applications"
+                className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-80"
+              >
                 Xem tất cả →
               </Link>
             </div>
@@ -530,12 +690,13 @@ export default function EmployerDashboard() {
                 return (
                   <div
                     key={app.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${isAccepted
-                      ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30"
-                      : isRejected
-                        ? "bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/20 opacity-75"
-                        : "bg-[#e1efff]/30 dark:bg-[#1E5F74]/10 border-[#e1efff]/20 dark:border-[#1E5F74]/30"
-                      }`}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                      isAccepted
+                        ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30"
+                        : isRejected
+                          ? "bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/20 opacity-75"
+                          : "bg-[#e1efff]/30 dark:bg-[#1E5F74]/10 border-[#e1efff]/20 dark:border-[#1E5F74]/30"
+                    }`}
                   >
                     <div
                       className={`w-10 h-10 rounded-full bg-gradient-to-br ${app.gradientFrom} ${app.gradientTo} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}
@@ -543,7 +704,9 @@ export default function EmployerDashboard() {
                       {app.initials}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-[#001e30] dark:text-[#E0F2FE] truncate">{app.name}</p>
+                      <p className="font-semibold text-sm text-[#001e30] dark:text-[#E0F2FE] truncate">
+                        {app.name}
+                      </p>
                       <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
                         {app.jobTitle} • {app.timeAgo}
                       </p>
@@ -556,7 +719,10 @@ export default function EmployerDashboard() {
                     <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                       {getApplicantStatusBadge(app.status)}
                       {app.status === "PENDING" && (
-                        <Link href="/employer/applications" className="text-[10px] font-bold text-white bg-[#0e7490] px-2 py-0.5 rounded-md hover:bg-[#005a71] transition-colors">
+                        <Link
+                          href="/employer/applications"
+                          className="text-[10px] font-bold text-white bg-[#0e7490] px-2 py-0.5 rounded-md hover:bg-[#005a71] transition-colors"
+                        >
                           Xem CV
                         </Link>
                       )}
@@ -571,7 +737,10 @@ export default function EmployerDashboard() {
                         </div>
                       )}
                       {app.status === "ACCEPTED" && (
-                        <Link href="/employer/applications" className="text-[10px] font-bold text-[#0e7490] dark:text-[#67E8F9] hover:opacity-70">
+                        <Link
+                          href="/employer/applications"
+                          className="text-[10px] font-bold text-[#0e7490] dark:text-[#67E8F9] hover:opacity-70"
+                        >
                           Liên hệ
                         </Link>
                       )}
@@ -585,9 +754,13 @@ export default function EmployerDashboard() {
           {/* Notifications */}
           <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">Thông báo</h2>
+              <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">
+                Thông báo
+              </h2>
               {notifications.length > 0 && (
-                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{notifications.length} mới</span>
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {notifications.length} mới
+                </span>
               )}
             </div>
             <div className="flex flex-col gap-3">
@@ -598,15 +771,24 @@ export default function EmployerDashboard() {
                 >
                   {getNotificationIcon(notif.type)}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">{notif.title}</p>
-                    <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">{notif.message}</p>
-                    <p className="text-xs text-[#6f787d] mt-1">{notif.timeAgo}</p>
+                    <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">
+                      {notif.title}
+                    </p>
+                    <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">
+                      {notif.message}
+                    </p>
+                    <p className="text-xs text-[#6f787d] mt-1">
+                      {notif.timeAgo}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
             <div className="mt-3 text-center">
-              <Link href="/employer/notifications" className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-70">
+              <Link
+                href="/employer/notifications"
+                className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-70"
+              >
                 Xem tất cả thông báo →
               </Link>
             </div>
