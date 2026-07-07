@@ -120,22 +120,50 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
                         overflow: visible !important;
                     }
                     .cv-modern-header {
-                        padding: 10mm 12mm !important;
+                        padding: 8mm 10mm !important;
                         break-after: avoid !important;
+                    }
+                    .cv-modern-header img {
+                        width: 24mm !important;
+                        height: 24mm !important;
+                    }
+                    .cv-modern-header input {
+                        line-height: 1.15 !important;
                     }
                     .cv-modern-body {
                         max-width: none !important;
-                        padding: 9mm 12mm !important;
+                        padding: 7mm 10mm !important;
                         break-before: avoid !important;
+                    }
+                    .cv-modern-body > * + * {
+                        margin-top: 6mm !important;
+                    }
+                    .cv-modern-body h2 {
+                        margin-bottom: 3mm !important;
                     }
                     .cv-modern-two-col,
                     .cv-modern-project-grid {
                         display: grid !important;
                         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
                     }
-                    .cv-modern-block,
+                    .cv-modern-two-col {
+                        gap: 6mm !important;
+                    }
+                    .cv-modern-project-grid {
+                        gap: 4mm !important;
+                    }
+                    .cv-modern-block {
+                        break-inside: auto !important;
+                    }
                     .cv-modern-card {
                         break-inside: avoid !important;
+                    }
+                    .cv-modern-card {
+                        padding-top: 2mm !important;
+                        padding-bottom: 2mm !important;
+                    }
+                    .cv-modern-card textarea {
+                        min-height: 0 !important;
                     }
                 }
             `}</style>
