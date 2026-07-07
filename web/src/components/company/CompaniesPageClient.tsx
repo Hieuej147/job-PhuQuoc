@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import CompaniesHero from "@/components/company/CompaniesHero";
@@ -8,6 +8,7 @@ import CompaniesFilterBar from "@/components/company/CompaniesFilterBar";
 import CompanyList from "@/components/company/CompanyList";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Company } from "@/types/company";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SIZE_LABELS: Record<string, string> = {
   SIZE_1_50: "1-50",
@@ -44,6 +45,8 @@ export default function CompaniesPageClient({
   const [sortBy, setSortBy] = useState(initialSearchParams.sort);
   const [savedCompanyIds, setSavedCompanyIds] = useState<Set<string>>(new Set());
 
+  const [isPending, startTransition] = useTransition();
+
   const updateURL = (updates: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
@@ -53,7 +56,9 @@ export default function CompaniesPageClient({
         params.set(key, value);
       }
     });
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    });
   };
 
   useEffect(() => {
@@ -152,13 +157,53 @@ export default function CompaniesPageClient({
           initialTotal={initialTotal}
           updateURL={updateURL}
         />
-        <CompanyList
-          mappedCompanies={mappedCompanies}
-          totalPages={totalPages}
-          currentPage={currentPage}
-          savedCompanyIds={savedCompanyIds}
-          updateURL={updateURL}
-        />
+        {isPending ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div
+                key={index}
+                className="relative bg-white dark:bg-[#0f2436] rounded-2xl border border-[#E0F5FB] dark:border-[#1e3a4f] shadow-sm p-5 space-y-4"
+              >
+                {/* Cover area skeleton */}
+                <div className="h-20 -mx-5 -mt-5 rounded-t-2xl bg-slate-200/50 dark:bg-slate-800/50 animate-pulse" />
+                
+                {/* Logo area */}
+                <div className="-mt-12 relative z-10">
+                  <Skeleton className="w-14 h-14 rounded-xl border-2 border-white dark:border-[#1e3a4f]" />
+                </div>
+
+                {/* Title & Industry */}
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+
+                {/* Badges */}
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-24 rounded-md" />
+                  <Skeleton className="h-6 w-16 rounded-md" />
+                </div>
+
+                {/* Location and buttons */}
+                <div className="flex items-center justify-between pt-2 border-t border-[#bec8cd]/10">
+                  <Skeleton className="h-4 w-20" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-7 w-16 rounded-lg" />
+                    <Skeleton className="h-7 w-12 rounded-lg bg-[#005a71]/30" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <CompanyList
+            mappedCompanies={mappedCompanies}
+            totalPages={totalPages}
+            currentPage={currentPage}
+            savedCompanyIds={savedCompanyIds}
+            updateURL={updateURL}
+          />
+        )}
       </main>
     </div>
   );

@@ -65,6 +65,26 @@ describe('SavedService', () => {
     });
   });
 
+  describe('removeSavedJob', () => {
+    it('should remove a saved job owned by user', async () => {
+      const existing = { id: 'saved1', userId: 'user1', jobId: 'job1' };
+      prismaMock.savedJob.findUnique.mockResolvedValue(existing);
+      prismaMock.savedJob.delete.mockResolvedValue(existing);
+
+      const result = await service.removeSavedJob('user1', 'saved1');
+
+      expect(prismaMock.savedJob.delete).toHaveBeenCalledWith({ where: { id: 'saved1' } });
+      expect(result).toEqual({ saved: false });
+    });
+
+    it('should reject removing another user saved job', async () => {
+      prismaMock.savedJob.findUnique.mockResolvedValue({ id: 'saved1', userId: 'user2', jobId: 'job1' });
+
+      await expect(service.removeSavedJob('user1', 'saved1')).rejects.toThrow('Saved job not found');
+      expect(prismaMock.savedJob.delete).not.toHaveBeenCalled();
+    });
+  });
+
   describe('saveCompany', () => {
     it('should save company when not saved', async () => {
       prismaMock.savedCompany.findUnique.mockResolvedValue(null);
@@ -96,6 +116,26 @@ describe('SavedService', () => {
 
       expect(result.items).toEqual(mockSavedCompanies);
       expect(result.total).toBe(1);
+    });
+  });
+
+  describe('removeSavedCompany', () => {
+    it('should remove a saved company owned by user', async () => {
+      const existing = { id: 'saved-company1', userId: 'user1', companyId: 'company1' };
+      prismaMock.savedCompany.findUnique.mockResolvedValue(existing);
+      prismaMock.savedCompany.delete.mockResolvedValue(existing);
+
+      const result = await service.removeSavedCompany('user1', 'saved-company1');
+
+      expect(prismaMock.savedCompany.delete).toHaveBeenCalledWith({ where: { id: 'saved-company1' } });
+      expect(result).toEqual({ saved: false });
+    });
+
+    it('should reject removing another user saved company', async () => {
+      prismaMock.savedCompany.findUnique.mockResolvedValue({ id: 'saved-company1', userId: 'user2', companyId: 'company1' });
+
+      await expect(service.removeSavedCompany('user1', 'saved-company1')).rejects.toThrow('Saved company not found');
+      expect(prismaMock.savedCompany.delete).not.toHaveBeenCalled();
     });
   });
 });

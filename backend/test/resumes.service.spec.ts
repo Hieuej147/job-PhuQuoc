@@ -50,6 +50,11 @@ describe('ResumesService', () => {
 
       const result = await service.findByUser('user1');
       expect(result).toEqual(mockResumes);
+      expect(prismaMock.candidateResume.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user1', isProfile: false },
+        }),
+      );
     });
   });
 

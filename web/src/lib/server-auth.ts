@@ -15,17 +15,22 @@ export async function getServerAuthUser(): Promise<AuthUser | null> {
     return null;
   }
 
-  const response = await fetch(`${BACKEND_URL}/api/v1/auth/me`, {
-    headers: {
-      cookie: cookieHeader,
-    },
-    cache: "no-store",
-  });
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/v1/auth/me`, {
+      headers: {
+        cookie: cookieHeader,
+      },
+      cache: "no-store",
+    });
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json().catch(() => null);
+    return payload?.data?.user || payload?.user || null;
+  } catch (error) {
+    console.error("getServerAuthUser fetch failed:", error);
     return null;
   }
-
-  const payload = await response.json().catch(() => null);
-  return payload?.data?.user || payload?.user || null;
 }

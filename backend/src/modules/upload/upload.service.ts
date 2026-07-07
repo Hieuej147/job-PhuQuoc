@@ -4,6 +4,7 @@ import { CloudinaryService } from './cloudinary.service';
 
 const COMPANY_LOGO_FOLDER = 'job-phuquoc/company-logos';
 const CANDIDATE_CV_FOLDER = 'job-phuquoc/candidate-cvs';
+const CANDIDATE_AVATAR_FOLDER = 'job-phuquoc/candidate-avatars';
 
 @Injectable()
 export class UploadService {
@@ -81,11 +82,86 @@ export class UploadService {
     };
   }
 
+  async uploadCandidateAvatar(userId: string, file: Express.Multer.File) {
+    const [user, profile] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { imagePublicId: true },
+      }),
+      this.prisma.candidateResume.findFirst({
+        where: { userId, isProfile: true },
+        select: { id: true, avatarPublicId: true },
+      }),
+    ]);
+
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+
+    const oldAvatarPublicId = profile?.avatarPublicId || user.imagePublicId;
+
+    const result = await this.cloudinaryService.uploadImage(file, {
+      folder: `${CANDIDATE_AVATAR_FOLDER}/${userId}`,
+      resource_type: 'image',
+      transformation: [
+        { width: 500, height: 500, crop: 'fill', gravity: 'face' },
+        { quality: 'auto', fetch_format: 'auto' },
+      ],
+    });
+
+    if (!result.secure_url || !result.public_id) {
+      throw new BadRequestException('Cloudinary không trả về URL ảnh hợp lệ');
+    }
+
+    // Update user table
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        image: result.secure_url,
+        imagePublicId: result.public_id,
+      },
+    });
+
+    // Also update any profile resume if exists
+    await this.prisma.candidateResume.updateMany({
+      where: { userId, isProfile: true },
+      data: {
+        avatar: result.secure_url,
+        avatarPublicId: result.public_id,
+      },
+    });
+
+    if (oldAvatarPublicId && oldAvatarPublicId !== result.public_id) {
+      await this.deleteOldAvatar(oldAvatarPublicId, userId);
+    }
+
+    return {
+      message: 'Upload avatar thành công',
+      data: {
+        avatar: result.secure_url,
+        publicId: result.public_id,
+      },
+    };
+  }
+
   private async deleteOldLogo(publicId: string, companyId: string) {
     try {
       await this.cloudinaryService.deleteFile(publicId);
     } catch (error) {
       this.logger.warn(`Không xoá được logo cũ trên Cloudinary cho company ${companyId}: ${publicId}`);
+    }
+  }
+
+  private async deleteOldAvatar(publicId: string, userId: string) {
+    if (!publicId.startsWith(`${CANDIDATE_AVATAR_FOLDER}/${userId}/`)) {
+      this.logger.warn(`Bỏ qua xoá avatar không thuộc folder hệ thống cho user ${userId}: ${publicId}`);
+      return;
+    }
+
+    try {
+      await this.cloudinaryService.deleteFile(publicId);
+    } catch (error) {
+      this.logger.warn(`Không xoá được avatar cũ trên Cloudinary cho user ${userId}: ${publicId}`);
     }
   }
 }

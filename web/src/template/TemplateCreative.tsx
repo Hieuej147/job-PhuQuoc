@@ -102,7 +102,60 @@ export default function TemplateCreative({ user = {} as Partial<UserData>, resum
     };
 
     return (
-        <div className="min-h-screen bg-violet-50/50 py-8 px-4 print:p-0">
+        <div className="cv-creative-root min-h-screen bg-violet-50/50 dark:bg-slate-950 py-8 px-4 print:p-0">
+            <style>{`
+                @media print {
+                    .cv-creative-root {
+                        min-height: auto !important;
+                        padding: 0 !important;
+                        background: transparent !important;
+                    }
+                    .cv-creative-sheet {
+                        width: 210mm !important;
+                        max-width: 210mm !important;
+                        min-height: auto !important;
+                        border: 0 !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                        overflow: visible !important;
+                    }
+                    .cv-creative-header {
+                        padding: 10mm 12mm !important;
+                        break-after: avoid !important;
+                    }
+                    .cv-creative-header-inner {
+                        display: flex !important;
+                        flex-direction: row !important;
+                        align-items: center !important;
+                        gap: 18px !important;
+                        text-align: left !important;
+                    }
+                    .cv-creative-header-inner [class~="flex-grow"] {
+                        text-align: left !important;
+                    }
+                    .cv-creative-header-inner input {
+                        text-align: left !important;
+                    }
+                    .cv-creative-header-inner [class~="md:justify-start"],
+                    .cv-creative-header-inner .justify-center {
+                        justify-content: flex-start !important;
+                    }
+                    .cv-creative-main {
+                        display: grid !important;
+                        grid-template-columns: 68mm minmax(0, 1fr) !important;
+                        min-height: auto !important;
+                    }
+                    .cv-creative-sidebar,
+                    .cv-creative-content {
+                        padding: 8mm !important;
+                        min-width: 0 !important;
+                    }
+                    .cv-creative-section,
+                    .cv-creative-card {
+                        break-inside: avoid !important;
+                    }
+                }
+            `}</style>
             {/* Control Panel (Hidden when printing) */}
             {!readOnly && (
                 <div className="max-w-4xl mx-auto mb-6 bg-white p-4 rounded-lg shadow-sm border border-violet-100 flex justify-between items-center print:hidden">
@@ -136,13 +189,13 @@ export default function TemplateCreative({ user = {} as Partial<UserData>, resum
             )}
 
             {/* Resume Sheet */}
-            <div className={`max-w-4xl mx-auto bg-white shadow-xl rounded-2xl overflow-hidden border border-violet-100 min-h-[1100px] font-sans text-slate-800 print:shadow-none print:border-none print:my-0 print:rounded-none ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+            <div className={`cv-creative-sheet max-w-4xl mx-auto bg-white shadow-xl rounded-2xl overflow-hidden border border-violet-100 min-h-[1100px] font-sans text-slate-800 print:shadow-none print:border-none print:my-0 print:rounded-none ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                 
                 {/* ── Dynamic Banner & Header ───────────────────────────────── */}
-                <div className="bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white px-10 py-12 relative">
+                <div className="cv-creative-header bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white px-10 py-12 relative">
                     <div className="absolute right-0 top-0 w-1/3 h-full opacity-10 bg-[radial-gradient(circle_at_right,_white,_transparent)]" />
                     
-                    <div className="relative flex flex-col md:flex-row items-center gap-6 z-10">
+                    <div className="cv-creative-header-inner relative flex flex-col md:flex-row items-center gap-6 z-10">
                         {/* Avatar container */}
                         <div className="relative group shrink-0">
                             <img
@@ -226,15 +279,15 @@ export default function TemplateCreative({ user = {} as Partial<UserData>, resum
                 </div>
 
                 {/* ── Main Layout ────────────────────────────────────────────── */}
-                <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] min-h-[850px] border-t border-violet-100">
+                <div className="cv-creative-main grid grid-cols-1 md:grid-cols-[280px_1fr] min-h-[850px] border-t border-violet-100">
                     
                     {/* Sidebar / Left Column */}
-                    <aside className="bg-violet-50/30 p-8 space-y-8 border-r border-violet-100">
+                    <aside className="cv-creative-sidebar bg-violet-50/30 p-8 space-y-8 border-r border-violet-100">
                         {/* Social Links */}
                         <Section title="Mạng xã hội" icon="share">
                             <div className="space-y-2">
                                 {resumeData.socialLinks.map((s, i) => (
-                                    <div key={i} className="flex items-center gap-1 bg-white p-2 rounded-lg border border-violet-100 relative group/link shadow-sm">
+                                    <div key={i} className="cv-creative-card flex items-center gap-1 bg-white p-2 rounded-lg border border-violet-100 relative group/link shadow-sm">
                                         <span className="material-symbols-outlined text-sm text-violet-500">link</span>
                                         <input
                                             type="text"
@@ -287,7 +340,7 @@ export default function TemplateCreative({ user = {} as Partial<UserData>, resum
                         >
                             <div className="space-y-4">
                                 {resumeData.education.map((e, i) => (
-                                    <div key={i} className="relative group/edu bg-white p-3 rounded-lg border border-violet-100/70 shadow-sm">
+                                    <div key={i} className="cv-creative-card relative group/edu bg-white p-3 rounded-lg border border-violet-100/70 shadow-sm">
                                         <input
                                             type="text"
                                             value={e.school}
@@ -349,7 +402,7 @@ export default function TemplateCreative({ user = {} as Partial<UserData>, resum
                     </aside>
 
                     {/* Content Column / Right */}
-                    <main className="p-8 space-y-8 bg-white">
+                    <main className="cv-creative-content p-8 space-y-8 bg-white">
                         {/* Summary */}
                         <Section title="Giới thiệu bản thân" icon="account_circle">
                             <textarea
@@ -369,7 +422,7 @@ export default function TemplateCreative({ user = {} as Partial<UserData>, resum
                         >
                             <div className="space-y-6">
                                 {resumeData.experience.map((exp, i) => (
-                                    <div key={i} className="relative group/exp border-l-2 border-violet-200 pl-4 py-1 space-y-1">
+                                    <div key={i} className="cv-creative-card relative group/exp border-l-2 border-violet-200 pl-4 py-1 space-y-1">
                                         <div className="flex justify-between items-baseline">
                                             <input
                                                 type="text"
@@ -429,7 +482,7 @@ export default function TemplateCreative({ user = {} as Partial<UserData>, resum
                         >
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {resumeData.projects.map((p, i) => (
-                                    <div key={i} className="p-4 bg-indigo-50/30 rounded-xl border border-indigo-100/50 relative group/proj shadow-sm">
+                                    <div key={i} className="cv-creative-card p-4 bg-indigo-50/30 rounded-xl border border-indigo-100/50 relative group/proj shadow-sm">
                                         <button
                                             onClick={() => removeArrayItem("projects", i)}
                                             className="absolute right-3 top-3 text-red-500 hover:text-red-700 text-xs font-semibold opacity-0 group-hover/proj:opacity-100 transition-opacity print:hidden"
@@ -488,7 +541,7 @@ export default function TemplateCreative({ user = {} as Partial<UserData>, resum
 /* ── Reusable section component ──────────────────────────────── */
 function Section({ title, icon, children, onAdd }) {
     return (
-        <section className="relative group/section">
+        <section className="cv-creative-section relative group/section">
             <h2 className="mb-4 text-xs font-extrabold uppercase tracking-widest text-slate-400 flex items-center justify-between gap-2 border-b border-violet-100/50 pb-2">
                 <span className="flex items-center gap-1.5 text-violet-700">
                     {icon && <span className="material-symbols-outlined text-lg leading-none">{icon}</span>}

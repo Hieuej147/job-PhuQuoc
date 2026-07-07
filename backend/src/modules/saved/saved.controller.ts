@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { SavedService } from './saved.service';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -32,6 +32,16 @@ export class SavedController {
     return this.savedService.getSavedJobs(user.user.id, query);
   }
 
+  @Delete('jobs/:savedJobId')
+  @Roles('CANDIDATE')
+  @ApiOperation({ summary: 'Bỏ lưu job', description: 'Candidate bỏ lưu bằng ID của bản ghi saved_job.' })
+  @ApiParam({ name: 'savedJobId', description: 'ID của bản ghi saved_job' })
+  @ApiResponse({ status: 200, description: '{ saved: false }' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy saved job của user hiện tại' })
+  removeSavedJob(@Param('savedJobId') savedJobId: string, @CurrentUser() user: UserSession) {
+    return this.savedService.removeSavedJob(user.user.id, savedJobId);
+  }
+
   @Post('companies/:companyId')
   @Roles('CANDIDATE')
   @ApiOperation({ summary: 'Lưu/bỏ lưu company', description: 'Candidate toggle lưu company.' })
@@ -50,5 +60,15 @@ export class SavedController {
   @ApiResponse({ status: 200, description: 'Danh sách saved companies phân trang' })
   getSavedCompanies(@CurrentUser() user: UserSession, @Query() query: SavedQueryDto) {
     return this.savedService.getSavedCompanies(user.user.id, query);
+  }
+
+  @Delete('companies/:savedCompanyId')
+  @Roles('CANDIDATE')
+  @ApiOperation({ summary: 'Bỏ lưu company', description: 'Candidate bỏ lưu bằng ID của bản ghi saved_company.' })
+  @ApiParam({ name: 'savedCompanyId', description: 'ID của bản ghi saved_company' })
+  @ApiResponse({ status: 200, description: '{ saved: false }' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy saved company của user hiện tại' })
+  removeSavedCompany(@Param('savedCompanyId') savedCompanyId: string, @CurrentUser() user: UserSession) {
+    return this.savedService.removeSavedCompany(user.user.id, savedCompanyId);
   }
 }

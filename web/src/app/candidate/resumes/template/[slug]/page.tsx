@@ -5,6 +5,7 @@ import { useParams, useSearchParams, notFound } from "next/navigation";
 import { TEMPLATE_MAP, SLUG_TO_ID } from "@/template";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
+import { toNewTemplateResume, toTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
 
 export default function TemplatePage() {
   const params = useParams();
@@ -28,31 +29,22 @@ export default function TemplatePage() {
 
       if (!resumeId) {
         try {
-          const response = await fetch("/api/v1/auth/me", { credentials: "include" });
-          const json = response.ok ? await response.json() : {};
-          const u = json.user || {};
+          const [authResponse, profileResponse] = await Promise.all([
+            fetch("/api/v1/auth/me", { credentials: "include" }),
+            fetch("/api/v1/resumes/profile", { credentials: "include" }),
+          ]);
+          const authJson = authResponse.ok ? await authResponse.json() : {};
+          const profileJson = profileResponse.ok ? await profileResponse.json() : {};
+          const authUser = authJson.user || {};
+          const profile = profileJson.data?.data ?? profileJson.data ?? profileJson;
+          const mergedProfile = { ...authUser, ...profile };
+
           setData({
-            user: {
-              name: u.name || "Họ và Tên",
-              email: u.email || "",
-              phone: u.phone || "",
-              avatar: u.image || "https://i.pravatar.cc/150?img=12",
-            },
-            resume: {
-              title: "Hồ sơ của tôi",
-              address: "Phú Quốc, Kiên Giang",
-              degree: "Cử nhân / Vị trí ứng tuyển",
-              summary: "Bản tóm tắt nghề nghiệp giới thiệu năng lực bản thân bạn...",
-              languages: "Tiếng Việt, Tiếng Anh",
-              skills: "Lập trình, Giao tiếp",
-              socialLinks: [],
-              education: [],
-              experience: [],
-              projects: [],
-            }
+            user: toTemplateUser(mergedProfile),
+            resume: toNewTemplateResume(profile),
           });
         } catch (err) {
-          setData({ user: {}, resume: {} });
+          setData({ user: toTemplateUser(), resume: toNewTemplateResume() });
         } finally {
           setLoading(false);
         }
@@ -65,27 +57,7 @@ export default function TemplatePage() {
         const json = await response.json();
         const r = json.data?.data ?? json.data ?? json;
         
-        const userObj = {
-          name: r.user?.name || r.name || "Họ và Tên",
-          email: r.user?.email || r.email || "",
-          phone: r.user?.phone || r.phone || "",
-          avatar: r.user?.image || r.avatar || "https://i.pravatar.cc/150?img=12",
-        };
-
-        const resumeObj = {
-          title: r.title || "Hồ sơ của tôi",
-          address: r.address || "",
-          summary: r.summary || "",
-          degree: r.degree || "",
-          languages: r.languages || "",
-          skills: r.skills || "",
-          socialLinks: r.socialLinks || r.socicallink || [],
-          education: r.education || [],
-          experience: r.experience || [],
-          projects: r.projects || [],
-        };
-
-        setData({ user: userObj, resume: resumeObj });
+        setData({ user: toTemplateUser(r), resume: toTemplateResume(r) });
       } catch (err) {
         toast.error("Không thể tải thông tin CV của bạn.");
       } finally {

@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useCandidateDashboardSummary } from "@/lib/dashboard-api";
+import { computeProfileCompletion } from "@/lib/profile-completion";
 
 export function CandidateSidebar() {
   const pathname = usePathname();
@@ -16,16 +18,22 @@ export function CandidateSidebar() {
   const applicationsCount = summary?.applications.total || 0;
   const unreadCount = summary?.notifications.unreadCount || 0;
 
-  // Profile completion
-  const checklist = [
-    { done: Boolean(u?.name && u?.phone) },
-    { done: Boolean(u?.image) },
-    { done: Boolean(u?.experience && Array.isArray(u.experience) && u.experience.length > 0) },
-    { done: Boolean(u?.education && Array.isArray(u.education) && u.education.length > 0) },
-    { done: Boolean(u?.summary) },
-    { done: Boolean(u?.socialLinks && String(u.socialLinks).length > 0) },
-  ];
-  const completionPct = Math.round((checklist.filter(c => c.done).length / checklist.length) * 100);
+  // Fetch full profile data for accurate completion calculation
+  const [profile, setProfile] = useState<Record<string, any> | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/v1/resumes/profile", { credentials: "include" })
+      .then(res => res.ok ? res.json() : null)
+      .then(payload => {
+        if (payload) {
+          const p = payload?.data?.data || payload?.data || {};
+          setProfile(p);
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const { completionPct } = computeProfileCompletion(profile || u);
 
   const navGroups = [
     {

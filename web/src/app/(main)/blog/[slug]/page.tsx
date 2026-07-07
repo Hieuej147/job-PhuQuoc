@@ -32,9 +32,13 @@ async function fetchBlog(slug: string) {
 
 async function fetchRelatedBlogs(categorySlug: string, currentId: string) {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/v1/blogs?limit=4&category=${categorySlug}`, {
-      next: { revalidate: 60 },
-    });
+    await new Promise((r) => setTimeout(r, 5000));
+    const res = await fetch(
+      `${BACKEND_URL}/api/v1/blogs?limit=4&category=${categorySlug}`,
+      {
+        next: { revalidate: 60 },
+      },
+    );
     if (!res.ok) return [];
     const data = await res.json();
     return (data.data?.items || [])
@@ -47,9 +51,13 @@ async function fetchRelatedBlogs(categorySlug: string, currentId: string) {
 
 async function fetchPopularBlogs() {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/v1/blogs?limit=3&orderBy=views`, {
-      next: { revalidate: 60 },
-    });
+    await new Promise((r) => setTimeout(r, 5000));
+    const res = await fetch(
+      `${BACKEND_URL}/api/v1/blogs?limit=3&orderBy=views`,
+      {
+        next: { revalidate: 60 },
+      },
+    );
     if (!res.ok) return [];
     const data = await res.json();
     return data.data?.items || [];
@@ -90,7 +98,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function BlogDetailPage({ params }: RouteProps) {
+import { Suspense } from "react";
+import Loading from "./loading";
+
+async function BlogDetailPageContent({ params }: RouteProps) {
   const { slug } = await params;
   const blog = await fetchBlog(slug);
 
@@ -221,5 +232,13 @@ export default async function BlogDetailPage({ params }: RouteProps) {
         />
       )}
     </div>
+  );
+}
+
+export default function BlogDetailPage({ params }: RouteProps) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <BlogDetailPageContent params={params} />
+    </Suspense>
   );
 }

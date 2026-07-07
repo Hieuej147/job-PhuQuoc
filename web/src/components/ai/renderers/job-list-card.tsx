@@ -44,7 +44,7 @@ export function JobListCard({ jobs, total }: JobListCardProps) {
       {jobs.map((job) => (
         <Link
           key={job.id}
-          href={`/jobs/${job.slug || job.id}`}
+          href={job.slug ? `/jobs/${job.slug}` : "/jobs"}
           target="_blank"
           rel="noopener noreferrer"
           className="block p-3 rounded-xl border bg-card hover:bg-accent/50 transition-colors"

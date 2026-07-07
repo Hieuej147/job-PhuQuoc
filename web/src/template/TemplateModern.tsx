@@ -103,7 +103,42 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 py-8 px-4 print:p-0">
+        <div className="cv-modern-root min-h-screen bg-slate-100 dark:bg-slate-950 py-8 px-4 print:p-0">
+            <style>{`
+                @media print {
+                    .cv-modern-root {
+                        min-height: auto !important;
+                        padding: 0 !important;
+                        background: transparent !important;
+                    }
+                    .cv-modern-sheet {
+                        width: 210mm !important;
+                        max-width: 210mm !important;
+                        min-height: auto !important;
+                        border: 0 !important;
+                        box-shadow: none !important;
+                        overflow: visible !important;
+                    }
+                    .cv-modern-header {
+                        padding: 10mm 12mm !important;
+                        break-after: avoid !important;
+                    }
+                    .cv-modern-body {
+                        max-width: none !important;
+                        padding: 9mm 12mm !important;
+                        break-before: avoid !important;
+                    }
+                    .cv-modern-two-col,
+                    .cv-modern-project-grid {
+                        display: grid !important;
+                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                    }
+                    .cv-modern-block,
+                    .cv-modern-card {
+                        break-inside: avoid !important;
+                    }
+                }
+            `}</style>
             {/* Control Panel (Hidden when printing) */}
             {!readOnly && (
                 <div className="max-w-4xl mx-auto mb-6 bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
@@ -137,9 +172,9 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
             )}
 
             {/* Resume Sheet */}
-            <div className={`max-w-4xl mx-auto bg-white shadow-lg border border-slate-200 min-h-[1100px] font-sans text-gray-900 print:shadow-none print:border-none print:my-0 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+            <div className={`cv-modern-sheet max-w-4xl mx-auto bg-white shadow-lg border border-slate-200 min-h-[1100px] font-sans text-gray-900 print:shadow-none print:border-none print:my-0 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                 {/* ── Hero Header ────────────────────────────────────────── */}
-                <header className="relative overflow-hidden bg-blue-700 px-12 py-10 text-white">
+                <header className="cv-modern-header relative overflow-hidden bg-blue-700 px-12 py-10 text-white">
                     {/* decorative circle */}
                     <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-blue-600 opacity-40 print:hidden" />
                     <div className="absolute -bottom-10 right-32 h-40 w-40 rounded-full bg-blue-500 opacity-30 print:hidden" />
@@ -259,7 +294,7 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
                 </header>
 
                 {/* ── Content ────────────────────────────────────────────── */}
-                <div className="mx-auto max-w-4xl px-12 py-10 space-y-10">
+                <div className="cv-modern-body mx-auto max-w-4xl px-12 py-10 space-y-10">
                     {/* Summary */}
                     <Block title="Về tôi" accent>
                         <textarea
@@ -278,7 +313,7 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
                     >
                         <div className="space-y-6">
                             {resumeData.experience.map((exp, i) => (
-                                <div key={i} className="flex gap-4 relative group/item border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
+                                <div key={i} className="cv-modern-card flex gap-4 relative group/item border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
                                     <div className="flex flex-col items-center pt-1 shrink-0">
                                         <div className="h-3 w-3 rounded-full bg-blue-600" />
                                         <div className="flex-1 w-px bg-blue-100 mt-1" />
@@ -337,14 +372,14 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
                     </Block>
 
                     {/* Two-col: Education + Skills */}
-                    <div className="grid grid-cols-2 gap-8">
+                    <div className="cv-modern-two-col grid grid-cols-2 gap-8">
                         <Block
                             title="Học vấn"
                             onAdd={() => addArrayItem("education", { school: "Trường", degree: "Bằng cấp", field: "", startYear: "2020", endYear: "", GPA: "", description: "" })}
                         >
                             <div className="space-y-6">
                                 {resumeData.education.map((e, i) => (
-                                    <div key={i} className="relative group/edu border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
+                                    <div key={i} className="cv-modern-card relative group/edu border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
                                         <input
                                             type="text"
                                             value={e.school}
@@ -427,11 +462,11 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
                         title="Dự án nổi bật"
                         onAdd={() => addArrayItem("projects", { name: "Tên dự án", position: "Vai trò", link: "", description: "" })}
                     >
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="cv-modern-project-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
                             {resumeData.projects.map((p, i) => (
                                 <div
                                     key={i}
-                                    className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 hover:shadow-md transition relative group/proj"
+                                    className="cv-modern-card rounded-xl border border-blue-100 bg-blue-50/50 p-4 hover:shadow-md transition relative group/proj"
                                 >
                                     <button
                                         onClick={() => removeArrayItem("projects", i)}
@@ -488,7 +523,7 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
 /* ── Reusable block component ──────────────────────────────── */
 function Block({ title, children, accent = false, onAdd }) {
     return (
-        <section className="relative group/section">
+        <section className="cv-modern-block relative group/section">
             <h2
                 className={`mb-4 text-xs font-extrabold uppercase tracking-widest ${accent ? "text-blue-700" : "text-gray-400"
                     } flex items-center justify-between gap-2`}

@@ -1,12 +1,13 @@
 "use client"
 
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, use, Suspense } from "react"
 import Link from "next/link"
 import { Share2 } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
 import { CompanyLogo } from "@/components/company/company-logo"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const TYPE_MAP: Record<string, string> = {
   FULL_TIME: "Full-time", PART_TIME: "Part-time", REMOTE: "Remote",
@@ -53,9 +54,9 @@ interface JobData {
   deadline?: string | null; createdAt: string;
 }
 
-interface Props { company: CompanyData; jobs?: JobData[] }
+interface Props { company: CompanyData; jobsPromise: Promise<JobData[]> }
 
-export default function CompanyDetailClient({ company, jobs = [] }: Props) {
+export default function CompanyDetailClient({ company, jobsPromise }: Props) {
   useScrollAnimation()
   const { user } = useAuth()
   const router = useRouter()
@@ -101,23 +102,14 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
     }
   };
 
-  const mappedJobs = useMemo(() => jobs.map(j => ({
-    id: j.id, slug: j.slug, title: j.title,
-    type: TYPE_MAP[j.type] || j.type,
-    salary: formatSalary(j.salaryMin, j.salaryMax),
-    location: j.ward?.name || j.addressDetail || "Phú Quốc",
-    daysAgo: timeAgo(j.createdAt),
-    deadline: j.deadline ? new Date(j.deadline).toLocaleDateString("vi-VN") : "—",
-  })), [jobs])
-
   const location = company.ward
     ? `${company.ward.name}, ${company.ward.district?.name || "Phú Quốc"}`
     : company.addressDetail || "Phú Quốc"
-  const jobCount = company._count?.jobs || mappedJobs.length
+  const jobCount = company._count?.jobs ?? 0
 
   const tabs = [
     { key: "overview", label: "Tổng quan" },
-    { key: "jobs", label: `Việc làm (${mappedJobs.length})` },
+    { key: "jobs", label: `Việc làm (${jobCount})` },
     { key: "reviews", label: "Đánh giá" },
   ]
 
@@ -209,27 +201,25 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
             )}
 
             {activeTab === "jobs" && (
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-[#001e30] dark:text-white">{mappedJobs.length} vị trí đang tuyển dụng</p>
-                {mappedJobs.length === 0 && <p className="text-sm text-gray-500 text-center py-8">Chưa có vị trí tuyển dụng nào.</p>}
-                {mappedJobs.map((job) => (
-                  <Link key={job.id} href={`/jobs/${job.slug}`}
-                    className="flex items-center justify-between gap-4 bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-xl px-5 py-4 hover:shadow-md hover:translate-x-1 transition-all group">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-[#001e30] dark:text-white group-hover:text-[#005a71] transition-colors">{job.title}</p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.type}</span>
-                        <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.salary}</span>
-                        <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.location}</span>
+              <Suspense fallback={
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-[#001e30] dark:text-white">Đang tải vị trí tuyển dụng...</p>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between gap-4 bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-xl px-5 py-4">
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <Skeleton className="h-5 w-48" />
+                        <div className="flex gap-2 mt-2">
+                          <Skeleton className="h-5 w-16" />
+                          <Skeleton className="h-5 w-20" />
+                          <Skeleton className="h-5 w-24" />
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-xs text-[#3f484c] dark:text-gray-400">{job.daysAgo}</p>
-                      <p className="text-xs text-red-400 mt-1 font-semibold">HN: {job.deadline}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                  ))}
+                </div>
+              }>
+                <JobsTabContent jobsPromise={jobsPromise} />
+              </Suspense>
             )}
 
             {activeTab === "reviews" && (
@@ -272,6 +262,43 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function JobsTabContent({ jobsPromise }: { jobsPromise: Promise<JobData[]> }) {
+  const jobs = use(jobsPromise)
+
+  const mappedJobs = useMemo(() => jobs.map(j => ({
+    id: j.id, slug: j.slug, title: j.title,
+    type: TYPE_MAP[j.type] || j.type,
+    salary: formatSalary(j.salaryMin, j.salaryMax),
+    location: j.ward?.name || j.addressDetail || "Phú Quốc",
+    daysAgo: timeAgo(j.createdAt),
+    deadline: j.deadline ? new Date(j.deadline).toLocaleDateString("vi-VN") : "—",
+  })), [jobs])
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-semibold text-[#001e30] dark:text-white">{mappedJobs.length} vị trí đang tuyển dụng</p>
+      {mappedJobs.length === 0 && <p className="text-sm text-gray-500 text-center py-8">Chưa có vị trí tuyển dụng nào.</p>}
+      {mappedJobs.map((job) => (
+        <Link key={job.id} href={`/jobs/${job.slug}`}
+          className="flex items-center justify-between gap-4 bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-xl px-5 py-4 hover:shadow-md hover:translate-x-1 transition-all group">
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm text-[#001e30] dark:text-white group-hover:text-[#005a71] transition-colors">{job.title}</p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.type}</span>
+              <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.salary}</span>
+              <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.location}</span>
+            </div>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className="text-xs text-[#3f484c] dark:text-gray-400">{job.daysAgo}</p>
+            <p className="text-xs text-red-400 mt-1 font-semibold">HN: {job.deadline}</p>
+          </div>
+        </Link>
+      ))}
     </div>
   )
 }

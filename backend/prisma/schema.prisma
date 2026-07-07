@@ -99,6 +99,7 @@ model user {
   email         String   @unique
   emailVerified Boolean  @default(false)
   image         String?
+  imagePublicId String?
   role          Role?
   phone         String?
   isActive      Boolean  @default(true)
@@ -357,8 +358,10 @@ model CandidateResume {
   email       String?
   phone       String?
   avatar      String?
+  avatarPublicId String?
   isDefault   Boolean  @default(false)
   templateId  String
+  isProfile   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

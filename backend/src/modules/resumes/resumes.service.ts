@@ -14,9 +14,70 @@ export class ResumesService {
 
   async findByUser(userId: string) {
     return this.prisma.candidateResume.findMany({
-      where: { userId },
+      where: { userId, isProfile: false },
       include: { template: { select: { id: true, name: true, previewUrl: true, isPublic: true } } },
       orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }],
+    });
+  }
+
+  async getProfile(userId: string) {
+    let profile = await this.prisma.candidateResume.findFirst({
+      where: { userId, isProfile: true },
+      include: {
+        template: { select: { id: true, name: true, description: true, previewUrl: true, isPublic: true } },
+        user: { select: { id: true, name: true, email: true, phone: true, image: true } }
+      },
+    });
+
+    if (!profile) {
+      const defaultTemplate = await this.prisma.resumeTemplate.findFirst({ where: { isActive: true } });
+      const templateId = defaultTemplate?.id || 'tpl-minimal-03';
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+      profile = await this.prisma.candidateResume.create({
+        data: {
+          userId,
+          templateId,
+          isProfile: true,
+          title: 'Hồ sơ gốc',
+          name: user?.name,
+          email: user?.email,
+          phone: user?.phone,
+          avatar: user?.image,
+        },
+        include: {
+          template: { select: { id: true, name: true, description: true, previewUrl: true, isPublic: true } },
+          user: { select: { id: true, name: true, email: true, phone: true, image: true } }
+        },
+      });
+    }
+
+    return profile;
+  }
+
+  async updateProfile(userId: string, data: Record<string, unknown>) {
+    const profile = await this.getProfile(userId);
+    const { id: _, userId: __, isProfile: ___, templateId: ____, createdAt: _____, updatedAt: ______, ...updateData } = data;
+
+    const userUpdates: Record<string, any> = {};
+    if (typeof updateData.name === 'string') userUpdates.name = updateData.name;
+    if (typeof updateData.phone === 'string') userUpdates.phone = updateData.phone;
+    if (typeof updateData.avatar === 'string') userUpdates.image = updateData.avatar;
+    
+    if (Object.keys(userUpdates).length > 0) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: userUpdates,
+      });
+    }
+
+    return this.prisma.candidateResume.update({
+      where: { id: profile.id },
+      data: updateData as Prisma.CandidateResumeUpdateInput,
+      include: {
+        template: { select: { id: true, name: true, description: true, previewUrl: true, isPublic: true } },
+        user: { select: { id: true, name: true, email: true, phone: true, image: true } }
+      },
     });
   }
 

@@ -138,7 +138,7 @@ function JobCard({
             </div>
             <div>
               <Link
-                href={`/jobs/${job.slug || job.id}`}
+                href={job.slug ? `/jobs/${job.slug}` : "/jobs"}
                 className="font-semibold text-foreground hover:text-primary leading-snug text-sm line-clamp-2 transition-colors"
               >
                 {job.title}
@@ -186,12 +186,18 @@ function JobCard({
           >
             <Bookmark className="size-3.5 fill-current" /> Bỏ lưu
           </button>
-          <Link
-            href={`/jobs/${job.slug || job.id}`}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
-          >
-            ▶ Ứng tuyển
-          </Link>
+          {days !== null && days < 0 ? (
+            <span className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-muted text-muted-foreground border border-border px-3 py-1.5 text-xs font-semibold select-none cursor-not-allowed">
+              Hết hạn
+            </span>
+          ) : (
+            <Link
+              href={job.slug ? `/jobs/${job.slug}` : "/jobs"}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+            >
+              ▶ Ứng tuyển
+            </Link>
+          )}
         </div>
       </div>
     );
@@ -208,7 +214,7 @@ function JobCard({
           </div>
           <div className="min-w-0">
             <Link
-              href={`/jobs/${job.slug || job.id}`}
+              href={job.slug ? `/jobs/${job.slug}` : "/jobs"}
               className="font-semibold text-foreground hover:text-primary leading-snug transition-colors"
             >
               {job.title}
@@ -252,12 +258,18 @@ function JobCard({
             >
               <Bookmark className="size-3.5 fill-current" /> Bỏ lưu
             </button>
-            <Link
-              href={`/jobs/${job.slug || job.id}`}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
-            >
-              ▶ Ứng tuyển
-            </Link>
+            {days !== null && days < 0 ? (
+              <span className="flex items-center justify-center gap-1.5 rounded-lg bg-muted text-muted-foreground border border-border px-3 py-1.5 text-xs font-semibold select-none cursor-not-allowed">
+                Hết hạn
+              </span>
+            ) : (
+              <Link
+                href={job.slug ? `/jobs/${job.slug}` : "/jobs"}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+              >
+                ▶ Ứng tuyển
+              </Link>
+            )}
           </div>
         </div>
       </div>

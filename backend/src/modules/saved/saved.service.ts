@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SavedQueryDto } from './dto/saved-query.dto';
 
@@ -34,6 +34,16 @@ export class SavedService {
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
+  async removeSavedJob(userId: string, savedJobId: string) {
+    const saved = await this.prisma.savedJob.findUnique({ where: { id: savedJobId } });
+    if (!saved || saved.userId !== userId) {
+      throw new NotFoundException('Saved job not found');
+    }
+
+    await this.prisma.savedJob.delete({ where: { id: savedJobId } });
+    return { saved: false };
+  }
+
   async saveCompany(userId: string, companyId: string) {
     const existing = await this.prisma.savedCompany.findUnique({ where: { userId_companyId: { userId, companyId } } });
     if (existing) { await this.prisma.savedCompany.delete({ where: { id: existing.id } }); return { saved: false }; }
@@ -53,5 +63,15 @@ export class SavedService {
       this.prisma.savedCompany.count({ where: { userId } }),
     ]);
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async removeSavedCompany(userId: string, savedCompanyId: string) {
+    const saved = await this.prisma.savedCompany.findUnique({ where: { id: savedCompanyId } });
+    if (!saved || saved.userId !== userId) {
+      throw new NotFoundException('Saved company not found');
+    }
+
+    await this.prisma.savedCompany.delete({ where: { id: savedCompanyId } });
+    return { saved: false };
   }
 }

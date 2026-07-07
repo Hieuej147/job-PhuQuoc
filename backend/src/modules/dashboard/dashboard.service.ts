@@ -23,9 +23,9 @@ export class DashboardService {
           include: { job: { include: { company: { select: { name: true } } } } },
         }),
         this.prisma.savedCompany.count({ where: { userId } }),
-        this.prisma.candidateResume.count({ where: { userId } }),
+        this.prisma.candidateResume.count({ where: { userId, isProfile: false } }),
         this.prisma.candidateResume.findMany({
-          where: { userId },
+          where: { userId, isProfile: false },
           take: 3,
           orderBy: { updatedAt: 'desc' },
         }),

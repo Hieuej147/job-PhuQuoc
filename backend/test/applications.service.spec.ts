@@ -123,6 +123,28 @@ describe('ApplicationsService', () => {
     });
   });
 
+  describe('checkApplied', () => {
+    it('should return applied true when application exists', async () => {
+      prismaMock.jobApplication.findUnique.mockResolvedValue({ id: 'app1', status: 'PENDING' });
+
+      const result = await service.checkApplied('user1', 'job1');
+
+      expect(prismaMock.jobApplication.findUnique).toHaveBeenCalledWith({
+        where: { userId_jobId: { userId: 'user1', jobId: 'job1' } },
+        select: { id: true, status: true },
+      });
+      expect(result).toEqual({ applied: true, applicationId: 'app1', status: 'PENDING' });
+    });
+
+    it('should return applied false when application does not exist', async () => {
+      prismaMock.jobApplication.findUnique.mockResolvedValue(null);
+
+      const result = await service.checkApplied('user1', 'job1');
+
+      expect(result).toEqual({ applied: false, applicationId: null, status: null });
+    });
+  });
+
   describe('findByJob', () => {
     it('should return applications for job when owner', async () => {
       const mockJob = { id: 'job1', companyId: 'company1' };
