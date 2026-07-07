@@ -16,7 +16,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useCandidateDashboardSummary } from "@/lib/dashboard-api";
 
 interface Application { id: string; job: { title: string; company: { name: string } }; createdAt: string; status: "PENDING" | "REVIEWING" | "ACCEPTED" | "REJECTED"; }
-interface SavedJob { id: string; job: { id: string; title: string; company: { name: string }; jobType: string; salaryMin?: number; salaryMax?: number }; createdAt: string; }
+interface SavedJob { id: string; job: { id: string; slug?: string; title: string; company: { name: string }; type?: string; jobType?: string; salaryMin?: number; salaryMax?: number }; createdAt: string; }
 interface Notification { id: string; type: string; title: string; content: string; createdAt: string; isRead: boolean; }
 interface Resume { id: string; }
 
@@ -169,13 +169,13 @@ export default function CandidateDashboard() {
                   const job = sj.job;
                   const company = job?.company?.name || "N/A";
                   return (
-                    <Link key={sj.id} href={`/jobs/${job?.id || ""}`} className="flex items-start gap-3 rounded-xl border border-[#e1efff] dark:border-[#1E5F74]/50 bg-white dark:bg-[#0d2d42]/40 p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
+                    <Link key={sj.id} href={job?.slug ? `/jobs/${job.slug}` : "/jobs"} className="flex items-start gap-3 rounded-xl border border-[#e1efff] dark:border-[#1E5F74]/50 bg-white dark:bg-[#0d2d42]/40 p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#005a71]/10 text-sm font-bold text-[#005a71] dark:text-[#67E8F9]">{companyInitials(company)}</div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold leading-snug text-gray-900 dark:text-[#E0F2FE]">{job?.title || "N/A"}</p>
                         <p className="text-xs text-gray-500 dark:text-[#94A3B8]">{company}</p>
                         <div className="mt-2 flex flex-wrap gap-1">
-                          <span className="rounded-md bg-[#0d9488]/10 px-2 py-0.5 text-xs font-medium text-[#0d9488]">{jobTypeLabel(job?.jobType || "")}</span>
+                          <span className="rounded-md bg-[#0d9488]/10 px-2 py-0.5 text-xs font-medium text-[#0d9488]">{jobTypeLabel(job?.type || job?.jobType || "")}</span>
                           <span className="rounded-md bg-[#0d9488]/10 px-2 py-0.5 text-xs font-medium text-[#0d9488]">{formatSalary(job?.salaryMin, job?.salaryMax)}</span>
                         </div>
                       </div>

@@ -10,32 +10,32 @@ async function main() {
 
   // ===== Address data =====
   const province = await prisma.addressProvince.create({
-    data: { id: 'province_kg', name: 'Kiên Giang', slug: 'kien-giang' },
+    data: { name: 'Kiên Giang', slug: 'kien-giang' },
   });
 
   const district = await prisma.addressDistrict.create({
-    data: { id: 'district_pq', name: 'Phú Quốc', slug: 'phu-quoc', provinceId: province.id },
+    data: { name: 'Phú Quốc', slug: 'phu-quoc', provinceId: province.id },
   });
 
   const wards = await Promise.all([
-    prisma.addressWard.create({ data: { id: 'ward_dd', name: 'Dương Đông', slug: 'duong-dong', districtId: district.id } }),
-    prisma.addressWard.create({ data: { id: 'ward_dt', name: 'An Thới', slug: 'an-thoi', districtId: district.id } }),
-    prisma.addressWard.create({ data: { id: 'ward_cd', name: 'Cửa Cạn', slug: 'cua-can', districtId: district.id } }),
-    prisma.addressWard.create({ data: { id: 'ward_hm', name: 'Hàm Ninh', slug: 'ham-ninh', districtId: district.id } }),
+    prisma.addressWard.create({ data: { name: 'Dương Đông', slug: 'duong-dong', districtId: district.id } }),
+    prisma.addressWard.create({ data: { name: 'An Thới', slug: 'an-thoi', districtId: district.id } }),
+    prisma.addressWard.create({ data: { name: 'Cửa Cạn', slug: 'cua-can', districtId: district.id } }),
+    prisma.addressWard.create({ data: { name: 'Hàm Ninh', slug: 'ham-ninh', districtId: district.id } }),
   ]);
 
   console.log('Seeded address data');
 
   // ===== Categories =====
   const categories = await Promise.all([
-    prisma.jobCategory.create({ data: { id: 'cat_fnb', name: 'Nhà hàng - Khách sạn', slug: 'nha-hang-khach-san', icon: 'hotel' } }),
-    prisma.jobCategory.create({ data: { id: 'cat_tour', name: 'Du lịch - Lữ hành', slug: 'du-lich-lu-hanh', icon: 'map' } }),
-    prisma.jobCategory.create({ data: { id: 'cat_it', name: 'Công nghệ thông tin', slug: 'cong-nghe-thong-tin', icon: 'code' } }),
-    prisma.jobCategory.create({ data: { id: 'cat_sale', name: 'Bán hàng', slug: 'ban-hang', icon: 'shopping-cart' } }),
-    prisma.jobCategory.create({ data: { id: 'cat_ketoan', name: 'Kế toán - Tài chính', slug: 'ke-toan-tai-chinh', icon: 'calculator' } }),
-    prisma.jobCategory.create({ data: { id: 'cat_xaydung', name: 'Xây dựng', slug: 'xay-dung', icon: 'building' } }),
-    prisma.jobCategory.create({ data: { id: 'cat_yte', name: 'Y tế - Sức khỏe', slug: 'yte-suc-khoe', icon: 'heart' } }),
-    prisma.jobCategory.create({ data: { id: 'cat_giaoduc', name: 'Giáo dục - Đào tạo', slug: 'giao-duc-dao-tao', icon: 'book' } }),
+    prisma.jobCategory.create({ data: { name: 'Nhà hàng - Khách sạn', slug: 'nha-hang-khach-san', icon: 'hotel' } }),
+    prisma.jobCategory.create({ data: { name: 'Du lịch - Lữ hành', slug: 'du-lich-lu-hanh', icon: 'map' } }),
+    prisma.jobCategory.create({ data: { name: 'Công nghệ thông tin', slug: 'cong-nghe-thong-tin', icon: 'code' } }),
+    prisma.jobCategory.create({ data: { name: 'Bán hàng', slug: 'ban-hang', icon: 'shopping-cart' } }),
+    prisma.jobCategory.create({ data: { name: 'Kế toán - Tài chính', slug: 'ke-toan-tai-chinh', icon: 'calculator' } }),
+    prisma.jobCategory.create({ data: { name: 'Xây dựng', slug: 'xay-dung', icon: 'building' } }),
+    prisma.jobCategory.create({ data: { name: 'Y tế - Sức khỏe', slug: 'yte-suc-khoe', icon: 'heart' } }),
+    prisma.jobCategory.create({ data: { name: 'Giáo dục - Đào tạo', slug: 'giao-duc-dao-tao', icon: 'book' } }),
   ]);
 
   console.log('Seeded categories');
@@ -103,7 +103,6 @@ async function main() {
   // ===== Users =====
   const admin = await prisma.user.create({
     data: {
-      id: 'cuid_admin_001',
       name: 'Admin',
       email: 'admin@phuquoc.jobs',
       emailVerified: true,
@@ -114,7 +113,6 @@ async function main() {
 
   const employer = await prisma.user.create({
     data: {
-      id: 'cuid_employer_001',
       name: 'Nguyen Van A',
       email: 'employer@phuquoc.jobs',
       emailVerified: true,
@@ -128,7 +126,6 @@ async function main() {
       const num = i + 2;
       return prisma.user.create({
         data: {
-          id: `cuid_employer_${String(num).padStart(3, '0')}`,
           name: `Employer ${num}`,
           email: `employer${num}@phuquoc.jobs`,
           emailVerified: true,
@@ -141,7 +138,6 @@ async function main() {
 
   const candidate = await prisma.user.create({
     data: {
-      id: 'cuid_candidate_001',
       name: 'Tran Thi B',
       email: 'candidate@phuquoc.jobs',
       emailVerified: true,
@@ -155,7 +151,6 @@ async function main() {
   // ===== Companies =====
   const company = await prisma.company.create({
     data: {
-      id: 'company_001',
       name: 'Phú Quốc Resort & Spa',
       slug: 'phu-quoc-resort-spa',
       description: 'Khu nghỉ dưỡng 5 sao tại Phú Quốc',
@@ -171,7 +166,6 @@ async function main() {
   await Promise.all([
     prisma.company.create({
       data: {
-        id: 'company_002',
         name: 'Vinpearl Resort',
         slug: 'vinpearl-resort',
         description: 'Resort cao cấp',
@@ -185,7 +179,6 @@ async function main() {
     }),
     prisma.company.create({
       data: {
-        id: 'company_003',
         name: 'Sao Biển Restaurant',
         slug: 'sao-bien-restaurant',
         description: 'Nhà hàng hải sản',
@@ -199,7 +192,6 @@ async function main() {
     }),
     prisma.company.create({
       data: {
-        id: 'company_004',
         name: 'PQ Travel',
         slug: 'pq-travel',
         description: 'Công ty du lịch lữ hành',
@@ -213,7 +205,6 @@ async function main() {
     }),
     prisma.company.create({
       data: {
-        id: 'company_005',
         name: 'PQ Mart',
         slug: 'pq-mart',
         description: 'Chuỗi bán lẻ',
@@ -227,7 +218,6 @@ async function main() {
     }),
     prisma.company.create({
       data: {
-        id: 'company_006',
         name: 'PQ Tech',
         slug: 'pq-tech',
         description: 'Công ty công nghệ',
@@ -241,7 +231,6 @@ async function main() {
     }),
     prisma.company.create({
       data: {
-        id: 'company_007',
         name: 'PQ Construction',
         slug: 'pq-construction',
         description: 'Công ty xây dựng',
@@ -255,7 +244,6 @@ async function main() {
     }),
     prisma.company.create({
       data: {
-        id: 'company_008',
         name: 'PQ Spa & Wellness',
         slug: 'pq-spa-wellness',
         description: 'Spa và chăm sóc sức khỏe',
@@ -276,7 +264,6 @@ async function main() {
       const sizes = ['SIZE_1_50', 'SIZE_51_200', 'SIZE_201_500', 'SIZE_500_PLUS'];
       return prisma.company.create({
         data: {
-          id: `company_${String(num).padStart(3, '0')}`,
           name: `Công ty Demo ${num}`,
           slug: `cong-ty-demo-${num}`,
           description: `Mô tả công ty demo số ${num}`,
@@ -298,7 +285,6 @@ async function main() {
       const sizes = ['SIZE_1_50', 'SIZE_51_200', 'SIZE_201_500', 'SIZE_500_PLUS'];
       return prisma.company.create({
         data: {
-          id: `company_${String(num).padStart(3, '0')}`,
           name: `Công ty Demo ${num}`,
           slug: `cong-ty-demo-${num}`,
           description: `Mô tả công ty demo số ${num}`,
@@ -319,7 +305,6 @@ async function main() {
   await Promise.all([
     prisma.job.create({
       data: {
-        id: 'job_001',
         title: 'Lễ tân khách sạn',
         slug: 'le-tan-khach-san',
         description: 'Tuyển lễ tân khách sạn, yêu cầu tiếng Anh giao tiếp',
@@ -340,7 +325,6 @@ async function main() {
     }),
     prisma.job.create({
       data: {
-        id: 'job_002',
         title: 'Frontend Developer',
         slug: 'frontend-developer',
         description: 'Tuyển Frontend Developer làm việc remote',
@@ -360,7 +344,6 @@ async function main() {
     }),
     prisma.job.create({
       data: {
-        id: 'job_003',
         title: 'Hướng dẫn viên du lịch',
         slug: 'huong-dan-vien-du-lich',
         description: 'Tuyển HDV du lịch part-time',
@@ -384,13 +367,12 @@ async function main() {
 
   // ===== Blog Categories =====
   const blogCat = await prisma.blogCategory.create({
-    data: { id: 'blogcat_news', name: 'Tin tức', slug: 'tin-tuc' },
+    data: { name: 'Tin tức', slug: 'tin-tuc' },
   });
 
   // ===== Blog =====
   await prisma.blogPost.create({
     data: {
-      id: 'blog_001',
       title: 'Top 10 việc làm hot tại Phú Quốc 2026',
       slug: 'top-10-viec-lam-hot-phu-quoc-2026',
       content: 'Nội dung bài viết về top 10 việc làm hot...',

@@ -10,6 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
+    "db:repair-hardcoded-ids": "ts-node scripts/repair-hardcoded-ids.ts",
     "jobs:normalize-markdown": "ts-node scripts/normalize-job-markdown.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "test": "vitest run",
