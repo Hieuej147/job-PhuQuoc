@@ -30,6 +30,19 @@ export function toTemplateUser(source: any = {}) {
   };
 }
 
+function toArray(value: unknown) {
+  return Array.isArray(value) ? value : [];
+}
+
+function toSocialLinks(value: unknown) {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "object") return [];
+
+  return Object.entries(value as Record<string, unknown>)
+    .filter(([, url]) => typeof url === "string" && url.trim().length > 0)
+    .map(([platform, url]) => ({ platform, url }));
+}
+
 export function toTemplateResume(source: any = {}) {
   return {
     title: source.title || "Hồ sơ của tôi",
@@ -38,10 +51,10 @@ export function toTemplateResume(source: any = {}) {
     degree: source.degree || "",
     languages: source.languages || "",
     skills: source.skills || "",
-    socialLinks: source.socialLinks || source.socicallink || [],
-    education: source.education || [],
-    experience: source.experience || [],
-    projects: source.projects || [],
+    socialLinks: toSocialLinks(source.socialLinks || source.socicallink),
+    education: toArray(source.education),
+    experience: toArray(source.experience),
+    projects: toArray(source.projects),
   };
 }
 
@@ -53,14 +66,14 @@ export function toNewTemplateResume(profile: any = {}) {
     summary: profile.summary || DEFAULT_RESUME_DRAFT.summary,
     languages: profile.languages || DEFAULT_RESUME_DRAFT.languages,
     skills: profile.skills || DEFAULT_RESUME_DRAFT.skills,
-    socialLinks: profile.socialLinks || DEFAULT_RESUME_DRAFT.socialLinks,
-    education: Array.isArray(profile.education) && profile.education.length > 0
+    socialLinks: toSocialLinks(profile.socialLinks),
+    education: toArray(profile.education).length > 0
       ? profile.education
       : DEFAULT_RESUME_DRAFT.education,
-    experience: Array.isArray(profile.experience) && profile.experience.length > 0
+    experience: toArray(profile.experience).length > 0
       ? profile.experience
       : DEFAULT_RESUME_DRAFT.experience,
-    projects: Array.isArray(profile.projects) && profile.projects.length > 0
+    projects: toArray(profile.projects).length > 0
       ? profile.projects
       : DEFAULT_RESUME_DRAFT.projects,
   };
