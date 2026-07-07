@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { ResumePrintDocument } from "@/components/resume/resume-print-document";
 
 import { TEMPLATE_MAP } from "@/template";
+import { toTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
 
 interface ResumeData {
   id: string;
@@ -97,25 +98,8 @@ export default function ResumeDetailPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
   if (!resume) return <div className="p-6"><p>Không tìm thấy hồ sơ</p></div>;
 
-  const userProps = {
-    name: resume.name || resume.user?.name || "Họ và Tên",
-    email: resume.email || resume.user?.email || "",
-    phone: resume.phone || resume.user?.phone || "",
-    avatar: resume.avatar || resume.user?.image || "",
-  };
-
-  const resumeProps = {
-    title: resume.title,
-    address: resume.address || "",
-    summary: resume.summary || "",
-    degree: resume.degree || "",
-    languages: resume.languages || "",
-    skills: resume.skills || "",
-    socialLinks: resume.socialLinks || [],
-    education: resume.education || [],
-    experience: resume.experience || [],
-    projects: resume.projects || [],
-  };
+  const userProps = toTemplateUser(resume);
+  const resumeProps = toTemplateResume(resume);
 
   return (
     <div className="p-6 space-y-6">

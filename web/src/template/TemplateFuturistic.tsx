@@ -102,7 +102,69 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-8 px-4 print:p-0">
+        <div className="cv-futuristic-root min-h-screen bg-slate-100 dark:bg-slate-950 py-8 px-4 print:p-0">
+            <style>{`
+                @media print {
+                    .cv-futuristic-root {
+                        min-height: auto !important;
+                        padding: 0 !important;
+                        background: transparent !important;
+                    }
+                    .cv-futuristic-sheet {
+                        width: 210mm !important;
+                        max-width: 210mm !important;
+                        min-height: auto !important;
+                        padding: 10mm !important;
+                        border: 0 !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                        overflow: visible !important;
+                    }
+                    .cv-futuristic-header {
+                        display: flex !important;
+                        flex-direction: row !important;
+                        align-items: center !important;
+                        justify-content: space-between !important;
+                        gap: 18px !important;
+                        padding-bottom: 8mm !important;
+                        text-align: left !important;
+                        break-after: avoid !important;
+                    }
+                    .cv-futuristic-header [class~="flex-grow"] {
+                        text-align: left !important;
+                    }
+                    .cv-futuristic-header input {
+                        text-align: left !important;
+                    }
+                    .cv-futuristic-header [class~="md:justify-start"],
+                    .cv-futuristic-header .justify-center {
+                        justify-content: flex-start !important;
+                    }
+                    .cv-futuristic-main {
+                        display: grid !important;
+                        grid-template-columns: minmax(0, 1fr) 66mm !important;
+                        gap: 8mm !important;
+                        padding-top: 8mm !important;
+                        align-items: start !important;
+                    }
+                    .cv-futuristic-content,
+                    .cv-futuristic-sidebar {
+                        min-width: 0 !important;
+                    }
+                    .cv-futuristic-sidebar {
+                        width: 66mm !important;
+                        padding: 6mm !important;
+                    }
+                    .cv-futuristic-section,
+                    .cv-futuristic-card {
+                        break-inside: avoid !important;
+                    }
+                    .cv-futuristic-project-grid {
+                        display: grid !important;
+                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                    }
+                }
+            `}</style>
             {/* Control Panel (Hidden when printing) */}
             {!readOnly && (
                 <div className="max-w-4xl mx-auto mb-6 bg-slate-900/80 p-4 rounded-xl border border-cyan-500/20 backdrop-blur-md flex justify-between items-center print:hidden">
@@ -136,10 +198,10 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
             )}
 
             {/* Resume Sheet */}
-            <div className={`max-w-4xl mx-auto bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl overflow-hidden min-h-[1100px] font-sans p-10 print:border-none print:bg-slate-900 print:my-0 print:p-0 print:rounded-none ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+            <div className={`cv-futuristic-sheet max-w-4xl mx-auto bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl overflow-hidden min-h-[1100px] font-sans p-10 print:border-none print:bg-slate-900 print:my-0 print:p-0 print:rounded-none ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                 
                 {/* ── Futuristic Header ────────────────────────────────────── */}
-                <header className="futuristic-cv-header flex flex-col md:flex-row items-center justify-between gap-6 border-b border-cyan-500/20 pb-8">
+                <header className="cv-futuristic-header futuristic-cv-header flex flex-col md:flex-row items-center justify-between gap-6 border-b border-cyan-500/20 pb-8">
                     <div className="flex-grow text-center md:text-left space-y-3 w-full">
                         <div className="relative inline-block md:block">
                             <input
@@ -225,10 +287,10 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
                 </header>
 
                 {/* ── Content Layout ───────────────────────────────────────── */}
-                <div className="futuristic-cv-grid grid grid-cols-1 md:grid-cols-[1fr_260px] gap-8 pt-8">
+                <div className="cv-futuristic-main futuristic-cv-grid grid grid-cols-1 md:grid-cols-[1fr_260px] gap-8 pt-8">
                     
                     {/* Left Column (Experiences & Projects) */}
-                    <div className="space-y-8">
+                    <div className="cv-futuristic-content space-y-8">
                         {/* Summary */}
                         <Section title="Về bản thân" icon="person_search">
                             <textarea
@@ -248,7 +310,7 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
                         >
                             <div className="space-y-6">
                                 {resumeData.experience.map((exp, i) => (
-                                    <div key={i} className="relative group/exp bg-slate-800/30 p-4 rounded-xl border border-slate-800/80 hover:border-cyan-500/20 transition space-y-1">
+                                    <div key={i} className="cv-futuristic-card relative group/exp bg-slate-800/30 p-4 rounded-xl border border-slate-800/80 hover:border-cyan-500/20 transition space-y-1">
                                         <div className="flex justify-between items-baseline gap-2">
                                             <input
                                                 type="text"
@@ -306,9 +368,9 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
                             icon="terminal"
                             onAdd={() => addArrayItem("projects", { name: "Tên dự án", position: "Vai trò", link: "", description: "" })}
                         >
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="cv-futuristic-project-grid grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {resumeData.projects.map((p, i) => (
-                                    <div key={i} className="p-4 bg-slate-800/40 border border-slate-800 rounded-xl hover:border-cyan-500/20 transition relative group/proj shadow-sm">
+                                    <div key={i} className="cv-futuristic-card p-4 bg-slate-800/40 border border-slate-800 rounded-xl hover:border-cyan-500/20 transition relative group/proj shadow-sm">
                                         <button
                                             onClick={() => removeArrayItem("projects", i)}
                                             className="absolute right-3 top-3 text-red-500 hover:text-red-700 text-xs font-semibold opacity-0 group-hover/proj:opacity-100 transition-opacity print:hidden"
@@ -352,12 +414,12 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
                     </div>
 
                     {/* Right Column (Sidebar/Tech Info) */}
-                    <div className="space-y-8 bg-slate-850 p-6 rounded-xl border border-slate-800">
+                    <div className="cv-futuristic-sidebar space-y-8 bg-slate-850 p-6 rounded-xl border border-slate-800">
                         {/* Social */}
                         <Section title="Social Networks" icon="connect_without_contact">
                             <div className="space-y-2">
                                 {resumeData.socialLinks.map((s, i) => (
-                                    <div key={i} className="flex items-center gap-1 bg-slate-800/80 p-2 rounded border border-slate-700 relative group/link shadow-sm">
+                                    <div key={i} className="cv-futuristic-card flex items-center gap-1 bg-slate-800/80 p-2 rounded border border-slate-700 relative group/link shadow-sm">
                                         <span className="material-symbols-outlined text-sm text-cyan-400">link</span>
                                         <input
                                             type="text"
@@ -410,7 +472,7 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
                         >
                             <div className="space-y-4">
                                 {resumeData.education.map((e, i) => (
-                                    <div key={i} className="relative group/edu bg-slate-800/40 p-3 rounded-lg border border-slate-800">
+                                    <div key={i} className="cv-futuristic-card relative group/edu bg-slate-800/40 p-3 rounded-lg border border-slate-800">
                                         <input
                                             type="text"
                                             value={e.school}
@@ -488,7 +550,7 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
 /* ── Reusable section component ──────────────────────────────── */
 function Section({ title, icon, children, onAdd }) {
     return (
-        <section className="relative group/section">
+        <section className="cv-futuristic-section relative group/section">
             <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center justify-between gap-2 border-b border-slate-800 pb-2">
                 <span className="flex items-center gap-1.5 text-cyan-400">
                     {icon && <span className="material-symbols-outlined text-lg leading-none">{icon}</span>}

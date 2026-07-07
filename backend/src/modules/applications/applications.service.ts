@@ -65,6 +65,19 @@ export class ApplicationsService {
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
+  async checkApplied(userId: string, jobId: string) {
+    const application = await this.prisma.jobApplication.findUnique({
+      where: { userId_jobId: { userId, jobId } },
+      select: { id: true, status: true },
+    });
+
+    return {
+      applied: Boolean(application),
+      applicationId: application?.id ?? null,
+      status: application?.status ?? null,
+    };
+  }
+
   async findByEmployer(employerId: string, query: ApplicationQueryDto) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;

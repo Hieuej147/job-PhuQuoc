@@ -49,6 +49,17 @@ export class ApplicationsController {
     return this.applicationsService.findByUser(user.user.id, query);
   }
 
+  @Get('check/:jobId')
+  @Roles('CANDIDATE')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Kiểm tra đã ứng tuyển job chưa', description: 'Candidate kiểm tra trạng thái ứng tuyển cho một job.' })
+  @ApiParam({ name: 'jobId', description: 'ID của job' })
+  @ApiResponse({ status: 200, description: '{ applied, applicationId, status }' })
+  @ApiResponse({ status: 403, description: 'Không phải CANDIDATE' })
+  checkApplied(@Param('jobId') jobId: string, @CurrentUser() user: UserSession) {
+    return this.applicationsService.checkApplied(user.user.id, jobId);
+  }
+
   @Get('employer')
   @Roles('EMPLOYER')
   @ApiBearerAuth('better-auth.session_token')

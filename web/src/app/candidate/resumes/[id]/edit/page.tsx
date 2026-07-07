@@ -1,22 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { TEMPLATE_MAP } from "@/template";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
+import { toTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
 
 export default function EditResumePage() {
   const params = useParams();
   const id = params.id as string;
-  const ID_TO_SLUG: Record<string, string> = {
-  "tpl-modern-01": "modern",
-  "tpl-classic-02": "classic",
-  "tpl-creative-04": "creative",
-  "tpl-dev-05": "futuristic",
-  "tpl-minimal-03": "minimalist",
-};
-
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{ user: any; resume: any; templateId: string } | null>(null);
 
@@ -29,29 +22,9 @@ export default function EditResumePage() {
         const r = json.data?.data ?? json.data ?? json;
 
         if (r) {
-          const userObj = {
-            name: r.name || r.user?.name || "Họ và Tên",
-            email: r.email || r.user?.email || "",
-            phone: r.phone || r.user?.phone || "",
-            avatar: r.avatar || r.user?.image || "https://i.pravatar.cc/150?img=12",
-          };
-
-          const resumeObj = {
-            title: r.title || "Hồ sơ của tôi",
-            address: r.address || "",
-            summary: r.summary || "",
-            degree: r.degree || "",
-            languages: r.languages || "",
-            skills: r.skills || "",
-            socialLinks: r.socialLinks || r.socicallink || [],
-            education: r.education || [],
-            experience: r.experience || [],
-            projects: r.projects || [],
-          };
-
           setData({
-            user: userObj,
-            resume: resumeObj,
+            user: toTemplateUser(r),
+            resume: toTemplateResume(r),
             templateId: r.templateId || r.template?.id || "tpl-minimal-03",
           });
         } else {

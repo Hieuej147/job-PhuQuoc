@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { ResumePrintDocument } from "@/components/resume/resume-print-document";
+import { TEMPLATE_MAP } from "@/template";
+import { toTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
 
 type ResumeInfo = {
   id: string;
@@ -80,28 +81,25 @@ export default function EmployerApplicationResumePrintPage() {
   }
 
   const resume = payload.resume;
-  const user = {
-    name: resume.name || resume.user?.name || "Họ và Tên",
-    email: resume.email || resume.user?.email || "",
-    phone: resume.phone || resume.user?.phone || "",
-    avatar: resume.avatar || resume.user?.image || "",
-  };
-  const resumeData = {
-    title: resume.title || "CV ứng viên",
-    address: resume.address || "",
-    summary: resume.summary || "",
-    degree: resume.degree || "",
-    languages: resume.languages || "",
-    skills: resume.skills || "",
-    socialLinks: resume.socialLinks || [],
-    education: resume.education || [],
-    experience: resume.experience || [],
-    projects: resume.projects || [],
-  };
+  const user = toTemplateUser(resume);
+  const resumeData = toTemplateResume({ title: "CV ứng viên", ...resume });
 
   return (
-    <div className="min-h-screen bg-slate-200">
+    <div className="min-h-screen bg-slate-200 readonly-cv-view">
       <style>{`
+        .readonly-cv-view input, 
+        .readonly-cv-view textarea {
+          border: none !important;
+          background: transparent !important;
+          outline: none !important;
+          pointer-events: none !important;
+          resize: none !important;
+        }
+        .readonly-cv-view button,
+        .readonly-cv-view .print\\:hidden,
+        .readonly-cv-view label {
+          display: none !important;
+        }
         @media print {
           @page { size: A4; margin: 0; }
           html, body {
@@ -122,14 +120,90 @@ export default function EmployerApplicationResumePrintPage() {
           iframe {
             display: none !important;
           }
+          .readonly-cv-view {
+            padding: 0 !important;
+            margin: 0 !important;
+            min-height: 297mm !important;
+            height: 100% !important;
+            background: transparent !important;
+          }
+          .readonly-cv-view > div {
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            min-height: 0 !important;
+            height: auto !important;
+          }
+          .readonly-cv-view div[class*="max-w-"],
+          .readonly-cv-view div[class*="mx-auto"] {
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            min-height: 0 !important;
+            height: auto !important;
+          }
           .resume-print-page {
             width: 210mm !important;
+            max-width: 210mm !important;
+            min-height: 297mm !important;
             margin: 0 auto !important;
-            background: #ffffff !important;
+            padding: 0 !important;
           }
           .resume-print-page article {
             margin: 0 !important;
             box-shadow: none !important;
+          }
+          .resume-print-page [class~="md:flex-row"] {
+            flex-direction: row !important;
+          }
+          .resume-print-page [class~="md:text-left"] {
+            text-align: left !important;
+          }
+          .resume-print-page [class~="md:items-start"] {
+            align-items: flex-start !important;
+          }
+          .resume-print-page [class~="md:items-center"] {
+            align-items: center !important;
+          }
+          .resume-print-page [class~="md:justify-start"] {
+            justify-content: flex-start !important;
+          }
+          .resume-print-page [class~="md:block"] {
+            display: block !important;
+          }
+          .resume-print-page [class~="md:mx-0"] {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+          }
+          .resume-print-page [class~="md:grid-cols-2"],
+          .resume-print-page [class~="sm:grid-cols-2"] {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .resume-print-page [class~="md:grid-cols-[1fr_260px]"] {
+            grid-template-columns: minmax(0, 1fr) 260px !important;
+          }
+          .resume-print-page [class~="md:grid-cols-[280px_1fr]"] {
+            grid-template-columns: 280px minmax(0, 1fr) !important;
+          }
+          .resume-print-page .futuristic-cv-header {
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            text-align: left !important;
+          }
+          .resume-print-page .futuristic-cv-grid {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) 260px !important;
+            align-items: start !important;
+          }
+          .resume-print-page .futuristic-cv-grid > div:first-child {
+            min-width: 0 !important;
+          }
+          .resume-print-page .futuristic-cv-grid > div:last-child,
+          .resume-print-page .futuristic-cv-grid > aside {
+            width: 260px !important;
           }
         }
       `}</style>
@@ -141,7 +215,10 @@ export default function EmployerApplicationResumePrintPage() {
         <Button onClick={() => window.print()}>In / Lưu PDF</Button>
       </div>
       <div className="resume-print-page py-8 print:py-0">
-        <ResumePrintDocument user={user} resume={resumeData} templateId={resume.template?.id} />
+        {(() => {
+          const TemplateComponent = TEMPLATE_MAP[resume.template?.id || ""] || TEMPLATE_MAP["tpl-minimal-03"];
+          return <TemplateComponent user={user} resume={resumeData} readOnly={true} />;
+        })()}
       </div>
     </div>
   );

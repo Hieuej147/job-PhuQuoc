@@ -20,6 +20,7 @@ import EducationComponent from "@/components/candidate/profile/Education";
 import SocialsComponent from "@/components/candidate/profile/Socials";
 import Summary from "@/components/candidate/profile/Summary";
 import Checklist from "@/components/candidate/profile/CheckList";
+import { computeProfileCompletion } from "@/lib/profile-completion";
 interface Experience {
   company: string;
   position: string;
@@ -119,6 +120,7 @@ export default function ProfilePage() {
   // Handle saving profile changes
   const handleSave = async (overrideData?: Record<string, any>, options?: { silent?: boolean }): Promise<boolean> => {
     const showToast = !options?.silent && !overrideData;
+    const isSilent = Boolean(options?.silent);
     setSaving(true);
 
     // Helper to get missing experience fields
@@ -134,12 +136,7 @@ export default function ProfilePage() {
     const missingExp = getMissingExpFields();
     const hasAnyExp = missingExp.length < 5; // at least 1 field filled
     let currentExperiences = [...experiences];
-    if (!options?.silent && activeSection === "experience" && experiences.length === 0 && missingExp.length > 0) {
-      toast.error(`Còn thiếu: ${missingExp.join(", ")}.`);
-      setSaving(false);
-      return false;
-    }
-    if (!options?.silent && activeSection === "experience" && hasAnyExp && missingExp.length > 0) {
+    if (!isSilent && activeSection === "experience" && hasAnyExp && missingExp.length > 0) {
       toast.error(`Còn thiếu: ${missingExp.join(", ")}.`);
       setSaving(false);
       return false;
@@ -163,12 +160,7 @@ export default function ProfilePage() {
     const missingEdu = getMissingEduFields();
     const hasAnyEdu = missingEdu.length < 5;
     let currentEducations = [...educations];
-    if (!options?.silent && activeSection === "education" && educations.length === 0 && missingEdu.length > 0) {
-      toast.error(`Còn thiếu: ${missingEdu.join(", ")}.`);
-      setSaving(false);
-      return false;
-    }
-    if (!options?.silent && activeSection === "education" && hasAnyEdu && missingEdu.length > 0) {
+    if (!isSilent && activeSection === "education" && hasAnyEdu && missingEdu.length > 0) {
       toast.error(`Còn thiếu: ${missingEdu.join(", ")}.`);
       setSaving(false);
       return false;
@@ -226,10 +218,12 @@ export default function ProfilePage() {
       } else {
         const errorData = await res.json().catch(() => null);
         toast.error(errorData?.message || "Lỗi khi lưu thông tin.");
+        return false;
       }
     } catch (err) {
       console.error("Error saving profile:", err);
       toast.error("Lỗi kết nối khi lưu hồ sơ.");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -256,6 +250,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch("/api/v1/upload/candidate-avatar", {
         method: "POST",
+        credentials: "include",
         body: formData,
       });
 
@@ -268,11 +263,11 @@ export default function ProfilePage() {
         }
       } else {
         const errorData = await res.json().catch(() => null);
-        alert(errorData?.message || "Lỗi khi upload ảnh.");
+        toast.error(errorData?.message || "Lỗi khi upload ảnh.");
       }
     } catch (err) {
       console.error("Error uploading avatar:", err);
-      alert("Lỗi kết nối khi tải ảnh đại diện.");
+      toast.error("Lỗi kết nối khi tải ảnh đại diện.");
     } finally {
       setUploadingAvatar(false);
     }
@@ -321,58 +316,30 @@ export default function ProfilePage() {
     setEducations(updated);
   };
 
-  // Define all trackable input fields per section
-  const sectionFields: Record<string, { filled: boolean }[]> = {
-    basic: [
-      { filled: Boolean(name) },
-      { filled: Boolean(phone) },
-      { filled: Boolean(email) },
-      { filled: Boolean(address) },
-      { filled: Boolean(degree) },
-      { filled: Boolean(languages) },
-      { filled: Boolean(skills) },
-    ],
-    avatar: [
-      { filled: Boolean(avatar) },
-    ],
-    experience: [
-      { filled: experiences.length > 0 },
-    ],
-    education: [
-      { filled: educations.length > 0 },
-    ],
-    summary: [
-      { filled: Boolean(summary) },
-    ],
-    socials: [
-      { filled: Boolean(facebook) },
-      { filled: Boolean(linkedin) },
-      { filled: Boolean(github) },
-      { filled: Boolean(website) },
-    ],
-  };
-
-  // Total filled inputs / total inputs → percentage
-  const allFields = Object.values(sectionFields).flat();
-  const totalFields = allFields.length;
-  const filledFields = allFields.filter((f) => f.filled).length;
-  const completionPct = Math.round((filledFields / totalFields) * 100);
-
-  // A section is "done" only when ALL its inputs are filled
-  const isSectionDone = (sectionId: string) => {
-    const fields = sectionFields[sectionId];
-    if (!fields || fields.length === 0) return false;
-    return fields.every((f) => f.filled);
-  };
+  const profileCompletion = computeProfileCompletion({
+    name,
+    phone,
+    email,
+    address,
+    degree,
+    languages,
+    skills,
+    avatar,
+    experience: experiences,
+    education: educations,
+    summary,
+    socialLinks: { facebook, linkedin, github, website },
+  });
 
   const checklist = [
-    { id: "basic", label: "Thông tin cơ bản (tên, email, SĐT)", done: isSectionDone("basic"), icon: <User className="size-4" /> },
-    { id: "avatar", label: "Ảnh đại diện", done: isSectionDone("avatar"), icon: <Camera className="size-4" /> },
-    { id: "experience", label: "Kinh nghiệm làm việc", done: isSectionDone("experience"), icon: <Briefcase className="size-4" /> },
-    { id: "education", label: "Học vấn & bằng cấp", done: isSectionDone("education"), icon: <GraduationCap className="size-4" /> },
-    { id: "summary", label: "Tóm tắt bản thân (resume summary)", done: isSectionDone("summary"), icon: <FileText className="size-4" /> },
-    { id: "socials", label: "Liên kết mạng xã hội", done: isSectionDone("socials"), icon: <Share2 className="size-4" /> },
+    { ...profileCompletion.items.find((item) => item.id === "basic")!, icon: <User className="size-4" /> },
+    { ...profileCompletion.items.find((item) => item.id === "avatar")!, icon: <Camera className="size-4" /> },
+    { ...profileCompletion.items.find((item) => item.id === "experience")!, icon: <Briefcase className="size-4" /> },
+    { ...profileCompletion.items.find((item) => item.id === "education")!, icon: <GraduationCap className="size-4" /> },
+    { ...profileCompletion.items.find((item) => item.id === "summary")!, icon: <FileText className="size-4" /> },
+    { ...profileCompletion.items.find((item) => item.id === "socials")!, icon: <Share2 className="size-4" /> },
   ];
+  const completionPct = profileCompletion.completionPct;
 
   if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
 

@@ -98,6 +98,10 @@ function extractResumeList(payload: any): any[] {
   return list.filter((resume: any) => resume?.id && resume?.title !== "PROFILE_MASTER");
 }
 
+function unwrapPayload<T = any>(payload: any): T {
+  return payload?.data?.data ?? payload?.data ?? payload;
+}
+
 const TYPE_LABELS: Record<string, string> = {
   FULL_TIME: "Full-time",
   PART_TIME: "Part-time",
@@ -182,13 +186,12 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
 
       try {
         // Kiểm tra đã ứng tuyển việc làm chưa
-        const resApp = await fetch("/api/v1/applications/my?limit=100", { credentials: "include" });
+        const resApp = await fetch(`/api/v1/applications/check/${job.id}`, { credentials: "include" });
         if (resApp.ok) {
           const dataApp = await resApp.json();
-          const itemsApp = dataApp.data?.items || dataApp.data || dataApp.items || dataApp || [];
-          const listApp = Array.isArray(itemsApp) ? itemsApp : (Array.isArray(itemsApp.items) ? itemsApp.items : []);
+          const appliedState = unwrapPayload<{ applied?: boolean }>(dataApp);
           if (active) {
-            setIsApplied(listApp.some((item: any) => item.jobId === job.id));
+            setIsApplied(Boolean(appliedState?.applied));
           }
         }
       } catch {}
@@ -302,6 +305,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       router.push(`/auth/login?redirect=/jobs/${job.slug}`);
       return;
     }
+    if (isApplied) return;
     setShowApplyModal(true);
     setApplyError(null);
     // Fetch user's resumes
@@ -404,7 +408,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         <RelatedJobs jobs={mappedRelated} />
       </div>
 
-      <JobStickyBarMobile onApply={() => { if (!isApplied) setShowApplyModal(true); }} onBookmark={toggleSave} isBookmarked={isSaved} isApplied={isApplied} />
+      <JobStickyBarMobile onApply={openApplyModal} onBookmark={toggleSave} isBookmarked={isSaved} isApplied={isApplied} />
 
       {/* Apply Modal */}
       {showApplyModal && (

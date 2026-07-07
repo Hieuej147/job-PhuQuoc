@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useCandidateDashboardSummary } from "@/lib/dashboard-api";
+import { computeProfileCompletion } from "@/lib/profile-completion";
 
 export function CandidateSidebar() {
   const pathname = usePathname();
@@ -32,26 +33,7 @@ export function CandidateSidebar() {
       .catch(() => {});
   }, [user]);
 
-  // Profile completion — count individual filled inputs (same logic as profile & dashboard pages)
-  const p = profile || u || {};
-  const socialLinks = (p?.socialLinks && typeof p.socialLinks === 'object') ? p.socialLinks : {};
-  const experience = Array.isArray(p?.experience) ? p.experience : [];
-  const education = Array.isArray(p?.education) ? p.education : [];
-  const allFields = [
-    // basic (7)
-    Boolean(p?.name), Boolean(p?.phone), Boolean(p?.email), Boolean(p?.address), Boolean(p?.degree), Boolean(p?.languages), Boolean(p?.skills),
-    // avatar (1)
-    Boolean(p?.image || p?.avatar),
-    // experience (1)
-    experience.length > 0,
-    // education (1)
-    education.length > 0,
-    // summary (1)
-    Boolean(p?.summary),
-    // socials (4)
-    Boolean(socialLinks.facebook), Boolean(socialLinks.linkedin), Boolean(socialLinks.github), Boolean(socialLinks.website),
-  ];
-  const completionPct = Math.round((allFields.filter(Boolean).length / allFields.length) * 100);
+  const { completionPct } = computeProfileCompletion(profile || u);
 
   const navGroups = [
     {

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { TEMPLATE_MAP } from "@/template";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
+import { toTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
 
 interface ResumeData {
   id: string;
@@ -67,25 +68,8 @@ export default function PublicPrintResumePage() {
     );
   }
 
-  const user = {
-    name: resume.name || resume.user?.name || "Họ và Tên",
-    email: resume.email || resume.user?.email || "",
-    phone: resume.phone || resume.user?.phone || "",
-    avatar: resume.avatar || resume.user?.image || "",
-  };
-
-  const resumeData = {
-    title: resume.title,
-    address: resume.address || "",
-    summary: resume.summary || "",
-    degree: resume.degree || "",
-    languages: resume.languages || "",
-    skills: resume.skills || "",
-    socialLinks: resume.socialLinks || [],
-    education: resume.education || [],
-    experience: resume.experience || [],
-    projects: resume.projects || [],
-  };
+  const user = toTemplateUser(resume);
+  const resumeData = toTemplateResume(resume);
 
   return (
     <div className="min-h-screen bg-slate-200 readonly-cv-view">
@@ -170,7 +154,9 @@ export default function PublicPrintResumePage() {
             height: auto !important;
           }
           .resume-print-page {
-            width: 100% !important;
+            width: 210mm !important;
+            max-width: 210mm !important;
+            min-height: 297mm !important;
             margin: 0 auto !important;
             padding: 0 !important;
           }
@@ -180,29 +166,39 @@ export default function PublicPrintResumePage() {
           }
           
           /* Force desktop responsive styles to be active during print preview */
-          .resume-print-page .md\:flex-row {
+          .resume-print-page [class~="md:flex-row"] {
             flex-direction: row !important;
           }
-          .resume-print-page .md\:text-left {
+          .resume-print-page [class~="md:text-left"] {
             text-align: left !important;
           }
-          .resume-print-page .md\:items-start {
+          .resume-print-page [class~="md:items-start"] {
             align-items: flex-start !important;
           }
-          .resume-print-page .md\:items-center {
+          .resume-print-page [class~="md:items-center"] {
             align-items: center !important;
           }
-          .resume-print-page .md\:grid-cols-2 {
+          .resume-print-page [class~="md:justify-start"] {
+            justify-content: flex-start !important;
+          }
+          .resume-print-page [class~="md:block"] {
+            display: block !important;
+          }
+          .resume-print-page [class~="md:mx-0"] {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+          }
+          .resume-print-page [class~="md:grid-cols-2"] {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
-          .resume-print-page .sm\:grid-cols-2 {
+          .resume-print-page [class~="sm:grid-cols-2"] {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
-          .resume-print-page .md\:grid-cols-\[1fr_260px\] {
-            grid-template-columns: 1fr 260px !important;
+          .resume-print-page [class~="md:grid-cols-[1fr_260px]"] {
+            grid-template-columns: minmax(0, 1fr) 260px !important;
           }
-          .resume-print-page .md\:grid-cols-\[280px_1fr\] {
-            grid-template-columns: 280px 1fr !important;
+          .resume-print-page [class~="md:grid-cols-[280px_1fr]"] {
+            grid-template-columns: 280px minmax(0, 1fr) !important;
           }
           
           /* Semantic overrides for TemplateFuturistic (Tech Developer Pro) */
@@ -222,14 +218,18 @@ export default function PublicPrintResumePage() {
             justify-content: flex-start !important;
           }
           .resume-print-page .futuristic-cv-grid {
-            grid-template-columns: 1fr 260px !important;
             display: grid !important;
+            grid-template-columns: minmax(0, 1fr) 260px !important;
+            align-items: start !important;
           }
           .resume-print-page .futuristic-cv-grid > div:first-child {
             grid-column: span 1 !important;
+            min-width: 0 !important;
           }
+          .resume-print-page .futuristic-cv-grid > div:last-child,
           .resume-print-page .futuristic-cv-grid > aside {
             grid-column: span 1 !important;
+            width: 260px !important;
           }
         }
       `}</style>

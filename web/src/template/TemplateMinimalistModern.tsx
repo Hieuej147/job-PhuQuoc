@@ -102,7 +102,53 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
     };
 
     return (
-        <div className="min-h-screen bg-[#f3f4f6] py-8 px-4 print:p-0">
+        <div className="cv-minimal-root min-h-screen bg-[#f3f4f6] py-8 px-4 print:p-0">
+            <style>{`
+                @media print {
+                    .cv-minimal-root {
+                        min-height: auto !important;
+                        padding: 0 !important;
+                        background: transparent !important;
+                    }
+                    .cv-minimal-sheet {
+                        width: 210mm !important;
+                        max-width: 210mm !important;
+                        min-height: auto !important;
+                        padding: 12mm 14mm !important;
+                        border: 0 !important;
+                        box-shadow: none !important;
+                        overflow: visible !important;
+                    }
+                    .cv-minimal-header {
+                        display: flex !important;
+                        flex-direction: row !important;
+                        align-items: flex-start !important;
+                        text-align: left !important;
+                        break-after: avoid !important;
+                    }
+                    .cv-minimal-header [class~="flex-grow"] {
+                        text-align: left !important;
+                    }
+                    .cv-minimal-header input {
+                        text-align: left !important;
+                    }
+                    .cv-minimal-header [class~="sm:justify-start"],
+                    .cv-minimal-header .justify-center {
+                        justify-content: flex-start !important;
+                    }
+                    .cv-minimal-body {
+                        padding-top: 8mm !important;
+                    }
+                    .cv-minimal-two-col {
+                        display: grid !important;
+                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                    }
+                    .cv-minimal-section,
+                    .cv-minimal-card {
+                        break-inside: avoid !important;
+                    }
+                }
+            `}</style>
             {/* Control Panel (Hidden when printing) */}
             {!readOnly && (
                 <div className="max-w-3xl mx-auto mb-6 bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center print:hidden">
@@ -136,10 +182,10 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
             )}
 
             {/* Resume Sheet */}
-            <div className={`max-w-3xl mx-auto bg-white shadow-xl border border-slate-100 min-h-[1100px] font-sans text-slate-800 p-16 print:shadow-none print:border-none print:my-0 print:p-0 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+            <div className={`cv-minimal-sheet max-w-3xl mx-auto bg-white shadow-xl border border-slate-100 min-h-[1100px] font-sans text-slate-800 p-16 print:shadow-none print:border-none print:my-0 print:p-0 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                 
                 {/* ── Minimal Header ───────────────────────────────────────── */}
-                <header className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 pb-10 border-b border-slate-100">
+                <header className="cv-minimal-header flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 pb-10 border-b border-slate-100">
                     <div className="flex-grow space-y-2 text-center sm:text-left">
                         <input
                             type="text"
@@ -221,7 +267,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
                 </header>
 
                 {/* ── Single Column Layout ─────────────────────────────────── */}
-                <div className="pt-8 space-y-10">
+                <div className="cv-minimal-body pt-8 space-y-10">
                     
                     {/* Summary */}
                     <Section title="Về tôi" icon="subject">
@@ -242,7 +288,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
                     >
                         <div className="space-y-6">
                             {resumeData.experience.map((exp, i) => (
-                                <div key={i} className="relative group/exp space-y-1">
+                                <div key={i} className="cv-minimal-card relative group/exp space-y-1">
                                     <div className="flex justify-between items-baseline gap-2">
                                         <div className="flex flex-col sm:flex-row sm:items-center gap-x-2">
                                             <input
@@ -305,7 +351,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
                     >
                         <div className="space-y-6">
                             {resumeData.projects.map((p, i) => (
-                                <div key={i} className="relative group/proj space-y-1">
+                                <div key={i} className="cv-minimal-card relative group/proj space-y-1">
                                     <div className="flex justify-between items-baseline gap-2">
                                         <div className="flex flex-col sm:flex-row sm:items-center gap-x-2">
                                             <input
@@ -351,7 +397,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
                     </Section>
 
                     {/* Two-Col Education + Skills */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="cv-minimal-two-col grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Education */}
                         <Section 
                             title="Học vấn" 
@@ -360,7 +406,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
                         >
                             <div className="space-y-4">
                                 {resumeData.education.map((e, i) => (
-                                    <div key={i} className="relative group/edu space-y-1">
+                                    <div key={i} className="cv-minimal-card relative group/edu space-y-1">
                                         <input
                                             type="text"
                                             value={e.school}
@@ -436,7 +482,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
                             <Section title="Liên kết" icon="public">
                                 <div className="space-y-2">
                                     {resumeData.socialLinks.map((s, i) => (
-                                        <div key={i} className="flex items-center gap-1 border-b border-slate-100 pb-1 relative group/link">
+                                        <div key={i} className="cv-minimal-card flex items-center gap-1 border-b border-slate-100 pb-1 relative group/link">
                                             <input
                                                 type="text"
                                                 value={s.platform}
@@ -487,7 +533,7 @@ export default function TemplateMinimalistModern({ user = {} as Partial<UserData
 /* ── Reusable section component ──────────────────────────────── */
 function Section({ title, icon, children, onAdd }) {
     return (
-        <section className="relative group/section">
+        <section className="cv-minimal-section relative group/section">
             <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
                 <span className="flex items-center gap-1 text-slate-800">
                     {icon && <span className="material-symbols-outlined text-sm leading-none text-slate-500">{icon}</span>}

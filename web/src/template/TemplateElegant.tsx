@@ -102,7 +102,56 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
     };
 
     return (
-        <div className="min-h-screen bg-stone-50 dark:bg-slate-950 py-8 px-4 print:p-0">
+        <div className="cv-elegant-root min-h-screen bg-stone-50 dark:bg-slate-950 py-8 px-4 print:p-0">
+            <style>{`
+                @media print {
+                    .cv-elegant-root {
+                        min-height: auto !important;
+                        padding: 0 !important;
+                        background: transparent !important;
+                    }
+                    .cv-elegant-sheet {
+                        width: 210mm !important;
+                        max-width: 210mm !important;
+                        min-height: auto !important;
+                        padding: 10mm 12mm !important;
+                        border: 0 !important;
+                        box-shadow: none !important;
+                        overflow: visible !important;
+                    }
+                    .cv-elegant-header {
+                        display: flex !important;
+                        flex-direction: row !important;
+                        align-items: flex-start !important;
+                        text-align: left !important;
+                        break-after: avoid !important;
+                    }
+                    .cv-elegant-header [class~="flex-grow"] {
+                        text-align: left !important;
+                    }
+                    .cv-elegant-header input {
+                        text-align: left !important;
+                    }
+                    .cv-elegant-header [class~="md:justify-start"],
+                    .cv-elegant-header .justify-center {
+                        justify-content: flex-start !important;
+                    }
+                    .cv-elegant-main {
+                        display: grid !important;
+                        grid-template-columns: minmax(0, 1fr) 66mm !important;
+                        gap: 8mm !important;
+                        padding-top: 8mm !important;
+                    }
+                    .cv-elegant-sidebar {
+                        width: 66mm !important;
+                        padding: 6mm !important;
+                    }
+                    .cv-elegant-section,
+                    .cv-elegant-card {
+                        break-inside: avoid !important;
+                    }
+                }
+            `}</style>
             {/* Control Panel (Hidden when printing) */}
             {!readOnly && (
                 <div className="max-w-4xl mx-auto mb-6 bg-white p-4 rounded-lg shadow-sm border border-stone-200 flex justify-between items-center print:hidden">
@@ -136,10 +185,10 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
             )}
 
             {/* Resume Sheet */}
-            <div className={`max-w-4xl mx-auto bg-white shadow-xl border border-stone-200 min-h-[1100px] font-sans text-stone-850 p-12 print:shadow-none print:border-none print:my-0 print:p-0 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+            <div className={`cv-elegant-sheet max-w-4xl mx-auto bg-white shadow-xl border border-stone-200 min-h-[1100px] font-sans text-stone-850 p-12 print:shadow-none print:border-none print:my-0 print:p-0 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                 
                 {/* ── Top Header Section ───────────────────────────────────── */}
-                <header className="border-b border-stone-300 pb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-6">
+                <header className="cv-elegant-header border-b border-stone-300 pb-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-6">
                     <div className="space-y-3 flex-grow text-center md:text-left">
                         <input
                             type="text"
@@ -221,7 +270,7 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
                 </header>
 
                 {/* ── Content Layout ───────────────────────────────────────── */}
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-8 pt-8">
+                <div className="cv-elegant-main grid grid-cols-1 md:grid-cols-[1fr_260px] gap-8 pt-8">
                     
                     {/* Left Column (Main content) */}
                     <div className="space-y-8">
@@ -244,7 +293,7 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
                         >
                             <div className="space-y-6">
                                 {resumeData.experience.map((exp, i) => (
-                                    <div key={i} className="relative group/exp space-y-1">
+                                    <div key={i} className="cv-elegant-card relative group/exp space-y-1">
                                         <div className="flex justify-between items-baseline gap-2">
                                             <input
                                                 type="text"
@@ -304,7 +353,7 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
                         >
                             <div className="space-y-4">
                                 {resumeData.projects.map((p, i) => (
-                                    <div key={i} className="relative group/proj border-b border-stone-200 pb-4 last:border-0">
+                                    <div key={i} className="cv-elegant-card relative group/proj border-b border-stone-200 pb-4 last:border-0">
                                         <div className="flex justify-between items-baseline gap-2">
                                             <input
                                                 type="text"
@@ -348,12 +397,12 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
                     </div>
 
                     {/* Right Column (Sidebar content) */}
-                    <div className="space-y-8 bg-stone-50/50 p-6 rounded-xl border border-stone-200/50">
+                    <div className="cv-elegant-sidebar space-y-8 bg-stone-50/50 p-6 rounded-xl border border-stone-200/50">
                         {/* Social */}
                         <Section title="Kết nối" icon="share">
                             <div className="space-y-2">
                                 {resumeData.socialLinks.map((s, i) => (
-                                    <div key={i} className="flex items-center gap-1 border-b border-stone-200/60 pb-1.5 relative group/link">
+                                    <div key={i} className="cv-elegant-card flex items-center gap-1 border-b border-stone-200/60 pb-1.5 relative group/link">
                                         <input
                                             type="text"
                                             value={s.platform}
@@ -405,7 +454,7 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
                         >
                             <div className="space-y-4">
                                 {resumeData.education.map((e, i) => (
-                                    <div key={i} className="relative group/edu border-b border-stone-200 pb-3 last:border-0 last:pb-0">
+                                    <div key={i} className="cv-elegant-card relative group/edu border-b border-stone-200 pb-3 last:border-0 last:pb-0">
                                         <input
                                             type="text"
                                             value={e.school}
@@ -483,7 +532,7 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
 /* ── Reusable section component ──────────────────────────────── */
 function Section({ title, icon, children, onAdd }) {
     return (
-        <section className="relative group/section">
+        <section className="cv-elegant-section relative group/section">
             <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-stone-400 flex items-center justify-between gap-2 border-b border-stone-200 pb-2">
                 <span className="flex items-center gap-1.5 text-stone-800">
                     {icon && <span className="material-symbols-outlined text-lg leading-none text-amber-700">{icon}</span>}

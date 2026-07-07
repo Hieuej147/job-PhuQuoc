@@ -102,7 +102,39 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
     };
 
     return (
-        <div className="min-h-screen bg-stone-50 dark:bg-slate-950 py-8 px-4 print:bg-white print:p-0">
+        <div className="cv-classic-root min-h-screen bg-stone-50 dark:bg-slate-950 py-8 px-4 print:bg-white print:p-0">
+            <style>{`
+                @media print {
+                    .cv-classic-root {
+                        min-height: auto !important;
+                        padding: 0 !important;
+                        background: transparent !important;
+                    }
+                    .cv-classic-sheet {
+                        width: 210mm !important;
+                        max-width: 210mm !important;
+                        min-height: auto !important;
+                        padding: 10mm 12mm !important;
+                        border: 0 !important;
+                        box-shadow: none !important;
+                        overflow: visible !important;
+                    }
+                    .cv-classic-header {
+                        break-after: avoid !important;
+                    }
+                    .cv-classic-body {
+                        padding-top: 8mm !important;
+                    }
+                    .cv-classic-project-grid {
+                        display: grid !important;
+                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                    }
+                    .cv-classic-block,
+                    .cv-classic-card {
+                        break-inside: avoid !important;
+                    }
+                }
+            `}</style>
             {/* Control Panel */}
             {!readOnly && (
                 <div className="max-w-4xl mx-auto mb-6 bg-white p-4 rounded-xl shadow-sm border border-stone-200 flex justify-between items-center print:hidden">
@@ -136,9 +168,9 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
             )}
 
             {/* Resume Page */}
-            <div className={`max-w-4xl mx-auto bg-white shadow-2xl border border-stone-200 min-h-[29.7cm] p-12 font-serif text-stone-800 relative print:shadow-none print:border-none print:p-0 print:my-0 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+            <div className={`cv-classic-sheet max-w-4xl mx-auto bg-white shadow-2xl border border-stone-200 min-h-[29.7cm] p-12 font-serif text-stone-800 relative print:shadow-none print:border-none print:p-0 print:my-0 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                 {/* Header */}
-                <header className="text-center space-y-4 pb-6 border-b-2 border-stone-800">
+                <header className="cv-classic-header text-center space-y-4 pb-6 border-b-2 border-stone-800">
                     <div className="relative inline-block group">
                         <img
                             src={userData.avatar}
@@ -253,7 +285,7 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
                 </header>
 
                 {/* Body Content */}
-                <div className="space-y-8 pt-8">
+                <div className="cv-classic-body space-y-8 pt-8">
                     {/* Summary */}
                     <Block title="Tóm tắt nghề nghiệp" accent>
                         <textarea
@@ -272,7 +304,7 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
                     >
                         <div className="space-y-6">
                             {resumeData.experience.map((exp, i) => (
-                                <div key={i} className="relative group/item border-l-2 border-stone-200 pl-4 space-y-2">
+                                <div key={i} className="cv-classic-card relative group/item border-l-2 border-stone-200 pl-4 space-y-2">
                                     <button
                                         onClick={() => removeArrayItem("experience", i)}
                                         className="absolute right-0 top-0 text-red-500 hover:text-red-700 text-xs font-semibold opacity-0 group-hover/item:opacity-100 transition-opacity print:hidden"
@@ -332,9 +364,9 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
                         title="Dự án thực tế"
                         onAdd={() => addArrayItem("projects", { name: "Tên dự án", position: "Vai trò", link: "", description: "Mô tả dự án..." })}
                     >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="cv-classic-project-grid grid grid-cols-1 md:grid-cols-2 gap-6">
                             {resumeData.projects.map((proj, i) => (
-                                <div key={i} className="bg-stone-50/50 p-4 rounded-xl border border-stone-200/60 relative group/proj hover:shadow-sm transition-all duration-200">
+                                <div key={i} className="cv-classic-card bg-stone-50/50 p-4 rounded-xl border border-stone-200/60 relative group/proj hover:shadow-sm transition-all duration-200">
                                     <button
                                         onClick={() => removeArrayItem("projects", i)}
                                         className="absolute top-3 right-3 text-red-500 hover:text-red-700 text-xs font-semibold opacity-0 group-hover/proj:opacity-100 transition-opacity print:hidden"
@@ -385,7 +417,7 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
                     >
                         <div className="space-y-4">
                             {resumeData.education.map((edu, i) => (
-                                <div key={i} className="relative group/edu flex justify-between items-start gap-4">
+                                <div key={i} className="cv-classic-card relative group/edu flex justify-between items-start gap-4">
                                     <div className="space-y-1 flex-1">
                                         <input
                                             type="text"
@@ -480,7 +512,7 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
 /* Reusable block component */
 function Block({ title, children, accent = false, onAdd }) {
     return (
-        <section className="relative group/section space-y-3">
+        <section className="cv-classic-block relative group/section space-y-3">
             <h2 className="text-xs font-black uppercase tracking-widest text-stone-900 border-b-2 border-stone-800 pb-1 flex justify-between items-center">
                 <span>{title}</span>
                 {onAdd && (

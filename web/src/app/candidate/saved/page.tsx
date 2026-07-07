@@ -138,7 +138,7 @@ function JobCard({
             </div>
             <div>
               <Link
-                href={`/jobs/${job.slug || job.id}`}
+                href={job.slug ? `/jobs/${job.slug}` : "/jobs"}
                 className="font-semibold text-foreground hover:text-primary leading-snug text-sm line-clamp-2 transition-colors"
               >
                 {job.title}
@@ -192,7 +192,7 @@ function JobCard({
             </span>
           ) : (
             <Link
-              href={`/jobs/${job.slug || job.id}`}
+              href={job.slug ? `/jobs/${job.slug}` : "/jobs"}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
             >
               ▶ Ứng tuyển
@@ -214,7 +214,7 @@ function JobCard({
           </div>
           <div className="min-w-0">
             <Link
-              href={`/jobs/${job.slug || job.id}`}
+              href={job.slug ? `/jobs/${job.slug}` : "/jobs"}
               className="font-semibold text-foreground hover:text-primary leading-snug transition-colors"
             >
               {job.title}
@@ -264,7 +264,7 @@ function JobCard({
               </span>
             ) : (
               <Link
-                href={`/jobs/${job.slug || job.id}`}
+                href={job.slug ? `/jobs/${job.slug}` : "/jobs"}
                 className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
               >
                 ▶ Ứng tuyển
