@@ -72,7 +72,7 @@ Cải tiến toàn diện trang Hồ sơ cá nhân của ứng viên, phân tác
 
 ### A. Thay Đổi Database Schema & Đồng Bộ Cấu Trúc
 *   **[MODIFY]** [schema.prisma](file:///home/ngoan/Downloads/thuctap/job-PhuQuoc/backend/prisma/schema.prisma): Thêm trường `isProfile Boolean @default(false)` vào model `CandidateResume` nhằm đánh dấu bản ghi hồ sơ gốc.
-*   **[CLI]** Chạy thành công đồng bộ schema lên PostgreSQL (`npx prisma db push`) và tái sinh Prisma Client (`npx prisma generate`).
+
 
 ### B. Thiết Lập Điểm Cuối API (Backend)
 *   **[MODIFY]** [upload.controller.ts](file:///home/ngoan/Downloads/thuctap/job-PhuQuoc/backend/src/modules/upload/upload.controller.ts) & [upload.service.ts](file:///home/ngoan/Downloads/thuctap/job-PhuQuoc/backend/src/modules/upload/upload.service.ts): Bổ sung route `POST /api/v1/upload/candidate-avatar` cho phép ứng viên tải lên ảnh đại diện cá nhân lên Cloudinary, đồng thời tự động cập nhật đường dẫn vào bảng `user` và bản ghi hồ sơ gốc của user.
