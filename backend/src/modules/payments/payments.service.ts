@@ -8,7 +8,7 @@ import { StripeGateway } from './gateways/stripe.gateway';
 import { MockGateway } from './gateways/mock.gateway';
 import { PaymentQueryDto } from './dto/payment.dto';
 import { PaymentCompletionService } from './application/payment-completion.service';
-import { QuotaService } from '../../common/quota/storage-quota';
+import { QuotaService } from '../../common/quota/quota.service';
 
 @Injectable()
 export class PaymentsService {
@@ -20,7 +20,7 @@ export class PaymentsService {
     private readonly stripeGateway: StripeGateway,
     private readonly mockGateway: MockGateway,
     private readonly paymentCompletion: PaymentCompletionService,
-    private readonly quotaService: QuotaService = new QuotaService(),
+    private readonly quotaService: QuotaService,
   ) {}
 
   async createCheckout(
@@ -36,9 +36,10 @@ export class PaymentsService {
     const company = await this.companyContract.findById(job.companyId);
     if (!company || company.ownerId !== userId) throw new BadRequestException('Not your job');
     if (job.status === 'ACTIVE') throw new BadRequestException('Job is already active');
+    if (job.archivedAt) throw new BadRequestException('Archived jobs must be restored before checkout');
 
     const activeJobs = await this.prisma.job.count({
-      where: { company: { ownerId: userId }, status: 'ACTIVE' },
+      where: { company: { ownerId: userId }, status: 'ACTIVE', archivedAt: null },
     });
     await this.quotaService.assertWithinForUser(userId, 'employerActiveJobs', activeJobs);
 

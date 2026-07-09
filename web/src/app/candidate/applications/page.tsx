@@ -56,6 +56,9 @@ interface Application {
     id: string; 
     title: string; 
     slug: string; 
+    status?: string;
+    deadline?: string | null;
+    archivedAt?: string | null;
     company: { name: string; logo?: string | null } 
   };
 }
@@ -263,6 +266,10 @@ export default function ApplicationsPage() {
             const canOpenChat = a.status === "ACCEPTED" || (a.status === "REJECTED" && hasMessage) || Boolean(a.chatClosedAt && hasMessage);
             const chatReadOnly = a.status !== "ACCEPTED" || Boolean(a.chatClosedAt);
             const chatButtonLabel = a.status === "REJECTED" || chatReadOnly ? "Xem lời nhắn" : "Tin nhắn";
+            const jobStillPublic =
+              a.job.status === "ACTIVE" &&
+              !a.job.archivedAt &&
+              (!a.job.deadline || new Date(a.job.deadline).getTime() >= Date.now());
 
             return (
               <Card 
@@ -278,13 +285,22 @@ export default function ApplicationsPage() {
                       {a.job.company.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="space-y-1">
-                      <Link 
-                        href={`/jobs/${a.job.slug}`}
-                        className="font-semibold text-gray-900 dark:text-gray-100 hover:text-[#005a71] transition-colors flex items-center gap-1"
-                      >
-                        {a.job.title}
-                        <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-[#005a71]" />
-                      </Link>
+                      {jobStillPublic ? (
+                        <Link
+                          href={`/jobs/${a.job.slug}`}
+                          className="font-semibold text-gray-900 dark:text-gray-100 hover:text-[#005a71] transition-colors flex items-center gap-1"
+                        >
+                          {a.job.title}
+                          <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-[#005a71]" />
+                        </Link>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">{a.job.title}</span>
+                          <Badge variant="outline" className="text-[10px]">
+                            Không còn tuyển
+                          </Badge>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
                           <Building2 className="w-3.5 h-3.5" />

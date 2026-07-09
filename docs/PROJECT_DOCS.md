@@ -1,7 +1,7 @@
 # Phú Quốc Jobs — Project Documentation
 
 > Tài liệu kỹ thuật toàn diện cho dự án PQJobs — nền tảng tuyển dụng đảo Phú Quốc.
-> Cập nhật: 10/06/2026
+> Cập nhật: 09/07/2026
 
 ---
 
@@ -25,6 +25,19 @@
 ---
 
 ## 1. Tổng quan dự án
+
+### 1.0 Cập nhật quan trọng 09/07/2026
+
+- Backend vẫn là **NestJS modular monolith**, nhưng quota đã được refactor theo NestJS DI: `common/quota/quota.service.ts` là application service, còn `quota-expiry.service.ts` chỉ dành cho Inngest worker/repair và dùng Prisma trực tiếp.
+- `storage-quota.ts` đã bị xoá; import quota mới phải đi qua `quota.service`, `quota.types`, `quota.constants` hoặc `quota-policy`.
+- Prisma hiện dùng **Prisma 7** với `prisma.config.ts`; không để connection URL trong `schema.prisma`.
+- Job content vẫn lưu **Markdown** cho `description`, `requirements`, `benefits`; frontend render bằng Markdown renderer, không lưu HTML raw.
+- `Job.deadline` vẫn có trong DB nhưng **không nhận từ form tạo/sửa job**. Deadline chỉ được set khi checkout/payment complete theo số ngày đăng.
+- Employer không hard delete job từ workspace. `DELETE /jobs/:id/employer` là lưu trữ mềm qua `archivedAt`; dữ liệu tuyển dụng/thanh toán vẫn giữ cho admin/support.
+- Public job routes chỉ trả job `ACTIVE`, chưa hết hạn, `archivedAt = null`. Dashboard/private route dùng `/jobs/manage/:id` hoặc application history để xem tin cũ.
+- Candidate/employer “xoá” application chỉ ẩn khỏi workspace bằng `candidateDeletedAt` / `employerDeletedAt`; record vẫn giữ, không còn xoá vật lý khi cả hai bên xoá.
+- Application chat chỉ cho gửi khi application `ACCEPTED` và chưa `chatClosedAt`; `REJECTED` chỉ xem lời nhắn read-only.
+- Quota upgrade có package/purchase theo thời hạn: `QuotaPackage`, `QuotaPurchase`, `UserQuotaPlan`; Inngest có event `quota.plan.activated` và repair hết hạn hằng ngày.
 
 ### 1.1 Mục tiêu
 
@@ -51,7 +64,7 @@
 │  Port: 8125                                                     │
 ├─────────────────────────────────────────────────────────────────┤
 │                        BACKEND (NestJS 11)                       │
-│  TypeScript 5.7 + Prisma 6 + better-auth + Inngest + Stripe     │
+│  TypeScript 5.7 + Prisma 7 + better-auth + Inngest + Stripe     │
 │  Port: 3000                                                     │
 ├─────────────────────────────────────────────────────────────────┤
 │                        DATA LAYER                                │
@@ -174,7 +187,7 @@ Request
 { "data": { "items": [...], "total": 100, "page": 1, "limit": 10, "totalPages": 10 }, "timestamp": "..." }
 
 // Error (from filter)
-{ "statusCode": 400, "message": "...", "timestamp": "...", "path": "/api/v1/..." }
+{ "statusCode": 400, "message": "...", "error": "...?", "code": "...?", "details": { "...": "..." }, "timestamp": "...", "path": "/api/v1/..." }
 ```
 
 ---
@@ -189,10 +202,14 @@ CompanySize       = SIZE_1_50 | SIZE_51_200 | SIZE_201_500 | SIZE_500_PLUS
 JobType           = FULL_TIME | PART_TIME | REMOTE | CONTRACT | INTERNSHIP | FREELANCE
 ExperienceLevel   = NO_EXPERIENCE | UNDER_1_YEAR | ONE_TO_THREE_YEARS | THREE_TO_FIVE_YEARS | OVER_FIVE_YEARS
 JobLevel          = INTERN | FRESHER | JUNIOR | MID | SENIOR | LEAD | MANAGER | DIRECTOR
-JobStatus         = DRAFT | PENDING | ACTIVE | CLOSED
+JobStatus         = DRAFT | PENDING | ACTIVE | CLOSED | EXPIRED
 ApplicationStatus = PENDING | REVIEWING | ACCEPTED | REJECTED
+ApplicationMessageSenderRole = CANDIDATE | EMPLOYER
 NotificationType  = APPLICATION_RECEIVED | APPLICATION_ACCEPTED | APPLICATION_REJECTED | JOB_APPROVED | COMPANY_APPROVED | JOB_DEADLINE | SYSTEM
 PaymentStatus     = PENDING | COMPLETED | FAILED | REFUNDED
+CandidateQuotaPlan = CANDIDATE_FREE | CANDIDATE_PLUS
+EmployerQuotaPlan  = EMPLOYER_BASIC | EMPLOYER_PRO
+JobCloseReason     = EXPIRED | EMPLOYER_CLOSED | ADMIN_CLOSED | EMPLOYER_ARCHIVED
 BlogType          = NORMAL | LANDING_PAGE
 ```
 
@@ -344,12 +361,18 @@ BlogType          = NORMAL | LANDING_PAGE
 #### Job Status Machine
 
 ```
-DRAFT ──(chọn package + thanh toán)──▶ PENDING ──(payment success)──▶ ACTIVE ──(hết deadline)──▶ CLOSED
+DRAFT ──(chọn package + thanh toán)──▶ PENDING ──(payment success)──▶ ACTIVE ──(hết deadline)──▶ EXPIRED/CLOSED
   │                                      │                               │
   │                                      │                               │
-  └── Employer tạo job mới               └── Chờ thanh toán              └── Tự động đóng khi hết hạn
-      (status mặc định)                       (tạo checkout session)          (Inngest job.expired)
+  └── Employer tạo job mới               └── Chờ thanh toán              └── Inngest đóng theo deadline
+      (status mặc định)                       (tạo checkout session)          hoặc employer đóng/lưu trữ sớm
 ```
+
+Workspace archive:
+- `archivedAt != null` không phải `JobStatus` riêng.
+- Public routes ẩn archived jobs.
+- Employer route mặc định ẩn archived jobs, nhưng có thể xem bằng `GET /jobs/my?archived=true`.
+- Restore chỉ đưa job về workspace; muốn public lại phải checkout/gia hạn.
 
 #### Application Status Machine
 
@@ -559,12 +582,17 @@ UpdateCategoryDto:
 
 | Method | Path | Auth | Roles | Body/Query | Mô tả |
 |--------|------|------|-------|------------|--------|
-| `GET` | `/jobs` | `@Public()` | - | `JobQueryDto` | Tìm kiếm việc làm (default: ACTIVE only) |
-| `GET` | `/jobs/my` | Có | EMPLOYER | (page, limit, status) | Việc làm của employer (tất cả status) |
-| `GET` | `/jobs/slug/:slug` | `@Public()` | - | - | Việc làm theo slug |
-| `GET` | `/jobs/:id` | `@Public()` | - | - | Việc làm theo ID (kèm tóm tắt applications) |
+| `GET` | `/jobs` | `@Public()` | - | `JobQueryDto` | Public search: luôn ép `ACTIVE`, chưa hết hạn, `archivedAt = null` |
+| `GET` | `/jobs/my` | Có | EMPLOYER | `MyJobsQueryDto` | Việc làm của employer; mặc định ẩn archived, dùng `archived=true` để xem lưu trữ |
+| `GET` | `/jobs/my/stats` | Có | EMPLOYER | - | Thống kê job workspace theo status/archive |
+| `GET` | `/jobs/slug/:slug` | `@Public()` | - | - | Public detail theo slug, chỉ job đang public |
+| `GET` | `/jobs/manage/:id` | Có | EMPLOYER | - | Detail nội bộ cho owner: sửa, checkout, clone, xem job đã đóng/lưu trữ |
+| `GET` | `/jobs/:id` | `@Public()` | - | - | Public detail theo ID, chỉ job đang public |
 | `POST` | `/jobs` | Có | EMPLOYER | `CreateJobDto` | Tạo việc làm (status: DRAFT) |
 | `PATCH` | `/jobs/:id` | Có | Owner | `UpdateJobDto` | Cập nhật việc làm (chỉ owner công ty) |
+| `PATCH` | `/jobs/:id/close` | Có | Owner | - | Đóng tin sớm, public ẩn nhưng dashboard giữ lịch sử |
+| `DELETE` | `/jobs/:id/employer` | Có | Owner | - | Employer lưu trữ mềm job, không hard delete |
+| `PATCH` | `/jobs/:id/restore` | Có | Owner | - | Khôi phục job đã lưu trữ về workspace |
 | `DELETE` | `/jobs/:id` | Có | ADMIN | - | Xóa việc làm |
 
 **DTOs:**
@@ -583,10 +611,14 @@ CreateJobDto:
   type?          : enum(JobType, default FULL_TIME)
   experience?    : enum(ExperienceLevel)
   level?         : enum(JobLevel)
-  deadline?      : string (ISO date)
   categoryId     : string (required)
 
 UpdateJobDto: (tất cả optional, same fields as CreateJobDto)
+
+Lưu ý:
+  - Không có deadline trong CreateJobDto/UpdateJobDto.
+  - deadline chỉ set sau checkout/payment complete theo durationDays.
+  - description/requirements/benefits là Markdown text, không phải HTML.
 
 JobQueryDto:
   page?       : number (default 1)
@@ -596,7 +628,7 @@ JobQueryDto:
   type?       : enum(JobType)
   experience? : enum(ExperienceLevel)
   level?      : enum(JobLevel)
-  status?     : enum(JobStatus)
+  status?     : enum(JobStatus) — public endpoint bỏ qua và luôn ép ACTIVE
   salaryMin?  : number
   salaryMax?  : number
   wardId?     : string
@@ -611,11 +643,18 @@ JobQueryDto:
 |--------|------|------|-------|------------|--------|
 | `POST` | `/applications` | Có | CANDIDATE | `CreateApplicationDto` | Nộp đơn ứng tuyển (1 lần/job) |
 | `GET` | `/applications/my` | Có | CANDIDATE | (page, limit) | Đơn ứng tuyển của tôi |
+| `GET` | `/applications/check/:jobId` | Có | CANDIDATE | - | Kiểm tra đã ứng tuyển job chưa |
 | `GET` | `/applications/employer` | Có | EMPLOYER | (page, limit) | Tất cả đơn cho jobs của employer |
 | `GET` | `/applications/job/:jobId` | Có | EMPLOYER | (page, limit) | Đơn theo job (kiểm tra ownership) |
+| `GET` | `/applications/:id/job` | Có | CANDIDATE/EMPLOYER | - | Xem lịch sử job theo application kể cả khi job đã đóng/lưu trữ |
+| `GET` | `/applications/:id/messages` | Có | CANDIDATE/EMPLOYER | - | Xem thread chat application |
+| `POST` | `/applications/:id/messages` | Có | CANDIDATE/EMPLOYER | `{ body }` | Gửi chat, chỉ khi application ACCEPTED và chat chưa đóng |
+| `PATCH` | `/applications/:id/messages/read` | Có | CANDIDATE/EMPLOYER | - | Mark read và refresh presence Redis |
+| `PATCH` | `/applications/:id/chat/close` | Có | EMPLOYER | - | Employer đóng chat; lịch sử vẫn xem được |
 | `PATCH` | `/applications/:id/status` | Có | EMPLOYER | `UpdateApplicationStatusDto` | Cập nhật trạng thái đơn |
 | `PATCH` | `/applications/:id/bookmark` | Có | EMPLOYER | - | Đánh dấu/ bỏ đánh dấu |
-| `DELETE` | `/applications/:id` | Có | CANDIDATE | - | Rút đơn ứng tuyển |
+| `DELETE` | `/applications/:id` | Có | CANDIDATE | - | Xóa khỏi workspace candidate, không rút đơn, không hard delete |
+| `DELETE` | `/applications/:id/employer` | Có | EMPLOYER | - | Xóa khỏi workspace employer, không hard delete |
 
 **DTOs:**
 
@@ -628,6 +667,13 @@ CreateApplicationDto:
 
 UpdateApplicationStatusDto:
   status : enum(PENDING, REVIEWING, ACCEPTED, REJECTED)
+  employerMessage? : string
+
+Chat rule:
+  - PENDING / REVIEWING: chỉ xem trạng thái, không chat.
+  - ACCEPTED: mở chat hai chiều ngắn; giới hạn 100 messages/application, 2000 ký tự/message.
+  - REJECTED: employer message lưu DB và hiển thị read-only, candidate không reply.
+  - chatClosedAt có giá trị: chỉ xem lịch sử, không gửi thêm.
 ```
 
 ---
@@ -823,7 +869,25 @@ CreateCheckoutDto:
 
 ---
 
-### 4.15 Audit Module
+### 4.15 Quota Module
+
+| Method | Path | Auth | Roles | Body/Query | Mô tả |
+|--------|------|------|-------|------------|--------|
+| `GET` | `/quota/me` | Có | Any | - | Snapshot quota, plan hiện tại, hạn gói, usage/limit |
+| `GET` | `/quota/packages` | Có | Any | - | Danh sách package nâng quota đang active |
+| `POST` | `/quota/checkout` | Có | Any | `{ packageId }` | Tạo checkout mock nâng quota |
+| `POST` | `/quota/mock-complete` | Có | Any | `{ sessionId }` | Hoàn tất checkout mock, set plan expiry và emit `quota.plan.activated` |
+| `POST` | `/quota/upgrade` | Có | Any | `{ plan }` | Legacy demo upgrade trực tiếp |
+
+Ghi chú kiến trúc:
+
+- `QuotaService` là NestJS application service, chỉ tạo qua DI.
+- `QuotaExpiryService` là helper cho Inngest expiry/repair, dùng Prisma trực tiếp.
+- Package quota hiện là demo/mock nhưng vẫn lưu `QuotaPurchase` để giữ lịch sử tiền/gói/hạn dùng.
+
+---
+
+### 4.16 Audit Module
 
 | Method | Path | Auth | Roles | Body/Query | Mô tả |
 |--------|------|------|-------|------------|--------|
@@ -846,7 +910,7 @@ QueryAuditDto:
 
 ---
 
-### 4.16 Inngest Endpoint
+### 4.17 Inngest Endpoint
 
 | Method | Path | Auth | Mô tả |
 |--------|------|------|--------|
@@ -1573,7 +1637,7 @@ User muốn PDF: "Export PDF"
 LLM gọi frontend tool: export_pdf { resumeId }
     │  (graph __end__, frontend xử lý)
     ▼
-Frontend: GET /api/v1/resumes/[id]/pdf → download
+Frontend: mở /resumes/:id/print hoặc /candidate/resumes/:id/print → browser print / Save as PDF
 ```
 
 ### 8.4 Payment Flow
@@ -1627,6 +1691,7 @@ PaymentsService.createCheckout()
 | `job.activated` | `{ jobId, deadline? }` | Job được kích hoạt (sau thanh toán) |
 | `job.expiring-soon` | `{ jobId, deadline? }` | Job sắp hết hạn (3 ngày trước) |
 | `job.expired` | `{ jobId, deadline? }` | Job hết hạn |
+| `quota.plan.activated` | `{ userId, targetPlan, expiresAt, purchaseId }` | Gói quota được kích hoạt sau mock checkout |
 
 ### 9.2 Functions
 
@@ -1645,7 +1710,10 @@ PaymentsService.createCheckout()
 |----------|---------|-----------|
 | `schedule-job-expiry` | `job.activated` | Schedule `job.expiring-soon` (3 ngày trước deadline) và `job.expired` (khi deadline) |
 | `on-job-expiring-soon` | `job.expiring-soon` | Tạo notification JOB_DEADLINE cho users đã lưu job |
-| `on-job-expired` | `job.expired` | Set job.status = CLOSED, tạo SYSTEM notification cho employer |
+| `on-job-expired` | `job.expired` | Đóng/expire job nếu deadline event còn khớp DB, tạo SYSTEM notification cho employer |
+| `close-expired-active-jobs` | Cron repair | Quét job ACTIVE quá deadline phòng event `job.expired` bị miss |
+| `quota-plan-expiry` | `quota.plan.activated` | Đợi tới `expiresAt`, downgrade nếu user chưa gia hạn sang expiry mới |
+| `repair-expired-quota-plans` | Cron repair | Downgrade quota plan đã hết hạn nếu event bị miss |
 
 #### User Functions
 

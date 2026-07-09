@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { QuotaService } from '../../common/quota/storage-quota';
+import { QuotaService } from '../../common/quota/quota.service';
 
 @Injectable()
 export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly quotaService: QuotaService = new QuotaService(),
+    private readonly quotaService: QuotaService,
   ) {}
 
   async getCandidateSummary(userId: string) {
@@ -71,14 +71,27 @@ export class DashboardService {
       include: { ward: { include: { district: { include: { province: true } } } } },
     });
 
-    const [jobsTotal, jobsActive, jobsPending, jobsDraft, jobsRecent, applicationsTotal, applicationsPending, applicationsRecent, unreadCount, notificationsRecent] =
+    const visibleJobWhere = { company: { ownerId: userId }, archivedAt: null };
+    const jobUsageWhere = {
+      company: { ownerId: userId },
+      OR: [
+        { archivedAt: null },
+        { publishedAt: { not: null } },
+        { currentPaymentId: { not: null } },
+        { payments: { some: { status: 'COMPLETED' as const } } },
+      ],
+    };
+
+    const [jobsTotal, jobsUsageTotal, jobsActive, jobsPending, jobsDraft, jobsArchived, jobsRecent, applicationsTotal, applicationsPending, applicationsRecent, unreadCount, notificationsRecent] =
       await Promise.all([
-        this.prisma.job.count({ where: { company: { ownerId: userId } } }),
-        this.prisma.job.count({ where: { company: { ownerId: userId }, status: 'ACTIVE' } }),
-        this.prisma.job.count({ where: { company: { ownerId: userId }, status: 'PENDING' } }),
-        this.prisma.job.count({ where: { company: { ownerId: userId }, status: 'DRAFT' } }),
+        this.prisma.job.count({ where: visibleJobWhere }),
+        this.prisma.job.count({ where: jobUsageWhere }),
+        this.prisma.job.count({ where: { ...visibleJobWhere, status: 'ACTIVE' } }),
+        this.prisma.job.count({ where: { ...visibleJobWhere, status: 'PENDING' } }),
+        this.prisma.job.count({ where: { ...visibleJobWhere, status: 'DRAFT' } }),
+        this.prisma.job.count({ where: { company: { ownerId: userId }, archivedAt: { not: null } } }),
         this.prisma.job.findMany({
-          where: { company: { ownerId: userId } },
+          where: visibleJobWhere,
           take: 5,
           orderBy: { createdAt: 'desc' },
           include: { _count: { select: { applications: true } } },
@@ -104,7 +117,7 @@ export class DashboardService {
       ]);
 
     const quota = await this.quotaService.getUserQuotaSnapshot(userId, {
-      employerJobs: jobsTotal,
+      employerJobs: jobsUsageTotal,
       employerActiveJobs: jobsActive,
       employerDurationDaysMax: 0,
       employerBoostLevelMax: 0,
@@ -112,7 +125,7 @@ export class DashboardService {
 
     return {
       company,
-      jobs: { total: jobsTotal, active: jobsActive, pending: jobsPending, draft: jobsDraft, recent: jobsRecent },
+      jobs: { total: jobsTotal, usageTotal: jobsUsageTotal, active: jobsActive, pending: jobsPending, draft: jobsDraft, archived: jobsArchived, recent: jobsRecent },
       applications: { total: applicationsTotal, pending: applicationsPending, recent: applicationsRecent },
       notifications: { unreadCount, recent: notificationsRecent },
       quota: {

@@ -47,12 +47,12 @@ export function ApplicationCvDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] overflow-hidden bg-[#071622] p-0 text-slate-100 sm:max-w-6xl">
-        <DialogHeader className="employer-cv-print-hidden border-b border-slate-800 px-6 py-4">
+      <DialogContent className="max-h-[92vh] overflow-hidden p-0 sm:max-w-6xl">
+        <DialogHeader className="employer-cv-print-hidden border-b border-border px-6 py-4">
           <div className="flex flex-col gap-3 pr-10 md:flex-row md:items-center md:justify-between">
             <div>
               <DialogTitle>CV ứng viên</DialogTitle>
-              <DialogDescription className="text-slate-400">
+              <DialogDescription>
                 Xem CV ngay trong dashboard. CV tạo online sẽ được render dạng giấy A4.
               </DialogDescription>
             </div>
@@ -62,7 +62,6 @@ export function ApplicationCvDialog({
                   size="sm"
                   variant="outline"
                   onClick={handleOpenCvNewTab}
-                  className="border-slate-700 bg-[#0d2334] text-slate-100 hover:bg-[#12344d]"
                 >
                   Mở tab mới
                 </Button>
@@ -70,7 +69,6 @@ export function ApplicationCvDialog({
                   <Button
                     size="sm"
                     onClick={handlePrintCv}
-                    className="bg-[#106b82] text-white hover:bg-[#147e9a]"
                   >
                     In / Lưu PDF
                   </Button>
@@ -83,7 +81,7 @@ export function ApplicationCvDialog({
         <div className="max-h-[calc(92vh-88px)] overflow-auto bg-slate-200 p-6">
           {loading ? (
             <div className="flex h-[60vh] items-center justify-center">
-              <Spinner size="lg" className="text-[#005a71]" />
+              <Spinner size="lg" className="text-primary" />
             </div>
           ) : error ? (
             <div className="flex h-[60vh] items-center justify-center">

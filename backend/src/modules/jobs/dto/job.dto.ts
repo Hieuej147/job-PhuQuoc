@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, IsEnum, IsDateString, Min, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsEnum, Min, Max, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
 
@@ -31,12 +31,14 @@ export class CreateJobDto {
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(2000000000)
   salaryMin?: number;
 
 
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(2000000000)
   salaryMax?: number;
 
 
@@ -63,12 +65,6 @@ export class CreateJobDto {
   @IsOptional()
   @IsEnum(['INTERN', 'FRESHER', 'JUNIOR', 'MID', 'SENIOR', 'LEAD', 'MANAGER', 'DIRECTOR'])
   level?: string;
-
-
-  @IsOptional()
-  @IsDateString()
-  deadline?: string;
-
 
   @IsString()
   categoryId: string;
@@ -105,12 +101,14 @@ export class UpdateJobDto {
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(2000000000)
   salaryMin?: number;
 
 
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(2000000000)
   salaryMax?: number;
 
 
@@ -137,12 +135,6 @@ export class UpdateJobDto {
   @IsOptional()
   @IsEnum(['INTERN', 'FRESHER', 'JUNIOR', 'MID', 'SENIOR', 'LEAD', 'MANAGER', 'DIRECTOR'])
   level?: string;
-
-
-  @IsOptional()
-  @IsDateString()
-  deadline?: string;
-
 
   @IsOptional()
   @IsString()
@@ -199,6 +191,7 @@ export class JobQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @Max(2000000000)
   salaryMin?: number;
 
 
@@ -206,6 +199,7 @@ export class JobQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @Max(2000000000)
   salaryMax?: number;
 
 
@@ -245,6 +239,18 @@ export class MyJobsQueryDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  @IsString()
+  sort?: string;
+
+  @IsOptional()
+  @IsString()
+  archived?: string;
 }
 
 export class VectorSearchDto {

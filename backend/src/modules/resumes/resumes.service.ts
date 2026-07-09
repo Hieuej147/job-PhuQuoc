@@ -2,14 +2,14 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../../prisma/prisma.service';
 import { PinoLoggerService } from '../../common/logger/pino-logger.service';
 import { Prisma } from '@prisma/client';
-import { QuotaService } from '../../common/quota/storage-quota';
+import { QuotaService } from '../../common/quota/quota.service';
 
 @Injectable()
 export class ResumesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: PinoLoggerService,
-    private readonly quotaService: QuotaService = new QuotaService(),
+    private readonly quotaService: QuotaService,
   ) {}
 
   // ===== Resume CRUD =====

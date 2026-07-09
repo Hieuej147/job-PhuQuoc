@@ -48,10 +48,22 @@ Rule mới:
 
 ## Còn nên dọn tiếp
 
+- `web/src/app/employer/jobs/create/page.tsx`: đã dọn deadline nhập tay và chuẩn hóa clone title, nhưng vẫn nên tách thành `features/employer-jobs` gồm form component, constants, mapper payload và hook create/clone.
+- `web/src/app/employer/jobs/page.tsx`: đã có thêm archive/restore/delete flow; nên tách tiếp thành job filters, job card, delete/archive dialog và hook `useEmployerJobs`.
+- `web/src/app/employer/jobs/[id]/checkout/page.tsx`: vẫn là page nghiệp vụ thanh toán/gia hạn; nên tách package selector, boost selector và checkout hook.
+- `web/src/app/employer/jobs/[id]/edit/page.tsx`: đã bỏ deadline khỏi payload; nên dùng chung form component với create để tránh lệch validation/content editor.
 - `web/src/app/employer/company/page.tsx`: còn tự parse response cho upload logo/company update; nên tách thành `features/employer-company/hooks` hoặc API helper riêng cho FormData.
 - `web/src/lib/auth.ts`: vẫn là wrapper auth flow dùng nhiều màn hình; có thể giữ trong `lib` hoặc tách tiếp thành `features/auth` nếu team muốn gom toàn bộ auth theo feature.
 - `web/src/app/api/copilotkit/[[...slug]]/route.ts` và `web/src/lib/server-auth.ts`: đang chạy ở server/route handler nên không ép dùng client helper.
 - `web/src/features/employer-applications/utils.ts`: còn `getInitials` riêng cho applicant avatar; chỉ nên thay nếu thống nhất dùng chung avatar initial toàn app.
+
+## Rule mới sau lượt job posting/archive
+
+- Job content là Markdown; editor được phép có UI giống rich editor nhưng payload vẫn là Markdown text.
+- Không dùng HTML raw cho description/requirements/benefits.
+- User không nhập `deadline` khi tạo/sửa job. Deadline chỉ đến từ checkout duration/payment completion.
+- Archive job là trạng thái workspace qua `archivedAt`, không phải `JobStatus` mới. Tab mặc định không hiện archived jobs; tab `Lưu trữ` dùng query `archived=true`.
+- Archive không hoàn usage quota đã tiêu thụ; chỉ giảm active quota và workspace display count.
 
 ## Pattern đề xuất
 

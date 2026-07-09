@@ -4,6 +4,7 @@ import { SavedService } from '../src/modules/saved/saved.service';
 describe('SavedService', () => {
   let service: SavedService;
   let prismaMock: any;
+  let quotaServiceMock: any;
 
   beforeEach(() => {
     prismaMock = {
@@ -22,7 +23,10 @@ describe('SavedService', () => {
         delete: vi.fn(),
       },
     };
-    service = new SavedService(prismaMock as any);
+    quotaServiceMock = {
+      assertWithinForUser: vi.fn().mockResolvedValue(undefined),
+    };
+    service = new SavedService(prismaMock as any, quotaServiceMock);
   });
 
   it('should be defined', () => {

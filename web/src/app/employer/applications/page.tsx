@@ -43,34 +43,34 @@ export default function EmployerApplicationsPage() {
   if (applications.loading) {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center space-y-4">
-        <Spinner size="lg" className="text-[#005a71]" />
+        <Spinner size="lg" className="text-primary" />
         <p className="animate-pulse text-sm text-muted-foreground">Đang tải danh sách hồ sơ ứng tuyển...</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-6 text-slate-100">
+    <div className="mx-auto max-w-7xl space-y-6 p-6 text-foreground">
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="cursor-pointer hover:underline">Dashboard</span>
             <span>&gt;</span>
-            <span className="text-[#0ea5e9]">Hồ sơ ứng viên</span>
+            <span className="font-semibold text-primary">Hồ sơ ứng viên</span>
           </div>
-          <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold text-slate-100">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+          <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold text-foreground">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
             </span>
             Hồ sơ ứng viên
           </h1>
-          <p className="text-xs text-slate-400">Quản lý và xét duyệt đơn ứng tuyển</p>
+          <p className="text-xs text-muted-foreground">Quản lý và xét duyệt đơn ứng tuyển</p>
         </div>
 
         <Button
           variant="outline"
           size="sm"
-          className="self-end gap-1.5 border-slate-700 bg-[#0f2d42] text-slate-100 hover:bg-[#153b54]"
+          className="self-end gap-1.5"
         >
           <Download className="h-4 w-4" />
           <span>Xuất Excel</span>

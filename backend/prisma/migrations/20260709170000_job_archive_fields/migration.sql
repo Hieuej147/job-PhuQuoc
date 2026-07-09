@@ -1,0 +1,8 @@
+ALTER TYPE "JobCloseReason" ADD VALUE IF NOT EXISTS 'EMPLOYER_ARCHIVED';
+
+ALTER TABLE "job"
+  ADD COLUMN IF NOT EXISTS "archivedAt" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "archivedBy" TEXT,
+  ADD COLUMN IF NOT EXISTS "archiveReason" TEXT;
+
+CREATE INDEX IF NOT EXISTS "job_archivedAt_idx" ON "job"("archivedAt");

@@ -3,7 +3,7 @@
  * MÔ TẢ: Hiển thị danh sách các gói đăng tin (Pricing packages) cho nhà tuyển dụng chọn lựa sau khi tạo tin thành công.
  * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
  * - GET `/api/v1/pricing`: Lấy danh sách các gói cước từ bảng `Pricing` trong DB.
- * - GET `/api/v1/jobs/:id`: Lấy thông tin tin tuyển dụng vừa tạo để xác nhận.
+ * - GET `/api/v1/jobs/manage/:id`: Lấy thông tin tin tuyển dụng thuộc employer hiện tại để xác nhận.
  * - POST `/api/v1/payments/checkout`: Gửi yêu cầu thanh toán xuống BE để tích hợp cổng thanh toán (ví dụ VNPay, Stripe) hoặc ghi nhận giao dịch vào DB.
  */
 "use client";
@@ -40,7 +40,7 @@ export default function CheckoutPage() {
       try {
         const [pkgRes, jobRes] = await Promise.allSettled([
           fetch("/api/v1/pricing?active=true", { credentials: "include" }),
-          fetch(`/api/v1/jobs/${jobId}`, { credentials: "include" }),
+          fetch(`/api/v1/jobs/manage/${jobId}`, { credentials: "include" }),
         ]);
 
         if (pkgRes.status === "fulfilled" && pkgRes.value.ok) {
@@ -95,6 +95,7 @@ export default function CheckoutPage() {
   };
 
   const selectedPackage = packages.find((pkg) => pkg.id === selectedPkg);
+  const isArchivedJob = Boolean(job?.archivedAt);
   const effectiveDays = durationDays || selectedPackage?.days || 0;
   const listingAmount = selectedPackage && effectiveDays
     ? Math.round((selectedPackage.price / selectedPackage.days) * effectiveDays)
@@ -124,6 +125,11 @@ export default function CheckoutPage() {
           <CardContent className="p-4">
             <p className="text-sm text-gray-500">Tin tuyển dụng</p>
             <p className="font-semibold">{job.title}</p>
+            {isArchivedJob && (
+              <p className="mt-2 text-sm text-amber-600 dark:text-amber-300">
+                Tin này đang nằm trong Lưu trữ. Hãy khôi phục tin trước khi thanh toán hoặc gia hạn.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -224,7 +230,7 @@ export default function CheckoutPage() {
       <div className="flex justify-end">
         <Button
           onClick={handleCheckout}
-          disabled={!selectedPkg || checkoutLoading}
+          disabled={!selectedPkg || checkoutLoading || isArchivedJob}
           className="px-8 py-3 text-base"
         >
           {checkoutLoading ? (

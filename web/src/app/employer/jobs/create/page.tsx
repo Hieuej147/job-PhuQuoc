@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { apiGet, apiPost } from "@/lib/api-client";
 
 const JOB_TYPES = [
   { value: "FULL_TIME", label: "Full-time" },
@@ -82,6 +84,8 @@ function CurrencyInput({
 export default function CreateJobPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [cloneLoading, setCloneLoading] = useState(false);
+  const [cloneSourceTitle, setCloneSourceTitle] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
 
@@ -100,10 +104,40 @@ export default function CreateJobPage() {
   });
 
   useEffect(() => {
-    fetch("/api/v1/categories", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setCategories(d.data?.items || d.data || []))
+    apiGet<any>("/api/v1/categories")
+      .then((d) => setCategories(d.items || d || []))
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const cloneJobId = new URLSearchParams(window.location.search).get("cloneJobId");
+    if (!cloneJobId) return;
+
+    setCloneLoading(true);
+    apiGet<any>(`/api/v1/jobs/manage/${cloneJobId}`)
+      .then((job) => {
+        setCloneSourceTitle(job.title || null);
+        setForm((prev) => ({
+          ...prev,
+          title: job.title || prev.title,
+          description: job.description || "",
+          requirements: job.requirements || "",
+          benefits: job.benefits || "",
+          categoryId: job.categoryId || job.category?.id || "",
+          type: job.type || prev.type,
+          experience: job.experience || prev.experience,
+          level: job.level || prev.level,
+          salaryMin: job.salaryMin ? String(job.salaryMin) : "",
+          salaryMax: job.salaryMax ? String(job.salaryMax) : "",
+          quantity: job.quantity ? String(job.quantity) : prev.quantity,
+        }));
+      })
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : "Không thể tải tin cần nhân bản";
+        setError(message);
+        toast.error(message);
+      })
+      .finally(() => setCloneLoading(false));
   }, []);
 
   const updateField = (field: string, value: string) => {
@@ -134,20 +168,9 @@ export default function CreateJobPage() {
       if (form.benefits) body.benefits = form.benefits;
       if (form.salaryMin) body.salaryMin = parseInt(form.salaryMin);
       if (form.salaryMax) body.salaryMax = parseInt(form.salaryMax);
-      const res = await fetch("/api/v1/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || `HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
-      const newJobId = data.data?.id || data.id;
+      const data = await apiPost<any>("/api/v1/jobs", body);
+      const newJobId = data.id;
+      toast.success("Đã tạo bản nháp tin tuyển dụng");
       router.push(`/employer/jobs/${newJobId}/checkout`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Tạo job thất bại");
@@ -162,12 +185,24 @@ export default function CreateJobPage() {
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="size-4 mr-1" /> Quay lại
         </Button>
-        <h1 className="text-2xl font-bold">Đăng tin tuyển dụng</h1>
+        <h1 className="text-2xl font-bold">{cloneSourceTitle ? "Nhân bản tin tuyển dụng" : "Đăng tin tuyển dụng"}</h1>
       </div>
 
       {error && (
         <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
           {error}
+        </div>
+      )}
+
+      {cloneSourceTitle && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300">
+          Đang nhân bản từ tin "{cloneSourceTitle}". Hệ thống chỉ sao chép nội dung, không sao chép trạng thái, thanh toán, deadline hoặc gói hiển thị.
+        </div>
+      )}
+
+      {cloneLoading && (
+        <div className="flex items-center gap-2 rounded-lg border border-border p-4 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> Đang tải dữ liệu tin cần nhân bản...
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { InngestService } from '../../../inngest/inngest.service';
@@ -47,6 +47,11 @@ export class PaymentCompletionService {
   }
 
   private async completePendingPayment(payment: PendingPayment, source: string) {
+    const job = await this.jobContract.findById(payment.jobId);
+    if (!job) throw new NotFoundException('Job not found for pending payment');
+    if (job.archivedAt) throw new BadRequestException('Archived jobs must be restored before payment completion');
+    if (job.status === 'ACTIVE') throw new BadRequestException('Job is already active');
+
     await this.prisma.payment.update({
       where: { id: payment.id },
       data: { status: 'COMPLETED', completedAt: new Date() },

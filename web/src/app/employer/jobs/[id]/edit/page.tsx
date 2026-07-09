@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MarkdownRichEditor } from "@/components/ui/MarkdownRichEditor";
+import { apiGet, apiPatch } from "@/lib/api-client";
 
 const JOB_TYPES = [
   { value: "FULL_TIME", label: "Full-time" },
@@ -114,17 +115,15 @@ export default function EditJobPage() {
     async function load() {
       try {
         const [jobRes, categoriesRes] = await Promise.all([
-          fetch(`/api/v1/jobs/${jobId}`, { credentials: "include" }),
-          fetch("/api/v1/categories", { credentials: "include" }),
+          apiGet<any>(`/api/v1/jobs/manage/${jobId}`),
+          apiGet<any>("/api/v1/categories").catch(() => null),
         ]);
 
-        if (!jobRes.ok) throw new Error("Không thể tải tin tuyển dụng");
-        const jobBody = await jobRes.json();
-        const job = jobBody.data ?? jobBody;
-        const categoriesBody = categoriesRes.ok ? await categoriesRes.json() : null;
+        const job = jobRes;
+        const categoriesBody = categoriesRes;
 
         if (!mounted) return;
-        setCategories(categoriesBody?.data?.items ?? categoriesBody?.data ?? []);
+        setCategories(categoriesBody?.items ?? categoriesBody ?? []);
         setStatus(job.status ?? "");
         setForm({
           title: job.title ?? "",
@@ -179,17 +178,7 @@ export default function EditJobPage() {
       if (form.salaryMin) body.salaryMin = parseInt(form.salaryMin, 10);
       if (form.salaryMax) body.salaryMax = parseInt(form.salaryMax, 10);
 
-      const res = await fetch(`/api/v1/jobs/${jobId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        throw new Error(payload.message || "Không thể cập nhật tin tuyển dụng");
-      }
+      await apiPatch(`/api/v1/jobs/${jobId}`, body);
 
       toast.success(status === "ACTIVE" ? "Đã cập nhật nội dung tin đang tuyển" : "Đã cập nhật tin tuyển dụng");
       router.push("/employer/jobs");

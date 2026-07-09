@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SavedQueryDto } from './dto/saved-query.dto';
-import { QuotaService } from '../../common/quota/storage-quota';
+import { QuotaService } from '../../common/quota/quota.service';
 
 @Injectable()
 export class SavedService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly quotaService: QuotaService = new QuotaService(),
+    private readonly quotaService: QuotaService,
   ) {}
 
   async saveJob(userId: string, jobId: string) {

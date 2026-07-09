@@ -19,12 +19,6 @@ export function formatTimeAgo(dateStr: string) {
   return `Nộp ${timeAgo(dateStr).toLowerCase()}`;
 }
 
-export function getMatchRate(id: string) {
-  let sum = 0;
-  for (let i = 0; i < id.length; i += 1) sum += id.charCodeAt(i);
-  return 75 + (sum % 21);
-}
-
 export function getSkillsList(skillsStr?: string | null) {
   if (!skillsStr) return ["Giao tiếp", "Làm việc nhóm", "Thích ứng"];
   return skillsStr.split(",").map((skill) => skill.trim()).filter(Boolean).slice(0, 4);

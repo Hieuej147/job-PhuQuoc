@@ -104,6 +104,7 @@ enum JobCloseReason {
   EXPIRED
   EMPLOYER_CLOSED
   ADMIN_CLOSED
+  EMPLOYER_ARCHIVED
 }
 
 enum BlogType {
@@ -332,6 +333,9 @@ model Job {
   featuredUntil  DateTime?
   activationId   String?
   currentPaymentId String?
+  archivedAt     DateTime?
+  archivedBy     String?
+  archiveReason  String?
   categoryId     String
   companyId      String
   createdAt      DateTime       @default(now())
@@ -349,6 +353,7 @@ model Job {
   @@index([companyId])
   @@index([status])
   @@index([status, deadline])
+  @@index([archivedAt])
   @@index([featuredUntil, boostLevel])
   @@index([wardId])
   @@map("job")

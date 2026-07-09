@@ -13,10 +13,10 @@ export function ApplicationsSummaryCards({ counts }: { counts: ApplicationCounts
       {items.map((item) => (
         <div
           key={item.label}
-          className={`flex min-h-[100px] flex-col justify-between rounded-xl border border-l-4 border-slate-700/60 bg-[#0b2434] p-5 shadow-md ${item.color}`}
+          className={`flex min-h-[100px] flex-col justify-between rounded-xl border border-l-4 border-border bg-card p-5 shadow-sm ${item.color}`}
         >
-          <p className="text-2xl font-black text-slate-100">{item.value}</p>
-          <p className="mt-1 text-xs font-semibold text-slate-400">{item.label}</p>
+          <p className="text-2xl font-black text-foreground">{item.value}</p>
+          <p className="mt-1 text-xs font-semibold text-muted-foreground">{item.label}</p>
         </div>
       ))}
     </div>

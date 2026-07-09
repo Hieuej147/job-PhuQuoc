@@ -69,7 +69,7 @@ export function RecentJobsTable({ jobs }: RecentJobsTableProps) {
                     </Link>
                     <span className="text-[#e1efff] dark:text-[#1E5F74]">|</span>
                     <button type="button" className="text-xs font-semibold text-red-500 hover:opacity-70">
-                      {job.status === "ACTIVE" ? "Đóng" : job.status === "PENDING" ? "Xoá" : "Đăng lại"}
+                      {job.status === "ACTIVE" ? "Đóng" : job.status === "PENDING" ? "Lưu trữ" : "Đăng lại"}
                     </button>
                   </div>
                 </td>

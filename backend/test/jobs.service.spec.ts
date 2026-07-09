@@ -8,6 +8,7 @@ describe('JobsService', () => {
   let cacheMock: any;
   let companyContractMock: any;
   let jobBackgroundMock: any;
+  let quotaServiceMock: any;
 
   beforeEach(() => {
     prismaMock = {
@@ -40,7 +41,19 @@ describe('JobsService', () => {
     jobBackgroundMock = {
       syncEmbedding: vi.fn(),
     };
-    service = new JobsService(prismaMock as any, auditServiceMock, cacheMock as any, companyContractMock, jobBackgroundMock);
+    quotaServiceMock = {
+      assertWithinForUser: vi.fn().mockResolvedValue(undefined),
+      assertMaxForUser: vi.fn().mockResolvedValue(undefined),
+      getUserQuotaSnapshot: vi.fn(),
+    };
+    service = new JobsService(
+      prismaMock as any,
+      auditServiceMock,
+      cacheMock as any,
+      companyContractMock,
+      jobBackgroundMock,
+      quotaServiceMock,
+    );
   });
 
   it('should be defined', () => {

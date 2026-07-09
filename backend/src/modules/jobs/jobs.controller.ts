@@ -5,7 +5,7 @@
  * - Giao tiếp với `JobsService` để truy vấn thực tế vào bảng `Job` trong PostgreSQL (qua Prisma).
  * - FE gọi `GET /api/v1/jobs/my` -> BE xác thực Employer -> Trả về danh sách việc làm thực tế từ DB.
  */
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { JobsService } from './jobs.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -27,7 +27,7 @@ export class JobsController {
   @ApiQuery({ name: 'type', required: false, description: 'Loại hình: FULL_TIME, PART_TIME, REMOTE, CONTRACT, INTERNSHIP, FREELANCE' })
   @ApiQuery({ name: 'experience', required: false, description: 'Kinh nghiệm: NO_EXPERIENCE, UNDER_1_YEAR, ONE_TO_THREE_YEARS, THREE_TO_FIVE_YEARS, OVER_FIVE_YEARS' })
   @ApiQuery({ name: 'level', required: false, description: 'Cấp bậc: INTERN, FRESHER, JUNIOR, MID, SENIOR, LEAD, MANAGER, DIRECTOR' })
-  @ApiQuery({ name: 'status', required: false, description: 'Trạng thái: DRAFT, PENDING, ACTIVE, CLOSED' })
+  @ApiQuery({ name: 'status', required: false, description: 'Public endpoint bỏ qua status từ client và luôn ép ACTIVE' })
   @ApiQuery({ name: 'salaryMin', required: false, description: 'Lương tối thiểu (VND)' })
   @ApiQuery({ name: 'salaryMax', required: false, description: 'Lương tối đa (VND)' })
   @ApiQuery({ name: 'ward', required: false, description: 'Slug phường/xã' })
@@ -46,11 +46,24 @@ export class JobsController {
   @ApiOperation({ summary: 'Job của tôi', description: 'Employer xem tất cả job của mình (tất cả status).' })
   @ApiQuery({ name: 'page', required: false, description: 'Trang' })
   @ApiQuery({ name: 'limit', required: false, description: 'Số item/trang' })
-  @ApiQuery({ name: 'status', required: false, description: 'Lọc theo status: DRAFT, PENDING, ACTIVE, CLOSED' })
+  @ApiQuery({ name: 'status', required: false, description: 'Lọc theo status: ALL, DRAFT, PENDING, ACTIVE, CLOSED, EXPIRED' })
+  @ApiQuery({ name: 'archived', required: false, description: 'true để xem tin đã lưu trữ' })
+  @ApiQuery({ name: 'search', required: false, description: 'Tìm theo tiêu đề tin tuyển dụng' })
+  @ApiQuery({ name: 'sort', required: false, description: 'Sắp xếp: newest, most-apps, expiring' })
   @ApiResponse({ status: 200, description: 'Danh sách jobs phân trang' })
   @ApiResponse({ status: 403, description: 'Không phải EMPLOYER' })
   findMyJobs(@CurrentUser() user: UserSession, @Query() query: MyJobsQueryDto) {
     return this.jobsService.findByOwner(user.user.id, query);
+  }
+
+  @Get('my/stats')
+  @Roles('EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Thống kê job của tôi', description: 'Đếm số lượng job theo từng status của Employer.' })
+  @ApiResponse({ status: 200, description: 'Object đếm số lượng theo status' })
+  @ApiResponse({ status: 403, description: 'Không phải EMPLOYER' })
+  getMyJobStats(@CurrentUser() user: UserSession) {
+    return this.jobsService.getOwnerJobStats(user.user.id);
   }
 
   @Get('slug/:slug')
@@ -71,6 +84,18 @@ export class JobsController {
     return this.jobsService.getFilterStats();
   }
 
+  @Get('manage/:id')
+  @Roles('EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Chi tiết job nội bộ của employer', description: 'Employer xem tin của mình để sửa, nhân bản, checkout hoặc xem lịch sử. Có thể trả job đã đóng/lưu trữ.' })
+  @ApiParam({ name: 'id', description: 'ID của job' })
+  @ApiResponse({ status: 200, description: 'Chi tiết job thuộc employer hiện tại' })
+  @ApiResponse({ status: 403, description: 'Không phải owner' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy job' })
+  findManagedOne(@Param('id') id: string, @CurrentUser() user: UserSession) {
+    return this.jobsService.findManagedById(id, user.user.id);
+  }
+
   @Post('search-vector')
   @Public()
   @ApiOperation({ summary: 'Tìm kiếm job bằng AI vector', description: 'Agent Python gọi API này với vector nhúng để tìm kiếm semantic job.' })
@@ -81,7 +106,7 @@ export class JobsController {
 
   @Get(':id')
   @Public()
-  @ApiOperation({ summary: 'Chi tiết job theo ID' })
+  @ApiOperation({ summary: 'Chi tiết public job theo ID', description: 'Chỉ trả job đang ACTIVE, chưa hết hạn và chưa lưu trữ. Dashboard nội bộ dùng /jobs/manage/:id.' })
   @ApiParam({ name: 'id', description: 'ID của job' })
   @ApiResponse({ status: 200, description: 'Chi tiết job' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy job' })
@@ -122,6 +147,26 @@ export class JobsController {
   @ApiResponse({ status: 403, description: 'Không phải owner hoặc job không ACTIVE' })
   closeEarly(@Param('id') id: string, @CurrentUser() user: UserSession) {
     return this.jobsService.closeEarly(id, user.user.id);
+  }
+
+  @Delete(':id/employer')
+  @Roles('EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Employer lưu trữ tin', description: 'Ẩn tin khỏi workspace mặc định/public. Employer không hard delete dữ liệu tuyển dụng; admin/support xử lý sâu sau này.' })
+  @ApiParam({ name: 'id', description: 'ID của job' })
+  @ApiResponse({ status: 200, description: 'Đã lưu trữ tin' })
+  removeForEmployer(@Param('id') id: string, @CurrentUser() user: UserSession) {
+    return this.jobsService.removeForEmployer(id, user.user.id);
+  }
+
+  @Patch(':id/restore')
+  @Roles('EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Khôi phục tin đã lưu trữ' })
+  @ApiParam({ name: 'id', description: 'ID của job' })
+  @ApiResponse({ status: 200, description: 'Khôi phục thành công' })
+  restoreForEmployer(@Param('id') id: string, @CurrentUser() user: UserSession) {
+    return this.jobsService.restoreForEmployer(id, user.user.id);
   }
 
   @Delete(':id')
