@@ -220,16 +220,24 @@ model JobApplication {
 ## 7. Cập nhật các lỗi đã sửa bổ sung (Update - 22/06/2026)
 
 ### Lỗi 500 khi Inngest offline (TypeError: fetch failed)
-* **Vấn đề:** Khi candidate nhấn ứng tuyển hoặc rút đơn ứng tuyển, Backend cố gắng gửi event qua `InngestService.send()`. Nếu Inngest dev server không chạy (offline), request HTTP ném ra lỗi `fetch failed` làm crash cả request và trả về HTTP 500 cho client.
+* **Vấn đề:** Khi candidate nhấn ứng tuyển, Backend cố gắng gửi event qua `InngestService.send()`. Nếu Inngest dev server không chạy (offline), request HTTP ném ra lỗi `fetch failed` làm crash cả request và trả về HTTP 500 cho client.
 * **Cách sửa:** Sửa `InngestService.send()` và `sendBatch()` trong `backend/src/inngest/inngest.service.ts`, chuyển sang dạng **fire-and-forget** (bắt lỗi bằng `.catch()` và log warning, không dùng `throw error`). Giúp API ứng tuyển luôn thành công độc lập với trạng thái hoạt động của Inngest.
 
 ### Lỗi biên dịch TypeScript ở Backend (Test files)
 * **Vấn đề:** Thay đổi cấu trúc Constructor của `ApplicationsService` ở backend làm phát sinh lỗi biên dịch TS ở file test `backend/test/applications.service.spec.ts` (thiếu tham số thứ 6 `ResumesService` và kiểm tra sai cấu trúc dữ liệu trả về của `findByJob`). Khiến NestJS CLI watch mode không thể biên dịch code chạy thực tế.
 * **Cách sửa:** Cập nhật file test: mock và bổ sung `resumesServiceMock` vào constructor, sửa assert từ `result.items` thành `result.data.items`. Backend đã biên dịch thành công 100% với 0 lỗi.
 
-### Hỗ trợ chức năng rút ứng tuyển (Bỏ ứng tuyển)
-* **Vấn đề:** Bổ sung quyền cho candidate rút đơn ứng tuyển nếu đã nộp.
-* **Cách sửa:** 
-  * Frontend gọi `DELETE /api/v1/applications/:id` khi candidate nhấn "Bỏ ứng tuyển".
-  * State trên UI được cập nhật tức thời (chuyển đổi nút "Đã ứng tuyển / Bỏ ứng tuyển" <=> "Ứng tuyển ngay") mà không cần load lại trang.
+### Quyết định mới: xoá khỏi workspace, không rút/hủy ứng tuyển
+* **Vấn đề:** Flow cũ từng dự kiến cho candidate "Bỏ ứng tuyển" theo nghĩa hủy đơn. Rule mới là không cho hủy trạng thái ứng tuyển, nhưng cho mỗi phía tự dọn workspace để giảm loãng và giải phóng quota.
+* **Cách sửa hiện tại:**
+  * Candidate đã ứng tuyển thì trang job chỉ hiển thị trạng thái "Đã ứng tuyển" và không cho apply trùng.
+  * `DELETE /api/v1/applications/:id` set `candidateDeletedAt`, chỉ ẩn khỏi `/applications/my` và giảm usage quota candidate.
+  * `DELETE /api/v1/applications/:id/employer` set `employerDeletedAt`, chỉ ẩn khỏi dashboard employer.
+  * DB chỉ xoá thật khi cả hai phía đều đã xoá; lúc đó `ApplicationMessage` xoá theo cascade.
+  * Candidate chỉ apply lại cùng job sau khi record cũ đã bị xoá vật lý. Nếu chỉ candidate xoá, apply lại vẫn nhận `409 Already applied`.
 
+### Ghi chú job đang ACTIVE và Inngest
+* Employer sửa job đang chạy qua `/employer/jobs/:id/edit` chỉ update nội dung trong DB, invalidate Redis cache và sync embedding.
+* Update job không emit lại `job.activated`, không tạo payment mới, không reset `deadline`, `durationDays`, `boostLevel`, `featuredUntil`.
+* Inngest expiry vẫn dùng event đã schedule từ lần thanh toán/activate trước đó. Function tới hạn sẽ đọc lại job bằng `jobId`, kiểm tra job còn `ACTIVE` và deadline trong event còn khớp DB rồi mới đóng job.
+* `close-expired-active-jobs` là cron repair chung, chạy định kỳ để đóng các job ACTIVE đã quá deadline nếu event `job.expired` bị miss; nó không clone job và không xoá job khỏi DB.

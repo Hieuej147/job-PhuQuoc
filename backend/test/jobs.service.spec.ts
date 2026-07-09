@@ -67,7 +67,7 @@ describe('JobsService', () => {
       );
     });
 
-    it('should filter by custom status', async () => {
+    it('should ignore custom status for public queries', async () => {
       prismaMock.job.findMany.mockResolvedValue([]);
       prismaMock.job.count.mockResolvedValue(0);
 
@@ -75,7 +75,7 @@ describe('JobsService', () => {
 
       expect(prismaMock.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ status: 'DRAFT' }),
+          where: expect.objectContaining({ status: 'ACTIVE' }),
         }),
       );
     });

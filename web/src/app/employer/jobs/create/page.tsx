@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { RichTextEditor } from "@/components/ui/RichTextEditor";
+import { MarkdownRichEditor } from "@/components/ui/MarkdownRichEditor";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -97,7 +97,6 @@ export default function CreateJobPage() {
     salaryMin: "",
     salaryMax: "",
     quantity: "1",
-    deadline: "",
   });
 
   useEffect(() => {
@@ -135,8 +134,6 @@ export default function CreateJobPage() {
       if (form.benefits) body.benefits = form.benefits;
       if (form.salaryMin) body.salaryMin = parseInt(form.salaryMin);
       if (form.salaryMax) body.salaryMax = parseInt(form.salaryMax);
-      if (form.deadline) body.deadline = new Date(form.deadline).toISOString();
-
       const res = await fetch("/api/v1/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -212,7 +209,7 @@ export default function CreateJobPage() {
             <label className="text-sm font-medium mb-1.5 block">
                 Mô tả công việc <span className="text-red-500">*</span>
               </label>
-              <RichTextEditor
+              <MarkdownRichEditor
                 value={form.description}
                 onChange={(val) => updateField("description", val)}
                 placeholder="Mô tả chi tiết công việc..."
@@ -222,7 +219,7 @@ export default function CreateJobPage() {
               <label className="text-sm font-medium mb-1.5 block">
                 Yêu cầu
               </label>
-              <RichTextEditor
+              <MarkdownRichEditor
                 value={form.requirements}
                 onChange={(val) => updateField("requirements", val)}
                 placeholder="Yêu cầu ứng viên..."
@@ -232,7 +229,7 @@ export default function CreateJobPage() {
               <label className="text-sm font-medium mb-1.5 block">
                 Quyền lợi
               </label>
-              <RichTextEditor
+              <MarkdownRichEditor
                 value={form.benefits}
                 onChange={(val) => updateField("benefits", val)}
                 placeholder="Quyền lợi phúc lợi..."
@@ -332,17 +329,6 @@ export default function CreateJobPage() {
                   placeholder="VD: 20.000.000"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">
-                Hạn nộp
-              </label>
-              <Input
-                type="date"
-                value={form.deadline}
-                onChange={(e) => updateField("deadline", e.target.value)}
-              />
             </div>
           </CardContent>
         </Card>

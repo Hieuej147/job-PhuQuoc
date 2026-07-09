@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, MaxLength, MinLength } from 'class-validator';
 
 
 export class CreateApplicationDto {
@@ -26,4 +26,16 @@ export class UpdateApplicationStatusDto {
   
   @IsEnum(['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'])
   status: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  employerMessage?: string;
+}
+
+export class CreateApplicationMessageDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  body: string;
 }

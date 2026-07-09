@@ -9,24 +9,37 @@ module.exports = {
   apps: [
     {
       name: "backend",
-      script: "dist/src/main.js",
-      cwd: path.join(root, "backend"),
+      // --- Cấu hình cũ ---
+      // script: "dist/src/main.js",
       node_args: "-r dotenv/config",
+      // --- Cấu hình mới (dùng 1 cách duy nhất qua package manager) ---
+      script: "pnpm",
+      args: "run dev",
+      cwd: path.join(root, "backend"),
       env: { NODE_ENV: "development" },
     },
     {
       name: "frontend",
-      script: "node_modules/next/dist/bin/next",
-      args: "dev -p 3001",
+      // --- Cấu hình cũ ---
+      // script: "node_modules/next/dist/bin/next",
+      // args: "dev -p 3001",
+      // --- Cấu hình mới (dùng 1 cách duy nhất qua package manager) ---
+      script: "pnpm",
+      args: "run dev:ui",
       cwd: path.join(root, "web"),
       env: { NODE_ENV: "development" },
     },
     {
       name: "inngest",
-      script: "npx",
-      args: "inngest-cli@latest dev -u http://localhost:3000/api/inngest",
+      script: "node",
+      args: "scripts/run-inngest-dev.js",
       cwd: root,
       env: { NODE_ENV: "development" },
+      autorestart: false,
+      max_restarts: 1,
+      restart_delay: 5000,
+      out_file: path.join(root, "logs", "inngest-out.log"),
+      error_file: path.join(root, "logs", "inngest-error.log"),
     },
     {
       name: "agent",

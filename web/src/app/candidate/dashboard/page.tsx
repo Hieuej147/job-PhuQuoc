@@ -13,8 +13,9 @@ import { CandidateDashboardAiTab } from "@/components/ai/dashboard-ai-tab";
 import { timeAgo } from "@/lib/utils/date";
 import { formatSalary, jobTypeLabel, companyInitials } from "@/lib/utils/format";
 import { useAuth } from "@/components/auth/auth-provider";
-import { useCandidateDashboardSummary } from "@/lib/dashboard-api";
+import { useCandidateDashboardSummary } from "@/lib/dashboard-queries";
 import { computeProfileCompletion } from "@/lib/profile-completion";
+import { QuotaUsageCard } from "@/components/quota/quota-usage-card";
 
 interface Application { id: string; job: { title: string; company: { name: string } }; createdAt: string; status: "PENDING" | "REVIEWING" | "ACCEPTED" | "REJECTED"; }
 interface SavedJob { id: string; job: { id: string; slug?: string; title: string; company: { name: string }; type?: string; jobType?: string; salaryMin?: number; salaryMax?: number; deadline?: string | null }; createdAt: string; }
@@ -69,6 +70,14 @@ export default function CandidateDashboard() {
   const { items: checklistItems, completionPct } = computeProfileCompletion(profile);
   const checklist = checklistItems.map((item) => ({ ...item, href: "/candidate/profile" }));
   const unreadNotifs = summary?.notifications.unreadCount || 0;
+  const quotaItems = summary?.quota
+    ? [
+        { resource: "candidateApplications", label: "Đơn ứng tuyển", ...summary.quota.applications },
+        { resource: "candidateResumes", label: "CV đã tạo", ...summary.quota.resumes },
+        { resource: "savedJobs", label: "Việc đã lưu", ...summary.quota.savedJobs },
+        { resource: "savedCompanies", label: "Công ty theo dõi", ...summary.quota.savedCompanies },
+      ]
+    : [];
 
   return (
     <Tabs defaultValue="overview" className="space-y-6">
@@ -97,6 +106,10 @@ export default function CandidateDashboard() {
           followedCompaniesCount={summary?.savedCompanies.total || savedCompanies.length}
           resumesCount={summary?.resumes.total || resumes.length}
         />
+
+        {quotaItems.length > 0 && (
+          <QuotaUsageCard title="Dung lượng tài khoản" items={quotaItems} />
+        )}
 
         {/* Profile + Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

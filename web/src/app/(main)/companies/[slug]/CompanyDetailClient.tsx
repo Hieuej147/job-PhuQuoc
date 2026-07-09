@@ -8,35 +8,15 @@ import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
 import { CompanyLogo } from "@/components/company/company-logo"
 import { Skeleton } from "@/components/ui/skeleton"
-
-const TYPE_MAP: Record<string, string> = {
-  FULL_TIME: "Full-time", PART_TIME: "Part-time", REMOTE: "Remote",
-  CONTRACT: "Hợp đồng", INTERNSHIP: "Thực tập", FREELANCE: "Freelance",
-}
+import { QuotaUpgradeDialog } from "@/components/quota/quota-upgrade-dialog"
+import { timeAgo } from "@/lib/utils/date"
+import { formatSalary, jobTypeLabel } from "@/lib/utils/format"
 
 const SIZE_LABELS: Record<string, string> = {
   SIZE_1_50: "1-50 nhân viên",
   SIZE_51_200: "51-200 nhân viên",
   SIZE_201_500: "201-500 nhân viên",
   SIZE_500_PLUS: "500+ nhân viên",
-}
-
-function formatSalary(min?: number | null, max?: number | null): string {
-  if (!min && !max) return "Thỏa thuận"
-  const fmt = (n: number) => `${(n / 1000000).toFixed(0)}tr`
-  if (min && max) return `${fmt(min)}-${fmt(max)}`
-  if (min) return `Từ ${fmt(min)}`
-  return `Đến ${fmt(max!)}`
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const days = Math.floor(diff / 86400000)
-  if (days === 0) return "Hôm nay"
-  if (days === 1) return "Hôm qua"
-  if (days < 7) return `${days} ngày trước`
-  if (days < 30) return `${Math.floor(days / 7)} tuần trước`
-  return new Date(dateStr).toLocaleDateString("vi-VN")
 }
 
 interface CompanyData {
@@ -63,6 +43,7 @@ export default function CompanyDetailClient({ company, jobsPromise }: Props) {
   const [activeTab, setActiveTab] = useState("overview")
   const [following, setFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
+  const [quota, setQuota] = useState<{ resource?: string; used?: number; limit?: number } | null>(null)
 
   useEffect(() => {
     if (!user) {
@@ -70,7 +51,7 @@ export default function CompanyDetailClient({ company, jobsPromise }: Props) {
       return;
     }
 
-    fetch("/api/v1/saved/companies", { credentials: "include" })
+    fetch("/api/v1/saved/companies?limit=500", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!d) return;
@@ -94,7 +75,18 @@ export default function CompanyDetailClient({ company, jobsPromise }: Props) {
         method: "POST",
         credentials: "include",
       });
-      if (res.ok) setFollowing(prev => !prev);
+      if (res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const nextFollowing = Boolean(body?.data?.saved ?? body?.saved);
+        setFollowing(nextFollowing);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        const payload = typeof body?.message === "object" ? body.message : body;
+        const details = payload?.details ?? payload;
+        if (payload?.code === "QUOTA_EXCEEDED") {
+          setQuota({ resource: details.resource, used: details.used, limit: details.limit });
+        }
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -262,6 +254,13 @@ export default function CompanyDetailClient({ company, jobsPromise }: Props) {
           </div>
         </div>
       </div>
+      <QuotaUpgradeDialog
+        open={Boolean(quota)}
+        onOpenChange={(nextOpen) => !nextOpen && setQuota(null)}
+        resource={quota?.resource}
+        used={quota?.used}
+        limit={quota?.limit}
+      />
     </div>
   )
 }
@@ -271,7 +270,7 @@ function JobsTabContent({ jobsPromise }: { jobsPromise: Promise<JobData[]> }) {
 
   const mappedJobs = useMemo(() => jobs.map(j => ({
     id: j.id, slug: j.slug, title: j.title,
-    type: TYPE_MAP[j.type] || j.type,
+    type: jobTypeLabel(j.type),
     salary: formatSalary(j.salaryMin, j.salaryMax),
     location: j.ward?.name || j.addressDetail || "Phú Quốc",
     daysAgo: timeAgo(j.createdAt),

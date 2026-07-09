@@ -32,7 +32,8 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Sheet, SheetTrigger, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { getNotificationHref } from "@/lib/notifications";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRecentNotifications, useUnreadNotifications } from "@/lib/dashboard-api";
+import { useRecentNotifications, useUnreadNotifications } from "@/lib/dashboard-queries";
+import { timeAgo } from "@/lib/utils/date";
 
 interface Notification {
   id: string;
@@ -43,18 +44,6 @@ interface Notification {
   createdAt: string;
   refId?: string | null;
   refType?: string | null;
-}
-
-function formatTimeAgo(dateStr: string) {
-  if (!dateStr) return "Vừa xong";
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "Vừa xong";
-  if (minutes < 60) return `${minutes} phút trước`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  const days = Math.floor(hours / 24);
-  return `${days} ngày trước`;
 }
 
 export default function Header() {
@@ -255,7 +244,7 @@ export default function Header() {
                                     {noti.content}
                                   </p>
                                   <p className="text-[12px] text-slate-400">
-                                    {formatTimeAgo(noti.createdAt)}
+                                    {timeAgo(noti.createdAt)}
                                   </p>
                                 </div>
 

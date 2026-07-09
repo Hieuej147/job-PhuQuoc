@@ -129,6 +129,7 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
                   Luôn tuyển dụng
                 </span>
               )}
+              <span>{job.applicants ?? 0} ứng viên</span>
             </div>
 
             {/* Nút ứng tuyển nhanh - Chỉ hiển thị trên thiết bị máy tính */}

@@ -86,7 +86,7 @@ export class UploadService {
     const [user, profile] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
-        select: { imagePublicId: true },
+        select: { id: true, name: true, email: true, phone: true, imagePublicId: true },
       }),
       this.prisma.candidateResume.findFirst({
         where: { userId, isProfile: true },
@@ -122,14 +122,30 @@ export class UploadService {
       },
     });
 
-    // Also update any profile resume if exists
-    await this.prisma.candidateResume.updateMany({
-      where: { userId, isProfile: true },
-      data: {
-        avatar: result.secure_url,
-        avatarPublicId: result.public_id,
-      },
-    });
+    if (profile) {
+      await this.prisma.candidateResume.update({
+        where: { id: profile.id },
+        data: {
+          avatar: result.secure_url,
+          avatarPublicId: result.public_id,
+        },
+      });
+    } else {
+      const defaultTemplate = await this.prisma.resumeTemplate.findFirst({ where: { isActive: true } });
+      await this.prisma.candidateResume.create({
+        data: {
+          userId,
+          templateId: defaultTemplate?.id || 'tpl-minimal-03',
+          isProfile: true,
+          title: 'Hồ sơ của tôi',
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          avatar: result.secure_url,
+          avatarPublicId: result.public_id,
+        },
+      });
+    }
 
     if (oldAvatarPublicId && oldAvatarPublicId !== result.public_id) {
       await this.deleteOldAvatar(oldAvatarPublicId, userId);

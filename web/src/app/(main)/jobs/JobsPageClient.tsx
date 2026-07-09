@@ -8,6 +8,7 @@ import JobSortBar from "@/components/jobs/JobSortBar";
 import JobList from "@/components/jobs/JobList";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
+import { companyInitials, formatSalary, jobTypeLabel } from "@/lib/utils/format";
 
 interface JobItem {
   id: string;
@@ -47,15 +48,6 @@ interface JobsPageClientProps {
   } | null;
 }
 
-const TYPE_MAP: Record<string, string> = {
-  FULL_TIME: "Full-time",
-  PART_TIME: "Part-time",
-  REMOTE: "Remote",
-  CONTRACT: "Hợp đồng",
-  INTERNSHIP: "Thực tập",
-  FREELANCE: "Freelance",
-};
-
 const EXP_MAP: Record<string, string> = {
   NO_EXPERIENCE: "Không yêu cầu",
   UNDER_1_YEAR: "Dưới 1 năm",
@@ -75,14 +67,6 @@ const LEVEL_MAP: Record<string, string> = {
   DIRECTOR: "Director",
 };
 
-function formatSalary(min?: number | null, max?: number | null): string {
-  if (!min && !max) return "Thỏa thuận";
-  const fmt = (n: number) => (n / 1000000).toFixed(0) + " triệu";
-  if (min && max) return `${fmt(min)} - ${fmt(max)}`;
-  if (min) return `Từ ${fmt(min)}`;
-  return `Đến ${fmt(max!)}`;
-}
-
 function mapJobType(item: JobItem) {
   const daysLeft = item.deadline
     ? Math.max(0, Math.ceil((new Date(item.deadline).getTime() - Date.now()) / 86400000))
@@ -93,10 +77,10 @@ function mapJobType(item: JobItem) {
     title: item.title,
     company: item.company.name,
     companyLogo: item.company.logo,
-    companyInitials: item.company.name.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase(),
+    companyInitials: companyInitials(item.company.name),
     logoColor: "#0E7490",
     textColor: "#ffffff",
-    contractType: TYPE_MAP[item.type] || item.type,
+    contractType: jobTypeLabel(item.type),
     salary: formatSalary(item.salaryMin, item.salaryMax),
     experience: EXP_MAP[item.experience || ""] || "Không yêu cầu",
     level: LEVEL_MAP[item.level || ""] || "",
@@ -106,7 +90,8 @@ function mapJobType(item: JobItem) {
     isUrgent: false,
     daysLeft,
     postedDate: item.createdAt,
-    tags: [TYPE_MAP[item.type] || item.type, formatSalary(item.salaryMin, item.salaryMax)],
+    tags: [jobTypeLabel(item.type), formatSalary(item.salaryMin, item.salaryMax)],
+    applicants: item._count?.applications ?? 0,
   };
 }
 

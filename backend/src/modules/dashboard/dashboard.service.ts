@@ -1,16 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { QuotaService } from '../../common/quota/storage-quota';
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly quotaService: QuotaService = new QuotaService(),
+  ) {}
 
   async getCandidateSummary(userId: string) {
     const [applicationsTotal, applicationsRecent, savedJobsTotal, savedJobsRecent, savedCompaniesTotal, resumesTotal, resumesRecent, unreadCount, notificationsRecent] =
       await Promise.all([
-        this.prisma.jobApplication.count({ where: { userId } }),
+        this.prisma.jobApplication.count({ where: { userId, candidateDeletedAt: null } }),
         this.prisma.jobApplication.findMany({
-          where: { userId },
+          where: { userId, candidateDeletedAt: null },
           take: 5,
           orderBy: { createdAt: 'desc' },
           include: { job: { include: { company: { select: { name: true, logo: true } }, ward: { select: { name: true } } } } },
@@ -37,12 +41,27 @@ export class DashboardService {
         }),
       ]);
 
+    const quota = await this.quotaService.getUserQuotaSnapshot(userId, {
+      candidateApplications: applicationsTotal,
+      candidateResumes: resumesTotal,
+      savedJobs: savedJobsTotal,
+      savedCompanies: savedCompaniesTotal,
+    });
+
     return {
       applications: { total: applicationsTotal, recent: applicationsRecent },
       savedJobs: { total: savedJobsTotal, recent: savedJobsRecent },
       savedCompanies: { total: savedCompaniesTotal },
       resumes: { total: resumesTotal, recent: resumesRecent },
       notifications: { unreadCount, recent: notificationsRecent },
+      quota: {
+        plan: quota.plans.candidatePlan,
+        expiresAt: quota.plans.candidatePlanExpiresAt,
+        applications: quota.limits.candidateApplications,
+        resumes: quota.limits.candidateResumes,
+        savedJobs: quota.limits.savedJobs,
+        savedCompanies: quota.limits.savedCompanies,
+      },
     };
   }
 
@@ -64,10 +83,10 @@ export class DashboardService {
           orderBy: { createdAt: 'desc' },
           include: { _count: { select: { applications: true } } },
         }),
-        this.prisma.jobApplication.count({ where: { job: { company: { ownerId: userId } } } }),
-        this.prisma.jobApplication.count({ where: { job: { company: { ownerId: userId } }, status: 'PENDING' } }),
+        this.prisma.jobApplication.count({ where: { job: { company: { ownerId: userId } }, employerDeletedAt: null } }),
+        this.prisma.jobApplication.count({ where: { job: { company: { ownerId: userId } }, status: 'PENDING', employerDeletedAt: null } }),
         this.prisma.jobApplication.findMany({
-          where: { job: { company: { ownerId: userId } } },
+          where: { job: { company: { ownerId: userId } }, employerDeletedAt: null },
           take: 10,
           orderBy: { createdAt: 'desc' },
           include: {
@@ -84,11 +103,32 @@ export class DashboardService {
         }),
       ]);
 
+    const quota = await this.quotaService.getUserQuotaSnapshot(userId, {
+      employerJobs: jobsTotal,
+      employerActiveJobs: jobsActive,
+      employerDurationDaysMax: 0,
+      employerBoostLevelMax: 0,
+    });
+
     return {
       company,
       jobs: { total: jobsTotal, active: jobsActive, pending: jobsPending, draft: jobsDraft, recent: jobsRecent },
       applications: { total: applicationsTotal, pending: applicationsPending, recent: applicationsRecent },
       notifications: { unreadCount, recent: notificationsRecent },
+      quota: {
+        plan: quota.plans.employerPlan,
+        expiresAt: quota.plans.employerPlanExpiresAt,
+        jobs: quota.limits.employerJobs,
+        activeJobs: quota.limits.employerActiveJobs,
+        durationDaysMax: {
+          used: quota.limits.employerDurationDaysMax.limit,
+          limit: quota.limits.employerDurationDaysMax.limit,
+        },
+        boostLevelMax: {
+          used: quota.limits.employerBoostLevelMax.limit,
+          limit: quota.limits.employerBoostLevelMax.limit,
+        },
+      },
     };
   }
 }

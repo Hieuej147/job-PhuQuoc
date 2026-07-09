@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Bold, Italic, List, ListOrdered, Heading2, Strikethrough } from 'lucide-react';
 import { useEffect } from 'react';
 
-interface RichTextEditorProps {
+interface MarkdownRichEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -135,11 +135,11 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
   );
 };
 
-export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
+export function RichTextEditor({ value, onChange, placeholder }: MarkdownRichEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
-      // Lưu nội dung editor về Markdown để đồng bộ với JobDetail/RichContent.
+      // Job content lưu Markdown. Toolbar cho cảm giác rich editor nhưng output không phải HTML.
       Markdown,
       Placeholder.configure({
         placeholder: placeholder || 'Nhập nội dung...',

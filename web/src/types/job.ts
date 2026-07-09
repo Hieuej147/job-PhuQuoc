@@ -18,6 +18,7 @@ export interface JobType {
   daysLeft: number | null;
   postedDate: string;
   tags: string[];
+  applicants?: number;
 }
 
 export interface BenefitItem {

@@ -81,9 +81,9 @@ Cập nhật hàm `findById` trong `resumes.service.ts` để luôn tải kèm t
 
 ---
 
-## 4. Quy trình Ứng tuyển & Rút đơn ứng tuyển (Candidate & Employer)
+## 4. Quy trình Ứng tuyển & Lưu lịch sử đơn ứng tuyển (Candidate & Employer)
 
-Dưới đây mô tả chi tiết luồng xử lý và dữ liệu trao đổi giữa ứng viên (Candidate) và nhà tuyển dụng (Employer) khi nộp hồ sơ hoặc rút hồ sơ ứng tuyển:
+Dưới đây mô tả chi tiết luồng xử lý và dữ liệu trao đổi giữa ứng viên (Candidate) và nhà tuyển dụng (Employer) khi nộp hồ sơ. Theo rule mới, candidate đã nộp thì không rút đơn theo nghĩa hủy ứng tuyển; dữ liệu application được giữ làm lịch sử tuyển dụng cho tới khi cả hai phía cùng xoá khỏi workspace.
 
 ### 4.1. Chi tiết luồng xử lý
 
@@ -99,13 +99,14 @@ Dưới đây mô tả chi tiết luồng xử lý và dữ liệu trao đổi g
   2. FE gọi `GET /api/v1/applications/employer` để lấy danh sách hồ sơ ứng tuyển liên kết với công ty.
   3. Employer có thể xem CV chi tiết (PDF/Web preview), đánh dấu bookmark, hoặc xét duyệt trạng thái ứng viên (Duyệt/Từ chối): FE gọi `PATCH /api/v1/applications/:id/status` lưu thẳng vào Database.
 
-* **Rút đơn ứng tuyển (Withdraw Flow):**
-  1. Khi đã ứng tuyển, trang chi tiết công việc hiển thị trạng thái **Đã ứng tuyển** cùng nút đỏ **Bỏ ứng tuyển**.
-  2. Bấm **Bỏ ứng tuyển**: FE hiển thị một **Modal xác nhận rút hồ sơ (Custom Modal)** tuyệt đẹp để xác nhận lại ý định của người dùng.
-  3. Xác nhận đồng ý: FE gọi `DELETE /api/v1/applications/:id`.
-  4. BE kiểm tra quyền sở hữu đơn nộp và xóa hoàn toàn dòng dữ liệu `JobApplication` ra khỏi CSDL PostgreSQL.
-  5. UI của Candidate lập tức cập nhật trạng thái về **Ứng tuyển ngay**.
-  6. Giao diện của Employer sẽ không còn hiển thị hồ sơ ứng viên này nữa sau khi **Làm mới trang (F5)** (do bản ghi đã bị xóa vĩnh viễn khỏi Database).
+* **Lưu lịch sử & xoá khỏi workspace (Retention Flow):**
+  1. Khi đã ứng tuyển, trang chi tiết công việc hiển thị trạng thái **Đã ứng tuyển** và disable nút ứng tuyển.
+  2. FE dùng `GET /api/v1/applications/check/:jobId` làm nguồn truth để biết user đã nộp đơn hay chưa.
+  3. Candidate có thể xoá application khỏi workspace của mình bằng `DELETE /api/v1/applications/:id`; BE set `candidateDeletedAt` để giải phóng quota candidate.
+  4. Employer có thể xoá application khỏi workspace employer bằng `DELETE /api/v1/applications/:id/employer`; BE set `employerDeletedAt`.
+  5. Chỉ khi cả `candidateDeletedAt` và `employerDeletedAt` đều có giá trị, BE mới xoá vật lý `JobApplication` khỏi DB. Khi đó message liên quan xoá theo cascade.
+  6. Candidate chỉ apply lại cùng job nếu record cũ đã bị xoá vật lý; nếu chỉ candidate xoá nhưng employer chưa xoá thì `POST /applications` vẫn trả `409 Already applied`.
+  7. Nếu job hết hạn/đóng sớm, dữ liệu application vẫn giữ trong dashboard; chỉ public job bị ẩn khỏi trang ngoài.
 
 ### 4.2. Sơ đồ tuần tự (Sequence Diagram)
 
@@ -148,18 +149,19 @@ sequenceDiagram
         FE-->>Employer: Cập nhật UI trạng thái mới
     end
 
-    %% Withdraw Flow
-    rect rgb(255, 230, 230)
-        Note over Candidate, DB: Quy trình Rút đơn (Withdraw Flow)
-        Candidate->>FE: Bấm "Bỏ ứng tuyển" (Từ trang Chi tiết công việc)
-        FE-->>Candidate: Hiển thị Modal Custom xác nhận rút đơn
-        Candidate->>FE: Xác nhận "Rút ứng tuyển" (Đồng ý)
+    %% Retention Flow
+    rect rgb(230, 245, 255)
+        Note over Candidate, DB: Quy trình Lưu lịch sử đơn ứng tuyển
+        Candidate->>FE: Mở lại trang job đã ứng tuyển
+        FE->>BE: GET /api/v1/applications/check/:jobId
+        BE->>DB: Kiểm tra JobApplication theo userId + jobId
+        DB-->>BE: Trả trạng thái application
+        BE-->>FE: { applied: true, applicationId, status }
+        FE-->>Candidate: Hiển thị "Đã ứng tuyển", không cho apply trùng
+        Candidate->>FE: Chọn xoá khỏi danh sách của mình
         FE->>BE: DELETE /api/v1/applications/:id
-        BE->>DB: Xóa bản ghi JobApplication khỏi DB
-        DB-->>BE: Xóa thành công
-        BE-->>FE: Trả về thông báo thành công
-        FE-->>Candidate: Cập nhật UI thành "Ứng tuyển ngay" & Ẩn nút "Bỏ ứng tuyển"
-        Note over Employer: Sau khi F5 trang, hồ sơ rút ứng tuyển biến mất
+        BE->>DB: Set candidateDeletedAt, lọc khỏi /applications/my
+        Note over Employer: Employer vẫn thấy application cho tới khi employer tự xoá
     end
 ```
 ---
@@ -323,6 +325,4 @@ sequenceDiagram
     BE-->>FE: HTTP 200 OK (Trả về dữ liệu CV đã cập nhật)
     FE-->>Candidate: Hiển thị Toast thông báo & Chuyển hướng về /candidate/resumes
 ```
-
-
 

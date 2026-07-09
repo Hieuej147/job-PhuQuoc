@@ -75,13 +75,7 @@ export default function CompaniesPageClient({
       return;
     }
 
-    const cacheKey = `savedCompanyIds:${user.id}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      setSavedCompanyIds(new Set(JSON.parse(cached)));
-    }
-
-    fetch("/api/v1/saved/companies", { credentials: "include" })
+    fetch("/api/v1/saved/companies?limit=500", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!d) return;
@@ -89,7 +83,6 @@ export default function CompaniesPageClient({
         const ids = items
           .map((s: { companyId?: string; company?: { id: string } }) => s.companyId ?? s.company?.id ?? "")
           .filter(Boolean);
-        sessionStorage.setItem(cacheKey, JSON.stringify(ids));
         setSavedCompanyIds(new Set(ids));
       })
       .catch(() => { });

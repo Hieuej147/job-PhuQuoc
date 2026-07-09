@@ -103,16 +103,25 @@ export class JobsController {
 
   @Patch(':id')
   @ApiBearerAuth('better-auth.session_token')
-  // Reserved for future draft-edit flow only. Current FE does not call this endpoint.
-  // Do not use it to edit paid/ACTIVE jobs because payment tracking, public listing,
-  // Inngest expiry scheduling, and applicant expectations depend on the activated job data.
-  @ApiOperation({ summary: 'Cập nhật job', description: 'Dự phòng cho flow sửa DRAFT trước thanh toán. Không dùng để sửa job đã ACTIVE.' })
+  @Roles('EMPLOYER')
+  @ApiOperation({ summary: 'Cập nhật job', description: 'Employer cập nhật nội dung job. Nếu job đang ACTIVE, không đổi payment/deadline.' })
   @ApiParam({ name: 'id', description: 'ID của job' })
   @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
   @ApiResponse({ status: 403, description: 'Không phải owner' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy job' })
   update(@Param('id') id: string, @CurrentUser() user: UserSession, @Body() body: UpdateJobDto) {
     return this.jobsService.update(id, user.user.id, body);
+  }
+
+  @Patch(':id/close')
+  @Roles('EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Đóng tin sớm', description: 'Employer đóng job ACTIVE khi đã tuyển đủ. Public sẽ ẩn nhưng dashboard vẫn giữ lịch sử.' })
+  @ApiParam({ name: 'id', description: 'ID của job' })
+  @ApiResponse({ status: 200, description: 'Đóng tin thành công' })
+  @ApiResponse({ status: 403, description: 'Không phải owner hoặc job không ACTIVE' })
+  closeEarly(@Param('id') id: string, @CurrentUser() user: UserSession) {
+    return this.jobsService.closeEarly(id, user.user.id);
   }
 
   @Delete(':id')

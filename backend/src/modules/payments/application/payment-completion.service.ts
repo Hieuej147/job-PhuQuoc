@@ -52,14 +52,26 @@ export class PaymentCompletionService {
       data: { status: 'COMPLETED', completedAt: new Date() },
     });
 
+    const durationDays = payment.durationDays ?? payment.package.days;
     const deadline = new Date();
-    deadline.setDate(deadline.getDate() + payment.package.days);
+    deadline.setDate(deadline.getDate() + durationDays);
 
-    await this.jobContract.activateJob(payment.jobId, deadline);
+    await this.jobContract.activateJob(payment.jobId, {
+      deadline,
+      durationDays,
+      boostLevel: payment.boostLevel,
+      featuredUntil: payment.boostLevel > 0 ? deadline : null,
+      paymentId: payment.id,
+      activationId: payment.activationId,
+    });
 
     await this.inngest.send({
       name: 'job.activated',
-      data: { jobId: payment.jobId, deadline: deadline.toISOString() },
+      data: {
+        jobId: payment.jobId,
+        deadline: deadline.toISOString(),
+        activationId: payment.activationId ?? undefined,
+      },
     });
 
     await this.auditWriteContract.log({
@@ -68,7 +80,7 @@ export class PaymentCompletionService {
       entityId: payment.jobId,
       actorId: payment.userId,
       newValue: 'ACTIVE',
-      metadata: { packageId: payment.packageId, days: payment.package.days },
+      metadata: { packageId: payment.packageId, days: durationDays, boostLevel: payment.boostLevel },
     });
 
     this.logger.log(

@@ -1,11 +1,10 @@
 import { authFetch } from "@/lib/auth";
 
-export type RegisterEmailResult =
-  | {
-      status: "VERIFY_EMAIL";
-      email: string;
-      role: "CANDIDATE" | "EMPLOYER";
-    }
+export type RegisterEmailResult = {
+  status: "VERIFY_EMAIL";
+  email: string;
+  role: "CANDIDATE" | "EMPLOYER";
+};
 
 export async function registerEmail(payload: {
   name: string;

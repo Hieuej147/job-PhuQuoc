@@ -29,7 +29,7 @@ export function JobDescription({ description }: JobDescriptionProps) {
         Mô tả công việc
       </h2>
       <div className="border-t border-[#E0F5FB] dark:border-[#1a3d5c] mb-4" />
-      <RichContent html={description} className="text-sm text-gray-700 dark:text-[#cbd5e1] leading-relaxed" />
+      <RichContent markdown={description} className="text-sm text-gray-700 dark:text-[#cbd5e1] leading-relaxed" />
     </div>
   );
 }
@@ -59,7 +59,7 @@ export function JobRequirements({ required, preferred }: JobRequirementsProps) {
           <>
             <h4 className="font-bold text-[#005a71] dark:text-[#67e8f9] mt-2">Bắt buộc:</h4>
             {typeof required === 'string' ? (
-              <RichContent html={required} />
+              <RichContent markdown={required} />
             ) : (
               <ul className="list-disc pl-5 space-y-1.5 marker:text-[#005a71] dark:marker:text-[#67e8f9]">
                 {required!.map((item, i) => <li key={`req-${i}`}>{item}</li>)}
@@ -71,7 +71,7 @@ export function JobRequirements({ required, preferred }: JobRequirementsProps) {
           <>
             <h4 className="font-bold text-[#005a71] dark:text-[#67e8f9] mt-4">Ưu tiên:</h4>
             {typeof preferred === 'string' ? (
-              <RichContent html={preferred} />
+              <RichContent markdown={preferred} />
             ) : (
               <ul className="list-disc pl-5 space-y-1.5 marker:text-[#005a71] dark:marker:text-[#67e8f9]">
                 {preferred!.map((item, i) => <li key={`pref-${i}`}>{item}</li>)}
@@ -149,7 +149,7 @@ export function JobBenefits({ benefits }: JobBenefitsProps) {
       <div className="border-t border-[#E0F5FB] dark:border-[#1a3d5c] mb-4" />
 
       {typeof benefits === 'string' ? (
-        <RichContent html={benefits} className="text-sm text-gray-700 dark:text-[#cbd5e1] leading-relaxed" />
+        <RichContent markdown={benefits} className="text-sm text-gray-700 dark:text-[#cbd5e1] leading-relaxed" />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {benefits.map((benefit, index) => (

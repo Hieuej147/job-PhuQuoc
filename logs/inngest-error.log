@@ -1,0 +1,31 @@
+{"time":"2026-07-08T16:25:40.589967601Z","level":"INFO","msg":"initialized database","db":"sqlite","mode":"memory"}
+{"time":"2026-07-08T16:25:40.598794236Z","level":"INFO","msg":"ran database migrations","db":"sqlite","mode":"memory"}
+{"time":"2026-07-08T16:25:40.605363996Z","level":"INFO","msg":"starting executor grpc server","svc":"executor","addr":":50053"}
+{"time":"2026-07-08T16:25:40.606070024Z","level":"INFO","msg":"service starting","caller":"executor","service":"executor"}
+{"time":"2026-07-08T16:25:40.606103419Z","level":"INFO","msg":"subscribing to function queue"}
+{"time":"2026-07-08T16:25:40.60611093Z","level":"INFO","msg":"Executor started in assignedQueueShard Mode","queue_shard":"default"}
+{"time":"2026-07-08T16:25:40.606212378Z","level":"INFO","msg":"starting event stream","backend":"redis"}
+{"time":"2026-07-08T16:25:40.606226593Z","level":"INFO","msg":"service starting","caller":"api","service":"api"}
+{"time":"2026-07-08T16:25:40.606239874Z","level":"INFO","msg":"starting server","caller":"api","addr":"0.0.0.0:8288"}
+{"time":"2026-07-08T16:25:40.606245386Z","level":"INFO","msg":"service starting","caller":"runner","service":"runner"}
+{"time":"2026-07-08T16:25:40.606333267Z","level":"INFO","msg":"service starting","caller":"devserver","service":"devserver"}
+{"time":"2026-07-08T16:25:40.606356971Z","level":"INFO","msg":"service starting","caller":"lease-scavenger","service":"lease-scavenger"}
+{"time":"2026-07-08T16:25:40.60640208Z","level":"INFO","msg":"autodiscovering locally hosted SDKs"}
+{"time":"2026-07-08T16:25:40.606598656Z","level":"INFO","msg":"service starting","caller":"connect-gateway","service":"connect-gateway"}
+{"time":"2026-07-08T16:25:40.606666259Z","level":"INFO","msg":"starting connect gateway grpc server","caller":"connect-gateway","addr":":50052"}
+{"time":"2026-07-08T16:25:40.610206589Z","level":"INFO","msg":"subscribing to events","topic":"events"}
+{"time":"2026-07-08T16:25:49.353069227Z","level":"INFO","msg":"apps synced, disabling auto-discovery"}
+{"time":"2026-07-08T16:32:01.363130717Z","level":"INFO","msg":"publishing event","caller":"api","event_name":"quota.plan.activated","internal_id":"01KX194WAHS0JXJTZW1SC9EJRY","external_id":"01KX194WAHS0JXJTZW1SC9EJRY","event":{"id":"01KX194WAHS0JXJTZW1SC9EJRY","name":"quota.plan.activated","data":{"expiresAt":"2027-07-08T16:32:01.347Z","purchaseId":"cmrcapo9y0000x25liodjvbcd","targetPlan":"CANDIDATE_PLUS","userId":"g1wxwzoyf5d8qc14mjop8aev"},"ts":1783528321361}}
+{"time":"2026-07-08T16:32:01.607031775Z","level":"INFO","msg":"received event","event":"quota.plan.activated","event_id":"01KX194WAHS0JXJTZW1SC9EJRY","internal_id":"01KX194WAHS0JXJTZW1SC9EJRY"}
+{"time":"2026-07-08T16:32:01.607679914Z","level":"INFO","msg":"initializing fn","event":"quota.plan.activated","event_id":"01KX194WAHS0JXJTZW1SC9EJRY","internal_id":"01KX194WAHS0JXJTZW1SC9EJRY","function":"quota-plan-expiry","function_id":"54f23f97-b07f-51fc-970d-af64083974e6"}
+{"time":"2026-07-08T16:32:26.126354266Z","level":"INFO","msg":"publishing event","caller":"api","event_name":"quota.plan.activated","internal_id":"01KX195MGDV9H18681VETNFZEP","external_id":"01KX195MGDV9H18681VETNFZEP","event":{"id":"01KX195MGDV9H18681VETNFZEP","name":"quota.plan.activated","data":{"expiresAt":"2027-10-08T16:32:01.347Z","purchaseId":"cmrcaq7e10002x25l7hb34u6d","targetPlan":"CANDIDATE_PLUS","userId":"g1wxwzoyf5d8qc14mjop8aev"},"ts":1783528346125}}
+{"time":"2026-07-08T16:32:26.153822363Z","level":"INFO","msg":"received event","event":"quota.plan.activated","event_id":"01KX195MGDV9H18681VETNFZEP","internal_id":"01KX195MGDV9H18681VETNFZEP"}
+{"time":"2026-07-08T16:32:26.154345527Z","level":"INFO","msg":"initializing fn","event":"quota.plan.activated","event_id":"01KX195MGDV9H18681VETNFZEP","internal_id":"01KX195MGDV9H18681VETNFZEP","function":"quota-plan-expiry","function_id":"54f23f97-b07f-51fc-970d-af64083974e6"}
+{"time":"2026-07-08T16:32:30.503075372Z","level":"INFO","msg":"publishing event","caller":"api","event_name":"quota.plan.activated","internal_id":"01KX195RS5NYBEFRBXFNS8PHD1","external_id":"01KX195RS5NYBEFRBXFNS8PHD1","event":{"id":"01KX195RS5NYBEFRBXFNS8PHD1","name":"quota.plan.activated","data":{"expiresAt":"2028-10-08T16:32:01.347Z","purchaseId":"cmrcaqarp0004x25l8268nw9d","targetPlan":"CANDIDATE_PLUS","userId":"g1wxwzoyf5d8qc14mjop8aev"},"ts":1783528350501}}
+{"time":"2026-07-08T16:32:30.667241925Z","level":"INFO","msg":"received event","event":"quota.plan.activated","event_id":"01KX195RS5NYBEFRBXFNS8PHD1","internal_id":"01KX195RS5NYBEFRBXFNS8PHD1"}
+{"time":"2026-07-08T16:32:30.667601955Z","level":"INFO","msg":"initializing fn","event":"quota.plan.activated","event_id":"01KX195RS5NYBEFRBXFNS8PHD1","internal_id":"01KX195RS5NYBEFRBXFNS8PHD1","function":"quota-plan-expiry","function_id":"54f23f97-b07f-51fc-970d-af64083974e6"}
+{"time":"2026-07-08T16:32:54.908595648Z","level":"INFO","msg":"publishing event","caller":"api","event_name":"quota.plan.activated","internal_id":"01KX196GKSKWRZH14MPYEMWDJ4","external_id":"01KX196GKSKWRZH14MPYEMWDJ4","event":{"id":"01KX196GKSKWRZH14MPYEMWDJ4","name":"quota.plan.activated","data":{"expiresAt":"2029-10-08T16:32:01.347Z","purchaseId":"cmrcaqtln0006x25ldnv1hlgr","targetPlan":"CANDIDATE_PLUS","userId":"g1wxwzoyf5d8qc14mjop8aev"},"ts":1783528374905}}
+{"time":"2026-07-08T16:32:54.986481992Z","level":"INFO","msg":"received event","event":"quota.plan.activated","event_id":"01KX196GKSKWRZH14MPYEMWDJ4","internal_id":"01KX196GKSKWRZH14MPYEMWDJ4"}
+{"time":"2026-07-08T16:32:54.987017268Z","level":"INFO","msg":"initializing fn","event":"quota.plan.activated","event_id":"01KX196GKSKWRZH14MPYEMWDJ4","internal_id":"01KX196GKSKWRZH14MPYEMWDJ4","function":"quota-plan-expiry","function_id":"54f23f97-b07f-51fc-970d-af64083974e6"}
+{"time":"2026-07-08T16:53:24.572567745Z","level":"INFO","msg":"waiting for service run to finish","caller":"api","service":"api"}
+{"time":"2026-07-08T16:53:24.572572016Z","level":"INFO","msg":"waiting for service run to finish","caller":"devserver","service":"devserver"}

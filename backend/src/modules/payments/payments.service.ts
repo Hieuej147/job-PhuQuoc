@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JobContractService } from '../shared/contracts/job.contract';
 import { CompanyContractService } from '../shared/contracts/company.contract';
@@ -7,6 +8,7 @@ import { StripeGateway } from './gateways/stripe.gateway';
 import { MockGateway } from './gateways/mock.gateway';
 import { PaymentQueryDto } from './dto/payment.dto';
 import { PaymentCompletionService } from './application/payment-completion.service';
+import { QuotaService } from '../../common/quota/storage-quota';
 
 @Injectable()
 export class PaymentsService {
@@ -18,9 +20,15 @@ export class PaymentsService {
     private readonly stripeGateway: StripeGateway,
     private readonly mockGateway: MockGateway,
     private readonly paymentCompletion: PaymentCompletionService,
+    private readonly quotaService: QuotaService = new QuotaService(),
   ) {}
 
-  async createCheckout(userId: string, jobId: string, packageId: string) {
+  async createCheckout(
+    userId: string,
+    jobId: string,
+    packageId: string,
+    options: { durationDays?: number; boostLevel?: number } = {},
+  ) {
     // Verify job exists and user owns it
     const job = await this.jobContract.findById(jobId);
     if (!job) throw new NotFoundException('Job not found');
@@ -28,6 +36,11 @@ export class PaymentsService {
     const company = await this.companyContract.findById(job.companyId);
     if (!company || company.ownerId !== userId) throw new BadRequestException('Not your job');
     if (job.status === 'ACTIVE') throw new BadRequestException('Job is already active');
+
+    const activeJobs = await this.prisma.job.count({
+      where: { company: { ownerId: userId }, status: 'ACTIVE' },
+    });
+    await this.quotaService.assertWithinForUser(userId, 'employerActiveJobs', activeJobs);
 
     // Verify package exists and is active
     const pkg = await this.pricingContract.findById(packageId);
@@ -39,6 +52,14 @@ export class PaymentsService {
     });
     if (existingPayment) throw new BadRequestException('Job already has a pending payment');
 
+    const durationDays = options.durationDays && options.durationDays > 0 ? options.durationDays : pkg.days;
+    const boostLevel = Math.min(Math.max(options.boostLevel ?? 0, 0), 3);
+    await this.quotaService.assertMaxForUser(userId, 'employerDurationDaysMax', durationDays);
+    await this.quotaService.assertMaxForUser(userId, 'employerBoostLevelMax', boostLevel);
+    const listingAmount = Math.round((pkg.price / pkg.days) * durationDays);
+    const boostAmount = boostLevel * 50000 * durationDays;
+    const amount = listingAmount + boostAmount;
+    const activationId = randomUUID();
     const gateway = this.stripeGateway.isEnabled() ? 'stripe' : 'mock';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
 
@@ -46,19 +67,19 @@ export class PaymentsService {
 
     if (gateway === 'stripe') {
       result = await this.stripeGateway.createCheckout({
-        amount: pkg.price,
+        amount,
         currency: 'vnd',
         productName: `Đăng tin tuyển dụng - Gói ${pkg.name}`,
-        metadata: { userId, jobId, packageId },
+        metadata: { userId, jobId, packageId, durationDays: String(durationDays), boostLevel: String(boostLevel), activationId },
         successUrl: `${frontendUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}&jobId=${jobId}`,
         cancelUrl: `${frontendUrl}/payment/cancel`,
       });
     } else {
       result = await this.mockGateway.createCheckout({
-        amount: pkg.price,
+        amount,
         currency: 'vnd',
         productName: `Đăng tin tuyển dụng - Gói ${pkg.name}`,
-        metadata: { userId, jobId, packageId },
+        metadata: { userId, jobId, packageId, durationDays: String(durationDays), boostLevel: String(boostLevel), activationId },
         successUrl: `${frontendUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}&jobId=${jobId}`,
         cancelUrl: `${frontendUrl}/payment/cancel`,
       });
@@ -69,7 +90,12 @@ export class PaymentsService {
         userId,
         jobId,
         packageId,
-        amount: pkg.price,
+        amount,
+        listingAmount,
+        boostAmount,
+        durationDays,
+        boostLevel,
+        activationId,
         status: 'PENDING',
         gateway,
         gatewayRef: result.sessionId,

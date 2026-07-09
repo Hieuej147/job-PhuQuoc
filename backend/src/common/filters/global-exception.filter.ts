@@ -22,22 +22,47 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Internal server error';
+    let errorPayload: Record<string, unknown> = {
+      message: 'Internal server error',
+    };
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const res = exception.getResponse();
-      message = typeof res === 'string' ? res : String((res as Record<string, unknown>).message || message);
+      if (typeof res === 'string') {
+        errorPayload = { message: res };
+      } else {
+        errorPayload = { ...(res as Record<string, unknown>) };
+      }
     } else if (exception instanceof Error) {
-      message = exception.message;
-      this.logger.error({ context: 'GlobalExceptionFilter', trace: exception.stack }, `${request.method} ${request.url} - ${message}`);
+      errorPayload = { message: exception.message };
+      this.logger.error({ context: 'GlobalExceptionFilter', trace: exception.stack }, `${request.method} ${request.url} - ${exception.message}`);
     }
+
+    const message = this.normalizeMessage(errorPayload.message ?? errorPayload.error ?? 'Request failed');
+    const details = { ...errorPayload };
+    delete details.statusCode;
+    delete details.message;
+    delete details.error;
+    delete details.code;
+    const error = errorPayload.error;
+    const code = errorPayload.code;
+    const hasDetails = Object.keys(details).length > 0;
 
     response.status(status).json({
       statusCode: status,
-      message: Array.isArray(message) ? message[0] : message,
+      message,
+      ...(typeof error === 'string' ? { error } : {}),
+      ...(typeof code === 'string' ? { code } : {}),
+      ...(hasDetails ? { details } : {}),
       timestamp: new Date().toISOString(),
       path: request.url,
     });
+  }
+
+  private normalizeMessage(message: unknown) {
+    if (Array.isArray(message)) return message[0] ?? 'Request failed';
+    if (typeof message === 'string') return message;
+    return 'Request failed';
   }
 }

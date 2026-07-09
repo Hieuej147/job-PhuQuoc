@@ -6,6 +6,7 @@ import { CompanyContractService } from '../shared/contracts/company.contract';
 import { Prisma, JobStatus, JobType, ExperienceLevel, JobLevel } from '@prisma/client';
 import { CreateJobDto, JobQueryDto, MyJobsQueryDto, UpdateJobDto } from './dto/job.dto';
 import { JobBackgroundService } from './background/job-background.service';
+import { QuotaService } from '../../common/quota/storage-quota';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -14,8 +15,9 @@ function slugify(text: string): string {
 const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   DRAFT: ['PENDING'],
   PENDING: ['ACTIVE'],
-  ACTIVE: ['CLOSED'],
+  ACTIVE: ['CLOSED', 'EXPIRED'],
   CLOSED: [],
+  EXPIRED: [],
 };
 
 @Injectable()
@@ -29,10 +31,11 @@ export class JobsService {
     private readonly cache: CacheService,
     private readonly companyContract: CompanyContractService,
     private readonly jobBackground: JobBackgroundService,
+    private readonly quotaService: QuotaService = new QuotaService(),
   ) { }
 
   async findAll(query: JobQueryDto) {
-    const { search, category, type, experience, level, status, salaryMin, salaryMax, salaryRange, ward, companyId, sort } = query;
+    const { search, category, type, experience, level, salaryMin, salaryMax, salaryRange, ward, companyId, sort } = query;
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
 
@@ -40,7 +43,7 @@ export class JobsService {
     const cacheKey = this.cache.generateKey(
       this.CACHE_PREFIX, 'list',
       String(page), String(limit), search || '', category || '',
-      type || '', experience || '', level || '', status || 'ACTIVE',
+      type || '', experience || '', level || '', 'ACTIVE',
       String(salaryMin || ''), String(salaryMax || ''), salaryRange || '', ward || '', companyId || '', sort || ''
     );
 
@@ -49,8 +52,7 @@ export class JobsService {
 
     const where: Prisma.JobWhereInput = {};
     if (companyId) where.companyId = companyId;
-    if (status) where.status = status as JobStatus;
-    else where.status = JobStatus.ACTIVE; // Default: chỉ trả job ACTIVE cho public queries
+    where.status = JobStatus.ACTIVE; // Public queries never expose DRAFT/PENDING/CLOSED/EXPIRED jobs.
 
     if (category) {
       const slugs = category.split(',');
@@ -151,7 +153,12 @@ export class JobsService {
     const [items, total] = await Promise.all([
       this.prisma.job.findMany({
         where, skip: (Number(page) - 1) * Number(limit), take: Number(limit),
-        include: { category: true, company: { select: { id: true, name: true, slug: true, logo: true } }, ward: { include: { district: true } } },
+        include: {
+          category: true,
+          company: { select: { id: true, name: true, slug: true, logo: true } },
+          ward: { include: { district: true } },
+          _count: { select: { applications: true } },
+        },
         orderBy,
       }),
       this.prisma.job.count({ where }),
@@ -169,7 +176,13 @@ export class JobsService {
 
     const job = await this.prisma.job.findUnique({
       where: { id },
-      include: { category: true, company: true, ward: { include: { district: { include: { province: true } } } }, applications: { select: { id: true, status: true, createdAt: true } } },
+      include: {
+        category: true,
+        company: true,
+        ward: { include: { district: { include: { province: true } } } },
+        applications: { select: { id: true, status: true, createdAt: true } },
+        _count: { select: { applications: true } },
+      },
     });
     if (!job) throw new NotFoundException('Job not found');
 
@@ -201,9 +214,20 @@ export class JobsService {
 
     const job = await this.prisma.job.findUnique({
       where: { slug },
-      include: { category: true, company: true, ward: { include: { district: { include: { province: true } } } } },
+      include: {
+        category: true,
+        company: true,
+        ward: { include: { district: { include: { province: true } } } },
+        _count: { select: { applications: true } },
+      },
     });
     if (!job) throw new NotFoundException('Job not found');
+    if (
+      job.status !== JobStatus.ACTIVE ||
+      (job.deadline && job.deadline.getTime() < Date.now())
+    ) {
+      throw new NotFoundException('Job not found');
+    }
 
     await this.cache.set(cacheKey, job, this.CACHE_TTL);
     return job;
@@ -212,12 +236,15 @@ export class JobsService {
   async create(userId: string, data: CreateJobDto) {
     const company = await this.companyContract.findByOwnerId(userId);
     if (!company) throw new NotFoundException('You need a company to post jobs');
+    const usedJobs = await this.prisma.job.count({ where: { company: { ownerId: userId } } });
+    await this.quotaService.assertWithinForUser(userId, 'employerJobs', usedJobs);
     const slug = slugify(data.title) + '-' + Date.now().toString(36);
+    const jobContent = { ...data };
+    delete jobContent.deadline;
     const job = await this.prisma.job.create({
       data: {
-        ...data, slug, companyId: company.id,
+        ...jobContent, slug, companyId: company.id,
         type: data.type as JobType, experience: data.experience as ExperienceLevel, level: data.level as JobLevel,
-        deadline: data.deadline ? new Date(data.deadline) : undefined,
         status: 'DRAFT',
       },
     });
@@ -232,14 +259,44 @@ export class JobsService {
     const job = await this.prisma.job.findUnique({ where: { id }, include: { company: true } });
     if (!job) throw new NotFoundException('Job not found');
     if (job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
-    // Reserved for a future "edit draft before checkout" flow.
-    // Paid/ACTIVE jobs should not be edited through this path because payment,
-    // public listing, Inngest expiry events, and applications are already tied to the activated job.
-    const updated = await this.prisma.job.update({ where: { id }, data: data as Prisma.JobUpdateInput });
+    const updateData = { ...data };
+    delete updateData.deadline;
+    const updated = await this.prisma.job.update({ where: { id }, data: updateData as Prisma.JobUpdateInput });
     await this.invalidateCache();
 
     this.jobBackground.syncEmbedding(updated);
 
+    return updated;
+  }
+
+  async closeEarly(id: string, userId: string) {
+    const job = await this.prisma.job.findUnique({ where: { id }, include: { company: true } });
+    if (!job) throw new NotFoundException('Job not found');
+    if (job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
+    if (job.status !== JobStatus.ACTIVE) {
+      throw new ForbiddenException('Only active jobs can be closed early');
+    }
+
+    const updated = await this.prisma.job.update({
+      where: { id },
+      data: {
+        status: JobStatus.CLOSED,
+        closedAt: new Date(),
+        closeReason: 'EMPLOYER_CLOSED',
+      },
+      include: { _count: { select: { applications: true } } },
+    });
+
+    await this.auditWriteContract.log({
+      action: 'job.closed.early',
+      entityType: 'Job',
+      entityId: id,
+      actorId: userId,
+      oldValue: JobStatus.ACTIVE,
+      newValue: JobStatus.CLOSED,
+    });
+
+    await this.invalidateCache();
     return updated;
   }
 

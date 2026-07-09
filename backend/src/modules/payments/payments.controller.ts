@@ -33,6 +33,10 @@ export class PaymentsController {
       user.user.id,
       body.jobId,
       body.packageId,
+      {
+        durationDays: body.durationDays,
+        boostLevel: body.boostLevel,
+      },
     );
   }
 

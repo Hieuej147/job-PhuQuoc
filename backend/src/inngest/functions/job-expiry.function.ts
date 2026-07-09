@@ -4,14 +4,11 @@ import { JobStatus } from '@prisma/client';
 import type { TypedInngestContext, CronInngestContext } from '../inngest.types';
 import { createNotificationInboxItem } from './notification-inbox.helper';
 
-const SAVED_CLOSED_JOB_RETENTION_DAYS = 90;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 export function createJobExpiryFunctions(prisma: PrismaService) {
   const onJobActivated = inngest.createFunction(
     { id: 'schedule-job-expiry', triggers: [{ event: 'job.activated' }] },
     async ({ event, step }: TypedInngestContext<'job.activated'>) => {
-      const { jobId, deadline } = event.data;
+      const { jobId, deadline, activationId } = event.data;
       if (!deadline) return;
       const deadlineTime = new Date(deadline).getTime();
       const threeDaysBefore = deadlineTime - 3 * 24 * 60 * 60 * 1000;
@@ -20,14 +17,14 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
         await step.sendEvent('schedule-expiry-warning', {
           name: 'job.expiring-soon',
           ts: threeDaysBefore,
-          data: { jobId },
+          data: { jobId, activationId },
         });
       }
 
       await step.sendEvent('schedule-expired', {
         name: 'job.expired',
         ts: deadlineTime,
-        data: { jobId },
+        data: { jobId, deadline, activationId },
       });
     },
   );
@@ -39,10 +36,11 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
 
       const job = await prisma.job.findUnique({
         where: { id: jobId },
-        select: { id: true, title: true, status: true },
+        select: { id: true, title: true, status: true, activationId: true },
       });
 
       if (!job || job.status !== 'ACTIVE') return;
+      if (event.data.activationId && job.activationId !== event.data.activationId) return;
 
       const savedJobs = await prisma.savedJob.findMany({
         where: { jobId },
@@ -75,10 +73,12 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
       });
 
       if (!job || job.status !== 'ACTIVE') return;
+      if (event.data.activationId && job.activationId !== event.data.activationId) return;
+      if (event.data.deadline && job.deadline?.toISOString() !== new Date(event.data.deadline).toISOString()) return;
 
       await prisma.job.update({
         where: { id: jobId },
-        data: { status: JobStatus.CLOSED },
+        data: { status: JobStatus.EXPIRED, closedAt: new Date(), closeReason: 'EXPIRED' },
       });
 
       await createNotificationInboxItem(prisma, {
@@ -108,6 +108,8 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
           select: {
             id: true,
             title: true,
+            activationId: true,
+            deadline: true,
             company: { select: { ownerId: true } },
           },
           take: 200,
@@ -121,8 +123,10 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
             where: {
               id: job.id,
               status: JobStatus.ACTIVE,
+              activationId: job.activationId,
+              deadline: job.deadline,
             },
-            data: { status: JobStatus.CLOSED },
+            data: { status: JobStatus.EXPIRED, closedAt: new Date(), closeReason: 'EXPIRED' },
           });
         });
 
@@ -146,25 +150,5 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
     },
   );
 
-  const cleanupSavedClosedJobs = inngest.createFunction(
-    { id: 'cleanup-saved-closed-jobs', triggers: [{ cron: '0 3 * * *' }] },
-    async ({ step }: CronInngestContext) => {
-      const cutoff = new Date(Date.now() - SAVED_CLOSED_JOB_RETENTION_DAYS * DAY_MS);
-
-      return step.run('delete-old-saved-closed-jobs', async () => {
-        const result = await prisma.savedJob.deleteMany({
-          where: {
-            job: {
-              status: JobStatus.CLOSED,
-              deadline: { lte: cutoff },
-            },
-          },
-        });
-
-        return { deleted: result.count, cutoff };
-      });
-    },
-  );
-
-  return [onJobActivated, onJobExpiringSoon, onJobExpired, closeExpiredActiveJobs, cleanupSavedClosedJobs];
+  return [onJobActivated, onJobExpiringSoon, onJobExpired, closeExpiredActiveJobs];
 }
