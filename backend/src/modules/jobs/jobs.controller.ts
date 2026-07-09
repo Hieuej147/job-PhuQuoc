@@ -46,11 +46,23 @@ export class JobsController {
   @ApiOperation({ summary: 'Job của tôi', description: 'Employer xem tất cả job của mình (tất cả status).' })
   @ApiQuery({ name: 'page', required: false, description: 'Trang' })
   @ApiQuery({ name: 'limit', required: false, description: 'Số item/trang' })
-  @ApiQuery({ name: 'status', required: false, description: 'Lọc theo status: DRAFT, PENDING, ACTIVE, CLOSED' })
+  @ApiQuery({ name: 'status', required: false, description: 'Lọc theo status: ALL, DRAFT, PENDING, ACTIVE, CLOSED, EXPIRED' })
+  @ApiQuery({ name: 'search', required: false, description: 'Tìm theo tiêu đề tin tuyển dụng' })
+  @ApiQuery({ name: 'sort', required: false, description: 'Sắp xếp: newest, most-apps, expiring' })
   @ApiResponse({ status: 200, description: 'Danh sách jobs phân trang' })
   @ApiResponse({ status: 403, description: 'Không phải EMPLOYER' })
   findMyJobs(@CurrentUser() user: UserSession, @Query() query: MyJobsQueryDto) {
     return this.jobsService.findByOwner(user.user.id, query);
+  }
+
+  @Get('my/stats')
+  @Roles('EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Thống kê job của tôi', description: 'Đếm số lượng job theo từng status của Employer.' })
+  @ApiResponse({ status: 200, description: 'Object đếm số lượng theo status' })
+  @ApiResponse({ status: 403, description: 'Không phải EMPLOYER' })
+  getMyJobStats(@CurrentUser() user: UserSession) {
+    return this.jobsService.getOwnerJobStats(user.user.id);
   }
 
   @Get('slug/:slug')

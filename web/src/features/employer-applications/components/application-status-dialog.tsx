@@ -28,13 +28,13 @@ export function ApplicationStatusDialog({
 }: ApplicationStatusDialogProps) {
   return (
     <Dialog open={Boolean(dialog)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-[#071622] text-slate-100 sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {dialog?.status === "ACCEPTED" ? "Chấp nhận hồ sơ" : "Từ chối hồ sơ"}
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
-            Lời nhắn sẽ được lưu vào cuộc trò chuyện của đơn ứng tuyển để ứng viên đọc và phản hồi.
+          <DialogDescription>
+            Lời nhắn sẽ được lưu vào đơn ứng tuyển để ứng viên đọc theo trạng thái hồ sơ.
           </DialogDescription>
         </DialogHeader>
 
@@ -45,9 +45,9 @@ export function ApplicationStatusDialog({
             maxLength={1000}
             rows={4}
             placeholder="Nhập lời nhắn gửi ứng viên..."
-            className="border-slate-700 bg-[#0d2334] text-slate-100"
+            className="border-input bg-background text-foreground"
           />
-          <p className="text-xs text-slate-500">{message.trim().length}/1000 ký tự</p>
+          <p className="text-xs text-muted-foreground">{message.trim().length}/1000 ký tự</p>
         </div>
 
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

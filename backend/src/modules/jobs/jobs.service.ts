@@ -195,16 +195,42 @@ export class JobsService {
     const limit = Number(query.limit) || 10;
     const where: Prisma.JobWhereInput = { company: { ownerId } };
     if (query.status && query.status !== 'ALL') where.status = query.status as JobStatus;
+    if (query.search?.trim()) {
+      where.title = { contains: query.search.trim(), mode: 'insensitive' };
+    }
+
+    let orderBy: Prisma.JobOrderByWithRelationInput | Prisma.JobOrderByWithRelationInput[] = { createdAt: 'desc' };
+    if (query.sort === 'most-apps') {
+      orderBy = { applications: { _count: 'desc' } };
+    } else if (query.sort === 'expiring') {
+      orderBy = [{ deadline: 'asc' }, { createdAt: 'desc' }];
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.job.findMany({
         where, skip: (page - 1) * limit, take: limit,
         include: { category: true, company: { select: { id: true, name: true, slug: true, logo: true } }, ward: { include: { district: true } }, _count: { select: { applications: true } } },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
       }),
       this.prisma.job.count({ where }),
     ]);
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async getOwnerJobStats(ownerId: string) {
+    const counts = await this.prisma.job.groupBy({
+      by: ['status'],
+      where: { company: { ownerId } },
+      _count: { id: true },
+    });
+
+    const stats = { ALL: 0, ACTIVE: 0, PENDING: 0, DRAFT: 0, CLOSED: 0, EXPIRED: 0 };
+    for (const item of counts) {
+      stats[item.status] = item._count.id;
+      stats.ALL += item._count.id;
+    }
+
+    return stats;
   }
 
   async findBySlug(slug: string) {
