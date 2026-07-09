@@ -21,7 +21,9 @@ import {
   Hourglass,
   MoreHorizontal,
   Plus,
+  ArchiveRestore,
   Search,
+  Trash2,
   Users,
   XCircle,
 } from "lucide-react";
@@ -38,7 +40,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
-import { apiGet, apiPatch } from "@/lib/api-client";
+import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
 import { formatSalary, jobTypeLabel } from "@/lib/utils/format";
 
 interface Job {
@@ -54,15 +56,16 @@ interface Job {
   deadline?: string | null;
   ward?: { name: string; district?: { name: string } | null } | null;
   _count?: { applications: number };
+  archivedAt?: string | null;
 }
 
-type JobStatus = "ALL" | "ACTIVE" | "PENDING" | "DRAFT" | "CLOSED" | "EXPIRED";
+type JobStatus = "ALL" | "ACTIVE" | "PENDING" | "DRAFT" | "CLOSED" | "EXPIRED" | "ARCHIVED";
 type JobSort = "newest" | "most-apps" | "expiring";
 
 type JobsResponse = { items?: Job[] } | Job[];
 type JobStats = Record<JobStatus, number>;
 
-const EMPTY_STATS: JobStats = { ALL: 0, ACTIVE: 0, PENDING: 0, DRAFT: 0, CLOSED: 0, EXPIRED: 0 };
+const EMPTY_STATS: JobStats = { ALL: 0, ACTIVE: 0, PENDING: 0, DRAFT: 0, CLOSED: 0, EXPIRED: 0, ARCHIVED: 0 };
 
 const statusMap: Record<Exclude<JobStatus, "ALL">, { label: string; icon: LucideIcon; className: string; accentClass: string }> = {
   ACTIVE: {
@@ -95,6 +98,12 @@ const statusMap: Record<Exclude<JobStatus, "ALL">, { label: string; icon: Lucide
     className: "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300",
     accentClass: "text-rose-600 dark:text-rose-300",
   },
+  ARCHIVED: {
+    label: "Lưu trữ",
+    icon: Trash2,
+    className: "border-zinc-500/20 bg-zinc-500/10 text-zinc-600 dark:text-zinc-300",
+    accentClass: "text-zinc-600 dark:text-zinc-300",
+  },
 };
 
 const statusFilters: { value: JobStatus; label: string }[] = [
@@ -104,6 +113,7 @@ const statusFilters: { value: JobStatus; label: string }[] = [
   { value: "DRAFT", label: "Nháp" },
   { value: "CLOSED", label: "Đã đóng" },
   { value: "EXPIRED", label: "Hết hạn" },
+  { value: "ARCHIVED", label: "Lưu trữ" },
 ];
 
 function unwrapJobs(payload: JobsResponse) {
@@ -148,6 +158,7 @@ export default function EmployerJobsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState<JobSort>("newest");
   const [closingJob, setClosingJob] = useState<Job | null>(null);
+  const [deletingJob, setDeletingJob] = useState<Job | null>(null);
   const [rememberCloseConfirm, setRememberCloseConfirm] = useState(false);
 
   useEffect(() => {
@@ -157,7 +168,8 @@ export default function EmployerJobsPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ limit: "100", status: filterStatus, sort: sortBy });
+    const params = new URLSearchParams({ limit: "100", status: filterStatus === "ARCHIVED" ? "ALL" : filterStatus, sort: sortBy });
+    if (filterStatus === "ARCHIVED") params.set("archived", "true");
     if (debouncedSearch) params.set("search", debouncedSearch);
 
     try {
@@ -204,6 +216,32 @@ export default function EmployerJobsPage() {
     await closeJob(closingJob);
     setClosingJob(null);
     setRememberCloseConfirm(false);
+  };
+
+  const archiveJob = async (job: Job) => {
+    try {
+      await apiDelete<{ mode?: "archived"; message?: string }>(`/api/v1/jobs/${job.id}/employer`);
+      await fetchData();
+      toast.success("Đã lưu trữ tin tuyển dụng");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể lưu trữ tin tuyển dụng");
+    }
+  };
+
+  const restoreJob = async (job: Job) => {
+    try {
+      await apiPatch(`/api/v1/jobs/${job.id}/restore`);
+      await fetchData();
+      toast.success("Đã khôi phục tin tuyển dụng");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể khôi phục tin tuyển dụng");
+    }
+  };
+
+  const confirmDeleteJob = async () => {
+    if (!deletingJob) return;
+    await archiveJob(deletingJob);
+    setDeletingJob(null);
   };
 
   const totalApplications = useMemo(() => jobs.reduce((sum, job) => sum + (job._count?.applications ?? 0), 0), [jobs]);
@@ -301,9 +339,13 @@ export default function EmployerJobsPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1 space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/jobs/${job.slug}`} className="truncate text-base font-bold text-foreground transition-colors hover:text-primary">
-                        {job.title}
-                      </Link>
+                      {filterStatus === "ARCHIVED" ? (
+                        <span className="truncate text-base font-bold text-foreground">{job.title}</span>
+                      ) : (
+                        <Link href={`/jobs/${job.slug}`} className="truncate text-base font-bold text-foreground transition-colors hover:text-primary">
+                          {job.title}
+                        </Link>
+                      )}
                       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusConfig.className}`}>
                         <StatusIcon className="size-3.5" />
                         {statusConfig.label}
@@ -324,10 +366,16 @@ export default function EmployerJobsPage() {
                           {applicationCount} ứng viên
                         </Button>
                       </Link>
-                      {job.status !== "ACTIVE" && (
+                      {filterStatus !== "ARCHIVED" && job.status !== "ACTIVE" && (
                         <Link href={`/employer/jobs/${job.id}/checkout`}>
                           <Button size="sm">Đăng lại</Button>
                         </Link>
+                      )}
+                      {filterStatus === "ARCHIVED" && (
+                        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => restoreJob(job)}>
+                          <ArchiveRestore className="size-3.5" />
+                          Khôi phục
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -344,33 +392,54 @@ export default function EmployerJobsPage() {
                           <Users className="size-4" /> Xem ứng viên
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/employer/jobs/${job.id}/edit`} className="gap-2">
-                          <Edit className="size-4" /> Sửa tin
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/jobs/${job.slug}`} className="gap-2">
-                          <Eye className="size-4" /> Xem public
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/employer/jobs/create?cloneJobId=${job.id}`} className="gap-2">
-                          <Copy className="size-4" /> Nhân bản tin
-                        </Link>
-                      </DropdownMenuItem>
-                      {job.status !== "ACTIVE" && (
+                      {filterStatus !== "ARCHIVED" && (
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/employer/jobs/${job.id}/edit`} className="gap-2">
+                              <Edit className="size-4" /> Sửa tin
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/jobs/${job.slug}`} className="gap-2">
+                              <Eye className="size-4" /> Xem public
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/employer/jobs/create?cloneJobId=${job.id}`} className="gap-2">
+                              <Copy className="size-4" /> Nhân bản tin
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      {filterStatus !== "ARCHIVED" && job.status !== "ACTIVE" && (
                         <DropdownMenuItem asChild>
                           <Link href={`/employer/jobs/${job.id}/checkout`} className="gap-2">
                             <Clock3 className="size-4" /> Đăng lại/gia hạn
                           </Link>
                         </DropdownMenuItem>
                       )}
-                      {job.status === "ACTIVE" && (
+                      {filterStatus === "ARCHIVED" ? (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => restoreJob(job)} className="gap-2">
+                            <ArchiveRestore className="size-4" /> Khôi phục
+                          </DropdownMenuItem>
+                          <DropdownMenuItem disabled className="gap-2 text-muted-foreground">
+                            <Trash2 className="size-4" /> Admin/support xử lý xóa sâu
+                          </DropdownMenuItem>
+                        </>
+                      ) : job.status === "ACTIVE" ? (
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => requestCloseJob(job)} className="gap-2 text-destructive focus:text-destructive">
                             <Ban className="size-4" /> Đóng tin sớm
+                          </DropdownMenuItem>
+                        </>
+                      ) : (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setDeletingJob(job)} className="gap-2 text-destructive focus:text-destructive">
+                            <Trash2 className="size-4" /> Lưu trữ tin
                           </DropdownMenuItem>
                         </>
                       )}
@@ -401,6 +470,24 @@ export default function EmployerJobsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setClosingJob(null)}>Hủy</Button>
             <Button variant="destructive" onClick={confirmCloseJob}>Đóng tin</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(deletingJob)} onOpenChange={(open) => !open && setDeletingJob(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Lưu trữ tin tuyển dụng?</DialogTitle>
+            <DialogDescription>
+              Tin "{deletingJob?.title}" sẽ ẩn khỏi public và danh sách quản lý mặc định. Dữ liệu tuyển dụng,
+              ứng viên, thanh toán và quota vẫn được giữ để admin/support đối soát khi cần.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingJob(null)}>Hủy</Button>
+            <Button variant="destructive" onClick={confirmDeleteJob}>
+              Lưu trữ tin
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

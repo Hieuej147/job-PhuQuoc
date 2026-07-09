@@ -4,7 +4,8 @@ import { CandidateQuotaPlan, EmployerQuotaPlan } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
-import { QuotaService, type QuotaUpgradePlan } from './storage-quota';
+import { QuotaService } from './quota.service';
+import type { QuotaUpgradePlan } from './quota.types';
 
 class UpgradeQuotaDto {
   @IsEnum({ ...CandidateQuotaPlan, ...EmployerQuotaPlan })

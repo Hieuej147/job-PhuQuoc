@@ -14,7 +14,7 @@ import { ApplicationMessageSenderRole, ApplicationStatus, NotificationType } fro
 import { CreateApplicationDto, UpdateApplicationStatusDto } from './dto/application.dto';
 import { ApplicationQueryDto } from './dto/application-query.dto';
 import { ApplicationEventsPublisher } from './infrastructure/application-events.publisher';
-import { QuotaService } from '../../common/quota/storage-quota';
+import { QuotaService } from '../../common/quota/quota.service';
 import { CacheService } from '../../common/cache/cache.service';
 
 const APPLICATION_MESSAGE_LIMIT = 100;
@@ -29,7 +29,7 @@ export class ApplicationsService {
     private readonly jobContract: JobContractService,
     private readonly companyContract: CompanyContractService,
     private readonly eventsPublisher: ApplicationEventsPublisher,
-    private readonly quotaService: QuotaService = new QuotaService(),
+    private readonly quotaService: QuotaService,
     private readonly cache?: CacheService,
   ) {}
 
@@ -38,6 +38,8 @@ export class ApplicationsService {
     const job = await this.jobContract.findById(data.jobId);
     if (!job) throw new NotFoundException('Job not found');
     if (job.status !== 'ACTIVE') throw new ConflictException('Job is not active');
+    if (job.archivedAt) throw new ConflictException('Job is archived');
+    if (job.deadline && job.deadline.getTime() < Date.now()) throw new ConflictException('Job has expired');
     if (data.cvUrl) this.assertAllowedUploadedCvUrl(data.cvUrl);
 
     const existing = await this.prisma.jobApplication.findUnique({ where: { userId_jobId: { userId, jobId: data.jobId } } });
@@ -202,6 +204,28 @@ export class ApplicationsService {
     return { url: app.cvUrl };
   }
 
+  async getJobHistoryForApplication(applicationId: string, userId: string) {
+    const app = await this.prisma.jobApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        job: {
+          include: {
+            category: true,
+            company: true,
+            ward: { include: { district: { include: { province: true } } } },
+            _count: { select: { applications: true } },
+          },
+        },
+      },
+    });
+
+    if (!app) throw new NotFoundException('Application not found');
+    if (app.userId === userId || app.job.company.ownerId === userId) {
+      return { data: app.job };
+    }
+    throw new ForbiddenException('Bạn không có quyền xem lịch sử tin tuyển dụng này.');
+  }
+
   private assertAllowedUploadedCvUrl(url: string) {
     let parsed: URL;
     try {
@@ -311,11 +335,10 @@ export class ApplicationsService {
     if (app.userId !== userId) throw new ForbiddenException('Not your application');
     if (app.candidateDeletedAt) return app;
 
-    const updated = await this.prisma.jobApplication.update({
+    await this.prisma.jobApplication.update({
       where: { id },
       data: { candidateDeletedAt: new Date() },
     });
-    await this.deleteApplicationIfBothSidesDeleted(updated.id);
     return { message: 'Đã xoá đơn ứng tuyển khỏi danh sách của bạn' };
   }
 
@@ -325,11 +348,10 @@ export class ApplicationsService {
     if (app.job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
     if (app.employerDeletedAt) return app;
 
-    const updated = await this.prisma.jobApplication.update({
+    await this.prisma.jobApplication.update({
       where: { id },
       data: { employerDeletedAt: new Date() },
     });
-    await this.deleteApplicationIfBothSidesDeleted(updated.id);
     return { message: 'Đã xoá đơn ứng tuyển khỏi danh sách nhà tuyển dụng' };
   }
 
@@ -526,13 +548,4 @@ export class ApplicationsService {
     throw new ForbiddenException('Bạn không có quyền truy cập cuộc trò chuyện này.');
   }
 
-  private async deleteApplicationIfBothSidesDeleted(applicationId: string) {
-    const app = await this.prisma.jobApplication.findUnique({
-      where: { id: applicationId },
-      select: { id: true, candidateDeletedAt: true, employerDeletedAt: true },
-    });
-
-    if (!app?.candidateDeletedAt || !app.employerDeletedAt) return;
-    await this.prisma.jobApplication.delete({ where: { id: applicationId } });
-  }
 }

@@ -5,6 +5,7 @@ describe('ResumesService', () => {
   let service: ResumesService;
   let prismaMock: any;
   let loggerMock: any;
+  let quotaServiceMock: any;
 
   beforeEach(() => {
     prismaMock = {
@@ -35,7 +36,10 @@ describe('ResumesService', () => {
       warn: vi.fn(),
       debug: vi.fn(),
     };
-    service = new ResumesService(prismaMock as any, loggerMock);
+    quotaServiceMock = {
+      assertWithinForUser: vi.fn().mockResolvedValue(undefined),
+    };
+    service = new ResumesService(prismaMock as any, loggerMock, quotaServiceMock);
   });
 
   it('should be defined', () => {

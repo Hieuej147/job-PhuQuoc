@@ -8,6 +8,7 @@ describe('ApplicationsService', () => {
   let jobContractMock: any;
   let companyContractMock: any;
   let eventsPublisherMock: any;
+  let quotaServiceMock: any;
   let cacheMock: any;
 
   beforeEach(() => {
@@ -51,6 +52,11 @@ describe('ApplicationsService', () => {
       applicationAccepted: vi.fn(),
       applicationRejected: vi.fn(),
     };
+    quotaServiceMock = {
+      assertWithinForUser: vi.fn().mockResolvedValue(undefined),
+      assertMaxForUser: vi.fn().mockResolvedValue(undefined),
+      getUserQuotaSnapshot: vi.fn(),
+    };
     cacheMock = {
       set: vi.fn().mockResolvedValue(undefined),
       has: vi.fn().mockResolvedValue(false),
@@ -61,7 +67,7 @@ describe('ApplicationsService', () => {
       jobContractMock,
       companyContractMock,
       eventsPublisherMock,
-      undefined as any,
+      quotaServiceMock,
       cacheMock,
     );
   });

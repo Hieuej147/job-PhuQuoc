@@ -5,8 +5,8 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
 import { Button } from '@/components/ui/button';
-import { Bold, Italic, List, ListOrdered, Heading2, Strikethrough } from 'lucide-react';
-import { useEffect } from 'react';
+import { Bold, Eraser, Heading2, Heading3, Italic, List, ListOrdered, Pilcrow, Redo2, Strikethrough, Undo2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 interface MarkdownRichEditorProps {
   value: string;
@@ -35,12 +35,53 @@ function keepSelection(event: React.MouseEvent<HTMLButtonElement>) {
 }
 
 const MenuBar = ({ editor }: { editor: Editor | null }) => {
+  const [, setVersion] = useState(0);
+
+  useEffect(() => {
+    if (!editor) return;
+    const refresh = () => setVersion((version) => version + 1);
+    editor.on('selectionUpdate', refresh);
+    editor.on('transaction', refresh);
+    return () => {
+      editor.off('selectionUpdate', refresh);
+      editor.off('transaction', refresh);
+    };
+  }, [editor]);
+
   if (!editor) {
     return null;
   }
 
+  const blockValue = editor.isActive('heading', { level: 2 })
+    ? 'h2'
+    : editor.isActive('heading', { level: 3 })
+      ? 'h3'
+      : 'paragraph';
+
+  const applyBlock = (value: string) => {
+    const chain = editor.chain().focus();
+    if (value === 'h2') {
+      chain.toggleHeading({ level: 2 }).run();
+    } else if (value === 'h3') {
+      chain.toggleHeading({ level: 3 }).run();
+    } else {
+      chain.setParagraph().run();
+    }
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 dark:border-gray-700 p-1.5 bg-gray-50/50 dark:bg-slate-900/50 rounded-t-md">
+      <select
+        value={blockValue}
+        onChange={(event) => applyBlock(event.target.value)}
+        className="h-8 rounded-md border border-input bg-background px-2 text-xs font-medium outline-none"
+        title="Kiểu đoạn"
+      >
+        <option value="paragraph">Đoạn văn</option>
+        <option value="h2">Tiêu đề lớn</option>
+        <option value="h3">Tiêu đề nhỏ</option>
+      </select>
+      <div className="w-px h-5 bg-gray-300 dark:bg-gray-700 mx-1" />
       <Button
         variant={editor.isActive('bold') ? 'secondary' : 'ghost'}
         size="icon"
@@ -85,7 +126,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       </Button>
       
       <div className="w-px h-5 bg-gray-300 dark:bg-gray-700 mx-1" />
-      
+
       <Button
         variant={editor.isActive('heading', { level: 2 }) ? 'secondary' : 'ghost'}
         size="icon"
@@ -99,6 +140,34 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
         title="Tiêu đề 2"
       >
         <Heading2 className="h-4 w-4" />
+      </Button>
+      <Button
+        variant={editor.isActive('heading', { level: 3 }) ? 'secondary' : 'ghost'}
+        size="icon"
+        className="h-8 w-8"
+        onMouseDown={keepSelection}
+        onClick={(e) => {
+          e.preventDefault();
+          editor.chain().focus().toggleHeading({ level: 3 }).run();
+        }}
+        type="button"
+        title="Tiêu đề 3"
+      >
+        <Heading3 className="h-4 w-4" />
+      </Button>
+      <Button
+        variant={editor.isActive('paragraph') ? 'secondary' : 'ghost'}
+        size="icon"
+        className="h-8 w-8"
+        onMouseDown={keepSelection}
+        onClick={(e) => {
+          e.preventDefault();
+          editor.chain().focus().setParagraph().run();
+        }}
+        type="button"
+        title="Đoạn văn"
+      >
+        <Pilcrow className="h-4 w-4" />
       </Button>
       
       <div className="w-px h-5 bg-gray-300 dark:bg-gray-700 mx-1" />
@@ -131,16 +200,64 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       >
         <ListOrdered className="h-4 w-4" />
       </Button>
+      <div className="w-px h-5 bg-gray-300 dark:bg-gray-700 mx-1" />
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onMouseDown={keepSelection}
+        onClick={(e) => {
+          e.preventDefault();
+          editor.chain().focus().undo().run();
+        }}
+        type="button"
+        title="Hoàn tác"
+      >
+        <Undo2 className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onMouseDown={keepSelection}
+        onClick={(e) => {
+          e.preventDefault();
+          editor.chain().focus().redo().run();
+        }}
+        type="button"
+        title="Làm lại"
+      >
+        <Redo2 className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onMouseDown={keepSelection}
+        onClick={(e) => {
+          e.preventDefault();
+          editor.chain().focus().unsetAllMarks().clearNodes().run();
+        }}
+        type="button"
+        title="Xóa định dạng"
+      >
+        <Eraser className="h-4 w-4" />
+      </Button>
     </div>
   );
 };
 
 export function RichTextEditor({ value, onChange, placeholder }: MarkdownRichEditorProps) {
+  const lastEmittedValue = useRef(value);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
-      // Job content lưu Markdown. Toolbar cho cảm giác rich editor nhưng output không phải HTML.
-      Markdown,
+      // Job content lưu Markdown. Tắt transform paste/copy để thao tác giống Word hơn và tránh editor tự đổi text khi đang gõ dài.
+      Markdown.configure({
+        transformPastedText: false,
+        transformCopiedText: false,
+      }),
       Placeholder.configure({
         placeholder: placeholder || 'Nhập nội dung...',
         emptyEditorClass: 'is-editor-empty',
@@ -149,21 +266,32 @@ export function RichTextEditor({ value, onChange, placeholder }: MarkdownRichEdi
     content: value,
     editorProps: {
       attributes: {
-        class: 'prose prose-sm dark:prose-invert sm:prose-base focus:outline-none min-h-[150px] p-4 max-w-none',
+        class: 'prose prose-sm dark:prose-invert sm:prose-base focus:outline-none min-h-[180px] max-h-[420px] overflow-y-auto p-4 max-w-none',
+      },
+      handlePaste(view, event) {
+        const text = event.clipboardData?.getData('text/plain');
+        const html = event.clipboardData?.getData('text/html');
+        if (!text || !html) return false;
+        if (!/class="?Mso|mso-|Microsoft|Word/i.test(html)) return false;
+        event.preventDefault();
+        view.dispatch(view.state.tr.insertText(text));
+        return true;
       },
     },
     onUpdate: ({ editor }) => {
       // Mỗi lần người dùng gõ/format, đẩy Markdown về parent form state.
       const markdown = getMarkdown(editor);
+      lastEmittedValue.current = markdown;
       onChange(markdown);
     },
   });
 
   useEffect(() => {
-    if (editor && value !== getMarkdown(editor)) {
+    if (editor && value !== lastEmittedValue.current) {
       // Sync value từ bên ngoài vào editor mà không emit update ngược lại,
       // tránh vòng lặp state và tránh ghi đè nội dung khi người dùng đang gõ.
       editor.commands.setContent(value, { emitUpdate: false });
+      lastEmittedValue.current = value;
     }
   }, [value, editor]);
 

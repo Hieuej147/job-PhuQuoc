@@ -9,6 +9,8 @@ export interface JobContract {
   companyId: string;
   salaryMin: number | null;
   salaryMax: number | null;
+  deadline: Date | null;
+  archivedAt: Date | null;
 }
 
 @Injectable()
@@ -25,6 +27,8 @@ export class JobContractService {
         companyId: true,
         salaryMin: true,
         salaryMax: true,
+        deadline: true,
+        archivedAt: true,
       },
     });
   }
@@ -39,6 +43,8 @@ export class JobContractService {
         companyId: true,
         salaryMin: true,
         salaryMax: true,
+        deadline: true,
+        archivedAt: true,
       },
     });
   }

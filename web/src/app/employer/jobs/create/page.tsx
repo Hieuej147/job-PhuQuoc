@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { apiGet, apiPost } from "@/lib/api-client";
 
 const JOB_TYPES = [
   { value: "FULL_TIME", label: "Full-time" },
@@ -102,9 +104,8 @@ export default function CreateJobPage() {
   });
 
   useEffect(() => {
-    fetch("/api/v1/categories", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setCategories(d.data?.items || d.data || []))
+    apiGet<any>("/api/v1/categories")
+      .then((d) => setCategories(d.items || d || []))
       .catch(() => {});
   }, []);
 
@@ -113,17 +114,12 @@ export default function CreateJobPage() {
     if (!cloneJobId) return;
 
     setCloneLoading(true);
-    fetch(`/api/v1/jobs/${cloneJobId}`, { credentials: "include" })
-      .then(async (res) => {
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(body?.message || "Không thể tải tin cần nhân bản");
-        return body.data ?? body;
-      })
+    apiGet<any>(`/api/v1/jobs/manage/${cloneJobId}`)
       .then((job) => {
         setCloneSourceTitle(job.title || null);
         setForm((prev) => ({
           ...prev,
-          title: job.title ? `${job.title} (bản sao)` : prev.title,
+          title: job.title || prev.title,
           description: job.description || "",
           requirements: job.requirements || "",
           benefits: job.benefits || "",
@@ -136,7 +132,11 @@ export default function CreateJobPage() {
           quantity: job.quantity ? String(job.quantity) : prev.quantity,
         }));
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Không thể tải tin cần nhân bản"))
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : "Không thể tải tin cần nhân bản";
+        setError(message);
+        toast.error(message);
+      })
       .finally(() => setCloneLoading(false));
   }, []);
 
@@ -168,20 +168,9 @@ export default function CreateJobPage() {
       if (form.benefits) body.benefits = form.benefits;
       if (form.salaryMin) body.salaryMin = parseInt(form.salaryMin);
       if (form.salaryMax) body.salaryMax = parseInt(form.salaryMax);
-      const res = await fetch("/api/v1/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || `HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
-      const newJobId = data.data?.id || data.id;
+      const data = await apiPost<any>("/api/v1/jobs", body);
+      const newJobId = data.id;
+      toast.success("Đã tạo bản nháp tin tuyển dụng");
       router.push(`/employer/jobs/${newJobId}/checkout`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Tạo job thất bại");

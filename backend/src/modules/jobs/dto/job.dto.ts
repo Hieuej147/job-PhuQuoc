@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, IsEnum, IsDateString, Min, Max, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsEnum, Min, Max, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
 
@@ -65,12 +65,6 @@ export class CreateJobDto {
   @IsOptional()
   @IsEnum(['INTERN', 'FRESHER', 'JUNIOR', 'MID', 'SENIOR', 'LEAD', 'MANAGER', 'DIRECTOR'])
   level?: string;
-
-
-  @IsOptional()
-  @IsDateString()
-  deadline?: string;
-
 
   @IsString()
   categoryId: string;
@@ -141,12 +135,6 @@ export class UpdateJobDto {
   @IsOptional()
   @IsEnum(['INTERN', 'FRESHER', 'JUNIOR', 'MID', 'SENIOR', 'LEAD', 'MANAGER', 'DIRECTOR'])
   level?: string;
-
-
-  @IsOptional()
-  @IsDateString()
-  deadline?: string;
-
 
   @IsOptional()
   @IsString()
@@ -259,6 +247,10 @@ export class MyJobsQueryDto {
   @IsOptional()
   @IsString()
   sort?: string;
+
+  @IsOptional()
+  @IsString()
+  archived?: string;
 }
 
 export class VectorSearchDto {

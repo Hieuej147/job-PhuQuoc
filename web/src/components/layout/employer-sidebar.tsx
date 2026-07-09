@@ -79,6 +79,16 @@ export function EmployerSidebar() {
     });
   };
 
+  const isNavItemActive = (href: string) => {
+    if (href === "/employer/jobs/create") {
+      return pathname === href;
+    }
+    if (href === "/employer/jobs") {
+      return pathname === href || /^\/employer\/jobs\/[^/]+\/(edit|checkout)$/.test(pathname);
+    }
+    return pathname === href || pathname.startsWith(href + "/");
+  };
+
   return (
     <aside className="hidden lg:flex flex-col w-72 fixed left-0 top-16 bottom-0 bg-white dark:bg-[#0F3347] border-r border-[#e1efff] dark:border-[#1E5F74]/50 px-3 py-6 overflow-y-auto z-40">
 
@@ -125,7 +135,7 @@ export function EmployerSidebar() {
               {group.label}
             </p>
             {group.items.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isActive = isNavItemActive(item.href);
               return (
                 <Link
                   key={item.label}

@@ -128,6 +128,18 @@ export class ApplicationsController {
     return this.applicationsService.closeChat(id, user.user.id);
   }
 
+  @Get(':id/job')
+  @Roles('CANDIDATE', 'EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Xem lịch sử tin tuyển dụng theo application', description: 'Candidate/employer liên quan xem được job snapshot kể cả khi job đã đóng, hết hạn hoặc lưu trữ.' })
+  @ApiParam({ name: 'id', description: 'ID của application' })
+  @ApiResponse({ status: 200, description: 'Job snapshot của application' })
+  @ApiResponse({ status: 403, description: 'Không có quyền xem application này' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy application' })
+  getApplicationJobHistory(@Param('id') id: string, @CurrentUser() user: UserSession) {
+    return this.applicationsService.getJobHistoryForApplication(id, user.user.id);
+  }
+
   @Get(':id/resume')
   @Roles('EMPLOYER')
   @ApiBearerAuth('better-auth.session_token')
@@ -199,7 +211,7 @@ export class ApplicationsController {
   @ApiBearerAuth('better-auth.session_token')
   @ApiOperation({
     summary: 'Xóa đơn ứng tuyển khỏi workspace candidate',
-    description: 'Candidate ẩn đơn khỏi danh sách của mình. Nếu employer cũng xóa, backend mới xóa vật lý record.',
+    description: 'Candidate ẩn đơn khỏi danh sách của mình. Record vẫn được giữ để admin/support đối soát lịch sử.',
   })
   @ApiParam({ name: 'id', description: 'ID của application' })
   @ApiResponse({ status: 200, description: 'Đã xóa khỏi danh sách candidate' })
@@ -214,7 +226,7 @@ export class ApplicationsController {
   @ApiBearerAuth('better-auth.session_token')
   @ApiOperation({
     summary: 'Xóa đơn ứng tuyển khỏi workspace employer',
-    description: 'Employer ẩn đơn khỏi danh sách của mình. Nếu candidate cũng xóa, backend mới xóa vật lý record.',
+    description: 'Employer ẩn đơn khỏi danh sách của mình. Record vẫn được giữ để admin/support đối soát lịch sử.',
   })
   @ApiParam({ name: 'id', description: 'ID của application' })
   @ApiResponse({ status: 200, description: 'Đã xóa khỏi danh sách employer' })

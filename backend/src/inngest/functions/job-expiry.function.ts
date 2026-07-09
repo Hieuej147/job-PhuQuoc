@@ -103,6 +103,7 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
         return prisma.job.findMany({
           where: {
             status: JobStatus.ACTIVE,
+            archivedAt: null,
             deadline: { lte: now },
           },
           select: {
@@ -123,6 +124,7 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
             where: {
               id: job.id,
               status: JobStatus.ACTIVE,
+              archivedAt: null,
               activationId: job.activationId,
               deadline: job.deadline,
             },

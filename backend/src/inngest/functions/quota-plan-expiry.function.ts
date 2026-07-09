@@ -1,10 +1,10 @@
 import { inngest } from '../client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { QuotaService } from '../../common/quota/storage-quota';
+import { QuotaExpiryService } from '../../common/quota/quota-expiry.service';
 import type { CronInngestContext, TypedInngestContext } from '../inngest.types';
 
 export function createQuotaPlanExpiryFunctions(prisma: PrismaService) {
-  const quotaService = new QuotaService(prisma);
+  const quotaExpiry = new QuotaExpiryService(prisma);
 
   const expireActivatedQuotaPlan = inngest.createFunction(
     { id: 'quota-plan-expiry', triggers: [{ event: 'quota.plan.activated' }] },
@@ -15,7 +15,7 @@ export function createQuotaPlanExpiryFunctions(prisma: PrismaService) {
       }
 
       return step.run('expire-quota-plan-if-current', async () => {
-        return quotaService.expireQuotaPlan(event.data.userId, event.data.targetPlan, event.data.expiresAt);
+        return quotaExpiry.expireQuotaPlan(event.data.userId, event.data.targetPlan, event.data.expiresAt);
       });
     },
   );
@@ -23,7 +23,7 @@ export function createQuotaPlanExpiryFunctions(prisma: PrismaService) {
   const repairExpiredQuotaPlans = inngest.createFunction(
     { id: 'repair-expired-quota-plans', triggers: [{ cron: '15 3 * * *' }] },
     async ({ step }: CronInngestContext) => {
-      return step.run('repair-expired-quota-plans', async () => quotaService.repairExpiredPlans());
+      return step.run('repair-expired-quota-plans', async () => quotaExpiry.repairExpiredPlans());
     },
   );
 
