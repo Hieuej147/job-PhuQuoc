@@ -64,7 +64,7 @@ graph TB
     subgraph DB["💾 Infrastructure"]
         PG[("PostgreSQL 16<br/>Port 5435<br/>22 tables")]
         RD[("Redis 7<br/>Port 6381<br/>Session + Cache")]
-        ING["Inngest<br/>─────────────────<br/>Event Bus<br/>11 async functions"]
+        ING["Inngest<br/>─────────────────<br/>Event Bus<br/>13 async functions"]
     end
 
     FE -->|"fetch + cookie"| V1
@@ -971,7 +971,8 @@ erDiagram
 | 40b | GET | /api/v1/applications/:id/resume-file | EMPLOYER | Stream PDF upload qua backend proxy, trả inline |
 | 41 | PATCH | /api/v1/applications/:id/status | EMPLOYER | Cập nhật trạng thái |
 | 42 | PATCH | /api/v1/applications/:id/bookmark | EMPLOYER | Toggle bookmark |
-| 43 | DELETE | /api/v1/applications/:id | CANDIDATE | Rút đơn |
+| 43 | DELETE | /api/v1/applications/:id | CANDIDATE | Xoá khỏi workspace candidate, không hủy ứng tuyển |
+| 43a | DELETE | /api/v1/applications/:id/employer | EMPLOYER | Xoá khỏi workspace employer |
 
 #### Resumes (13 endpoints)
 
@@ -1209,10 +1210,19 @@ modules/<name>/
 - `PATCH /api/v1/applications/:id/status` chỉ cho employer owner cập nhật trạng thái hợp lệ.
 - `ACCEPTED` và `REJECTED` là terminal status: FE ẩn nút action và chỉ hiển thị nhãn kết thúc để tránh spam request.
 - Inngest vẫn tạo notification ngay cho candidate khi accepted/rejected.
-- Inngest cleanup tự động xoá application khỏi DB sau retention:
-  - `REJECTED`: 14 ngày.
-  - `ACCEPTED`: 30 ngày.
-- Cleanup chỉ xoá nếu record vẫn còn đúng terminal status tại thời điểm chạy.
+- Candidate/employer xoá application độc lập khỏi workspace:
+  - Candidate gọi `DELETE /api/v1/applications/:id` -> set `candidateDeletedAt`, `/applications/my` không hiện nữa và quota candidate giảm.
+  - Employer gọi `DELETE /api/v1/applications/:id/employer` -> set `employerDeletedAt`, dashboard employer không hiện nữa.
+  - DB chỉ xoá thật khi cả hai phía đều đã xoá; lúc đó message xoá cascade.
+- Candidate không được hủy/rút trạng thái ứng tuyển để apply lại tùy ý. `GET /applications/check/:jobId` vẫn trả `applied: true` nếu record còn tồn tại; apply lại chỉ được khi record đã xoá vật lý.
+
+### Job edit, deadline và Inngest
+
+- Tạo job không còn chọn "Hạn nộp"; deadline chỉ được set sau checkout bằng số ngày đăng.
+- Employer sửa job đang ACTIVE qua `/employer/jobs/[id]/edit`; FE gọi `PATCH /api/v1/jobs/:id`.
+- Update job chỉ sửa nội dung, invalidate cache và sync embedding; không reset deadline/payment/status, không emit lại `job.activated`.
+- Inngest expiry đã schedule từ lúc thanh toán vẫn chạy theo `jobId` + deadline cũ; tới hạn function đọc lại DB và chỉ đóng job nếu deadline event còn khớp DB.
+- `close-expired-active-jobs` là cron repair chung để đóng job ACTIVE quá hạn nếu event `job.expired` bị miss; không clone job và không xoá job khỏi DB.
 
 ### Module boundary liên quan
 

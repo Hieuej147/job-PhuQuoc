@@ -399,11 +399,11 @@ if (gateway === 'mock' && process.env.NODE_ENV === 'production') {
 
 ## Applications Module
 
-### BE-APP-01 🟡 Medium — Withdrawal không check status
+### BE-APP-01 🟢 Resolved — Application delete hai phía, không rút/hủy ứng tuyển
 
 - **File**: `backend/src/modules/applications/applications.service.ts` dòng 172-178
-- **Mô tả**: Candidate có thể withdraw application ACCEPTED/REJECTED
-- **Fix**: Check `if (app.status !== 'PENDING') throw BadRequestException`
+- **Mô tả**: Flow cũ từng cho candidate withdraw application theo nghĩa hủy đơn.
+- **Fix hiện tại**: Candidate và employer xoá độc lập khỏi workspace bằng `candidateDeletedAt` / `employerDeletedAt`. Candidate delete giải phóng quota nhưng không cho apply lại cùng job nếu employer chưa xoá. DB chỉ xoá vật lý khi cả hai phía đều xoá.
 
 ### BE-APP-02 🟡 Medium — Application có thể nộp không có CV
 

@@ -1,12 +1,25 @@
-import { Injectable, NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+  BadRequestException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { JobContractService } from '../shared/contracts/job.contract';
 import { CompanyContractService } from '../shared/contracts/company.contract';
-import { ApplicationStatus } from '@prisma/client';
+import { ApplicationMessageSenderRole, ApplicationStatus, NotificationType } from '@prisma/client';
 import { CreateApplicationDto, UpdateApplicationStatusDto } from './dto/application.dto';
 import { ApplicationQueryDto } from './dto/application-query.dto';
 import { ApplicationEventsPublisher } from './infrastructure/application-events.publisher';
+import { QuotaService } from '../../common/quota/storage-quota';
+import { CacheService } from '../../common/cache/cache.service';
+
+const APPLICATION_MESSAGE_LIMIT = 100;
+const APPLICATION_MESSAGE_MAX_LENGTH = 2000;
+const CHAT_PRESENCE_TTL_SECONDS = 15;
 
 @Injectable()
 export class ApplicationsService {
@@ -16,6 +29,8 @@ export class ApplicationsService {
     private readonly jobContract: JobContractService,
     private readonly companyContract: CompanyContractService,
     private readonly eventsPublisher: ApplicationEventsPublisher,
+    private readonly quotaService: QuotaService = new QuotaService(),
+    private readonly cache?: CacheService,
   ) {}
 
   async apply(userId: string, data: CreateApplicationDto) {
@@ -27,6 +42,9 @@ export class ApplicationsService {
 
     const existing = await this.prisma.jobApplication.findUnique({ where: { userId_jobId: { userId, jobId: data.jobId } } });
     if (existing) throw new ConflictException('Already applied to this job');
+
+    const usedApplications = await this.prisma.jobApplication.count({ where: { userId, candidateDeletedAt: null } });
+    await this.quotaService.assertWithinForUser(userId, 'candidateApplications', usedApplications);
 
     const application = await this.prisma.jobApplication.create({
       data: { ...data, userId },
@@ -56,11 +74,19 @@ export class ApplicationsService {
     const limit = Number(query.limit) || 10;
     const [items, total] = await Promise.all([
       this.prisma.jobApplication.findMany({
-        where: { userId }, skip: (page - 1) * limit, take: limit,
-        include: { job: { include: { company: { select: { name: true, logo: true } }, ward: { select: { name: true } } } } },
+        where: { userId, candidateDeletedAt: null }, skip: (page - 1) * limit, take: limit,
+        include: {
+          messages: {
+            where: { hiddenForCandidate: false },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { id: true, body: true, senderId: true, senderRole: true, createdAt: true, readAt: true },
+          },
+          job: { include: { company: { select: { name: true, logo: true } }, ward: { select: { name: true } } } },
+        },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.jobApplication.count({ where: { userId } }),
+      this.prisma.jobApplication.count({ where: { userId, candidateDeletedAt: null } }),
     ]);
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
@@ -83,16 +109,22 @@ export class ApplicationsService {
     const limit = Number(query.limit) || 10;
     const [items, total] = await Promise.all([
       this.prisma.jobApplication.findMany({
-        where: { job: { company: { ownerId: employerId } } },
+        where: { job: { company: { ownerId: employerId } }, employerDeletedAt: null },
         skip: (page - 1) * limit, take: limit,
         include: {
           user: { select: { id: true, name: true, email: true, phone: true } },
           job: { select: { id: true, title: true, company: { select: { name: true } } } },
           resume: { select: { id: true, title: true, name: true, email: true, phone: true } },
+          messages: {
+            where: { hiddenForEmployer: false },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { id: true, body: true, senderId: true, senderRole: true, createdAt: true, readAt: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.jobApplication.count({ where: { job: { company: { ownerId: employerId } } } }),
+      this.prisma.jobApplication.count({ where: { job: { company: { ownerId: employerId } }, employerDeletedAt: null } }),
     ]);
     return { data: { items, total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
@@ -109,14 +141,20 @@ export class ApplicationsService {
     const limit = Number(query.limit) || 10;
     const [items, total] = await Promise.all([
       this.prisma.jobApplication.findMany({
-        where: { jobId }, skip: (page - 1) * limit, take: limit,
+        where: { jobId, employerDeletedAt: null }, skip: (page - 1) * limit, take: limit,
         include: {
           user: { select: { id: true, name: true, email: true, phone: true } },
           resume: { select: { id: true, title: true, name: true, email: true, phone: true } },
+          messages: {
+            where: { hiddenForEmployer: false },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { id: true, body: true, senderId: true, senderRole: true, createdAt: true, readAt: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.jobApplication.count({ where: { jobId } }),
+      this.prisma.jobApplication.count({ where: { jobId, employerDeletedAt: null } }),
     ]);
     return { data: { items, total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
@@ -183,7 +221,7 @@ export class ApplicationsService {
     }
   }
 
-  async updateStatus(id: string, userId: string, status: UpdateApplicationStatusDto['status']) {
+  async updateStatus(id: string, userId: string, status: UpdateApplicationStatusDto['status'], employerMessage?: string) {
     const app = await this.prisma.jobApplication.findUnique({
       where: { id },
       include: { job: { include: { company: true } }, user: true },
@@ -204,7 +242,33 @@ export class ApplicationsService {
     }
 
     const oldStatus = app.status;
-    const updated = await this.prisma.jobApplication.update({ where: { id }, data: { status: status as ApplicationStatus } });
+    const now = new Date();
+    const updated = await this.prisma.jobApplication.update({
+      where: { id },
+      data: {
+        status: status as ApplicationStatus,
+        employerMessage: employerMessage?.trim() || null,
+        statusChangedAt: now,
+        ...(status === 'REJECTED'
+          ? {
+              chatClosedAt: now,
+              chatClosedBy: userId,
+              chatCloseReason: 'REJECTED',
+            }
+          : {}),
+      },
+    });
+
+    const messageBody = employerMessage?.trim();
+    if (messageBody) {
+      await this.createApplicationMessage({
+        applicationId: id,
+        userId,
+        body: messageBody,
+        expectedRole: ApplicationMessageSenderRole.EMPLOYER,
+        notifyRecipient: false,
+      });
+    }
 
     if (status === 'ACCEPTED') {
       this.eventsPublisher.applicationAccepted({
@@ -245,7 +309,230 @@ export class ApplicationsService {
     const app = await this.prisma.jobApplication.findUnique({ where: { id } });
     if (!app) throw new NotFoundException('Application not found');
     if (app.userId !== userId) throw new ForbiddenException('Not your application');
-    await this.prisma.jobApplication.delete({ where: { id } });
-    return { message: 'Application withdrawn' };
+    if (app.candidateDeletedAt) return app;
+
+    const updated = await this.prisma.jobApplication.update({
+      where: { id },
+      data: { candidateDeletedAt: new Date() },
+    });
+    await this.deleteApplicationIfBothSidesDeleted(updated.id);
+    return { message: 'Đã xoá đơn ứng tuyển khỏi danh sách của bạn' };
+  }
+
+  async removeForEmployer(id: string, userId: string) {
+    const app = await this.prisma.jobApplication.findUnique({ where: { id }, include: { job: { include: { company: true } } } });
+    if (!app) throw new NotFoundException('Application not found');
+    if (app.job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
+    if (app.employerDeletedAt) return app;
+
+    const updated = await this.prisma.jobApplication.update({
+      where: { id },
+      data: { employerDeletedAt: new Date() },
+    });
+    await this.deleteApplicationIfBothSidesDeleted(updated.id);
+    return { message: 'Đã xoá đơn ứng tuyển khỏi danh sách nhà tuyển dụng' };
+  }
+
+  async findMessages(applicationId: string, userId: string) {
+    const { role } = await this.resolveApplicationChatAccess(applicationId, userId);
+    await this.refreshChatPresence(applicationId, userId);
+    const hiddenField = role === ApplicationMessageSenderRole.CANDIDATE ? 'hiddenForCandidate' : 'hiddenForEmployer';
+
+    const messages = await this.prisma.applicationMessage.findMany({
+      where: { applicationId, [hiddenField]: false },
+      orderBy: { createdAt: 'asc' },
+      include: { sender: { select: { id: true, name: true, image: true } } },
+    });
+
+    return { items: messages, total: messages.length };
+  }
+
+  async sendMessage(applicationId: string, userId: string, body: string) {
+    return this.createApplicationMessage({ applicationId, userId, body });
+  }
+
+  async closeChat(applicationId: string, userId: string) {
+    const { application, role } = await this.resolveApplicationChatAccess(applicationId, userId);
+    if (role !== ApplicationMessageSenderRole.EMPLOYER) {
+      throw new ForbiddenException('Chỉ nhà tuyển dụng được đóng cuộc trò chuyện.');
+    }
+
+    if (application.chatClosedAt) return application;
+
+    const updated = await this.prisma.jobApplication.update({
+      where: { id: applicationId },
+      data: {
+        chatClosedAt: new Date(),
+        chatClosedBy: userId,
+        chatCloseReason: 'EMPLOYER_ARCHIVED',
+      },
+    });
+
+    await this.auditWriteContract.log({
+      action: 'application.chat.closed',
+      entityType: 'Application',
+      entityId: applicationId,
+      actorId: userId,
+      metadata: { reason: 'EMPLOYER_ARCHIVED' },
+    });
+
+    return updated;
+  }
+
+  async markMessagesRead(applicationId: string, userId: string) {
+    const { role } = await this.resolveApplicationChatAccess(applicationId, userId);
+    await this.refreshChatPresence(applicationId, userId);
+    const result = await this.prisma.applicationMessage.updateMany({
+      where: {
+        applicationId,
+        senderId: { not: userId },
+        readAt: null,
+        ...(role === ApplicationMessageSenderRole.CANDIDATE
+          ? { hiddenForCandidate: false }
+          : { hiddenForEmployer: false }),
+      },
+      data: { readAt: new Date() },
+    });
+    return { updated: result.count };
+  }
+
+  private async createApplicationMessage(input: {
+    applicationId: string;
+    userId: string;
+    body: string;
+    expectedRole?: ApplicationMessageSenderRole;
+    notifyRecipient?: boolean;
+  }) {
+    const messageBody = input.body.trim();
+    if (!messageBody) throw new BadRequestException('Nội dung tin nhắn không được để trống.');
+    if (messageBody.length > APPLICATION_MESSAGE_MAX_LENGTH) {
+      throw new BadRequestException(`Tin nhắn tối đa ${APPLICATION_MESSAGE_MAX_LENGTH} ký tự.`);
+    }
+
+    const { application, role } = await this.resolveApplicationChatAccess(input.applicationId, input.userId);
+    if (input.expectedRole && role !== input.expectedRole) {
+      throw new ForbiddenException('Bạn không có quyền gửi loại tin nhắn này.');
+    }
+
+    if (!input.expectedRole) {
+      this.assertApplicationChatCanSend(application);
+    }
+
+    const count = await this.prisma.applicationMessage.count({ where: { applicationId: input.applicationId } });
+    if (count >= APPLICATION_MESSAGE_LIMIT) {
+      throw new UnprocessableEntityException({
+        code: 'QUOTA_EXCEEDED',
+        message: 'Cuộc trò chuyện đã đạt giới hạn tin nhắn.',
+        resource: 'applicationMessages',
+        limit: APPLICATION_MESSAGE_LIMIT,
+        used: count,
+      });
+    }
+
+    const message = await this.prisma.applicationMessage.create({
+      data: {
+        applicationId: input.applicationId,
+        senderId: input.userId,
+        senderRole: role,
+        body: messageBody,
+      },
+      include: { sender: { select: { id: true, name: true, image: true } } },
+    });
+
+    const recipientId =
+      role === ApplicationMessageSenderRole.CANDIDATE
+        ? application.job.company.ownerId
+        : application.userId;
+
+    const shouldNotify =
+      input.notifyRecipient !== false &&
+      recipientId &&
+      recipientId !== input.userId &&
+      !(await this.isChatOpen(input.applicationId, recipientId));
+
+    if (shouldNotify) {
+      await this.prisma.notification.upsert({
+        where: {
+          userId_dedupeKey: {
+            userId: recipientId,
+            dedupeKey: `application.message:${input.applicationId}:${message.id}:${recipientId}`,
+          },
+        },
+        update: {},
+        create: {
+          userId: recipientId,
+          type: NotificationType.SYSTEM,
+          title: 'Bạn có tin nhắn tuyển dụng mới',
+          content:
+            role === ApplicationMessageSenderRole.CANDIDATE
+              ? `${application.user?.name || 'Ứng viên'} đã gửi tin nhắn về vị trí ${application.job.title}.`
+              : `${application.job.company.name} đã gửi tin nhắn về vị trí ${application.job.title}.`,
+          refType: 'application',
+          refId: input.applicationId,
+          dedupeKey: `application.message:${input.applicationId}:${message.id}:${recipientId}`,
+          expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+
+    return message;
+  }
+
+  private chatPresenceKey(applicationId: string, userId: string) {
+    return `application-chat:open:${applicationId}:${userId}`;
+  }
+
+  private async refreshChatPresence(applicationId: string, userId: string) {
+    if (!this.cache) return;
+    await this.cache.set(this.chatPresenceKey(applicationId, userId), true, CHAT_PRESENCE_TTL_SECONDS);
+  }
+
+  private async isChatOpen(applicationId: string, userId: string) {
+    if (!this.cache) return false;
+    return this.cache.has(this.chatPresenceKey(applicationId, userId));
+  }
+
+  private assertApplicationChatCanSend(application: {
+    status: ApplicationStatus;
+    chatClosedAt?: Date | null;
+  }) {
+    if (application.chatClosedAt) {
+      throw new BadRequestException('Cuộc trò chuyện đã đóng.');
+    }
+    if (application.status === ApplicationStatus.REJECTED) {
+      throw new BadRequestException('Hồ sơ đã bị từ chối, cuộc trò chuyện chỉ còn chế độ xem.');
+    }
+    if (application.status !== ApplicationStatus.ACCEPTED) {
+      throw new BadRequestException('Chỉ có thể nhắn tin sau khi hồ sơ được chấp nhận.');
+    }
+  }
+
+  private async resolveApplicationChatAccess(applicationId: string, userId: string) {
+    const application = await this.prisma.jobApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        user: { select: { id: true, name: true } },
+        job: { include: { company: { select: { id: true, name: true, ownerId: true } } } },
+      },
+    });
+
+    if (!application) throw new NotFoundException('Application not found');
+    if (application.userId === userId) {
+      return { application, role: ApplicationMessageSenderRole.CANDIDATE };
+    }
+    if (application.job.company.ownerId === userId) {
+      return { application, role: ApplicationMessageSenderRole.EMPLOYER };
+    }
+    throw new ForbiddenException('Bạn không có quyền truy cập cuộc trò chuyện này.');
+  }
+
+  private async deleteApplicationIfBothSidesDeleted(applicationId: string) {
+    const app = await this.prisma.jobApplication.findUnique({
+      where: { id: applicationId },
+      select: { id: true, candidateDeletedAt: true, employerDeletedAt: true },
+    });
+
+    if (!app?.candidateDeletedAt || !app.employerDeletedAt) return;
+    await this.prisma.jobApplication.delete({ where: { id: applicationId } });
   }
 }

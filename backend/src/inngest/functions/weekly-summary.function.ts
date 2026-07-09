@@ -9,8 +9,8 @@ export function createWeeklySummaryFunction(prisma: PrismaService) {
       const employers = await prisma.user.findMany({
         where: {
           role: 'EMPLOYER',
-          companies: {
-            some: {
+          company: {
+            is: {
               jobs: {
                 some: { status: 'ACTIVE' },
               },
@@ -18,7 +18,7 @@ export function createWeeklySummaryFunction(prisma: PrismaService) {
           },
         },
         include: {
-          companies: {
+          company: {
             include: {
               jobs: {
                 where: { status: 'ACTIVE' },
@@ -32,7 +32,7 @@ export function createWeeklySummaryFunction(prisma: PrismaService) {
       });
 
       for (const employer of employers) {
-        const jobs = employer.companies.flatMap((c) => c.jobs);
+        const jobs = employer.company?.jobs ?? [];
         if (jobs.length === 0) continue;
 
         const summary = jobs

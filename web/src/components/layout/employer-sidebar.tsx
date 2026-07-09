@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEmployerDashboardSummary } from "@/lib/dashboard-api";
+import { useEmployerDashboardSummary } from "@/lib/dashboard-queries";
 
 interface WardData {
   name?: string;
@@ -75,7 +75,6 @@ export function EmployerSidebar() {
 
   const handleLogout = () => {
     fetch("/api/auth/sign-out", { method: "POST", credentials: "include" }).then(() => {
-      sessionStorage.removeItem("savedCompanyIds");
       window.location.href = "/auth/login";
     });
   };

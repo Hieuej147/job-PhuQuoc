@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
-import { useCandidateDashboardSummary } from "@/lib/dashboard-api";
+import { useCandidateDashboardSummary } from "@/lib/dashboard-queries";
 import { computeProfileCompletion } from "@/lib/profile-completion";
 
 export function CandidateSidebar() {
@@ -69,7 +69,6 @@ export function CandidateSidebar() {
   const handleLogout = () => {
     fetch("/api/auth/sign-out", { method: "POST", credentials: "include" })
       .then(() => {
-        sessionStorage.removeItem("savedCompanyIds");
         window.location.href = "/auth/login";
       });
   };

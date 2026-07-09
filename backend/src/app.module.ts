@@ -27,6 +27,7 @@ import { PaymentsModule } from "./modules/payments/payments.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { UploadModule } from "./modules/upload/upload.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
+import { QuotaModule } from "./common/quota/quota.module";
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module";
     AuditModule,
     UploadModule,
     DashboardModule,
+    QuotaModule,
   ],
   providers: [
     {

@@ -30,28 +30,18 @@ export interface JobCardProps {
   job: HomeJobItem;
 }
 
-const savedJobIdsPromiseByUser = new Map<string, Promise<string[]>>();
-
 async function fetchSavedJobIds(userId: string): Promise<string[]> {
-  const cached = savedJobIdsPromiseByUser.get(userId);
-  if (cached) return cached;
-
-  const promise = (async () => {
-    try {
-      const res = await fetch("/api/v1/saved/jobs?limit=100", {
-        credentials: "include",
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      const items = data.data?.items || data.items || [];
-      return items.map((item: any) => item.jobId);
-    } catch {
-      return [];
-    }
-  })();
-
-  savedJobIdsPromiseByUser.set(userId, promise);
-  return promise;
+  try {
+    const res = await fetch("/api/v1/saved/jobs?limit=100", {
+      credentials: "include",
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = data.data?.items || data.items || [];
+    return items.map((item: any) => item.jobId);
+  } catch {
+    return [];
+  }
 }
 
 export default function JobCard({ job }: JobCardProps) {
@@ -90,9 +80,11 @@ export default function JobCard({ job }: JobCardProps) {
         credentials: "include",
       });
       if (saveRes.ok) {
-        setIsSaved(!isSaved);
+        const body = await saveRes.json().catch(() => ({}));
+        const nextSaved = Boolean(body?.data?.saved ?? body?.saved);
+        setIsSaved(nextSaved);
         toast.success(
-          !isSaved ? "Đã lưu công việc thành công!" : "Đã bỏ lưu công việc!",
+          nextSaved ? "Đã lưu công việc thành công!" : "Đã bỏ lưu công việc!",
         );
       } else {
         toast.error("Không thể lưu công việc. Vui lòng thử lại!");

@@ -1,0 +1,4 @@
+ALTER TABLE "job_application"
+ADD COLUMN IF NOT EXISTS "chatClosedAt" TIMESTAMP(3),
+ADD COLUMN IF NOT EXISTS "chatClosedBy" TEXT,
+ADD COLUMN IF NOT EXISTS "chatCloseReason" TEXT;

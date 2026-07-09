@@ -15,7 +15,7 @@ import {
   clearPendingRegisterPassword,
   getPendingRegisterPassword,
   completeEmailRegistration,
-} from "@/lib/auth-registration";
+} from "@/features/auth-register/api";
 
 function VerifyOtpContent() {
   const router = useRouter();

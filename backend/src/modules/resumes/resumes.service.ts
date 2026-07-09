@@ -2,12 +2,14 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../../prisma/prisma.service';
 import { PinoLoggerService } from '../../common/logger/pino-logger.service';
 import { Prisma } from '@prisma/client';
+import { QuotaService } from '../../common/quota/storage-quota';
 
 @Injectable()
 export class ResumesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: PinoLoggerService,
+    private readonly quotaService: QuotaService = new QuotaService(),
   ) {}
 
   // ===== Resume CRUD =====
@@ -105,6 +107,8 @@ export class ResumesService {
     if (!template) throw new NotFoundException('Template not found');
 
     const isDefault = data.isDefault === true;
+    const usedResumes = await this.prisma.candidateResume.count({ where: { userId, isProfile: false } });
+    await this.quotaService.assertWithinForUser(userId, 'candidateResumes', usedResumes);
 
     if (isDefault) {
       await this.prisma.candidateResume.updateMany({
@@ -143,9 +147,16 @@ export class ResumesService {
   }
 
   async remove(id: string, userId: string) {
-    const resume = await this.prisma.candidateResume.findUnique({ where: { id } });
+    const resume = await this.prisma.candidateResume.findUnique({
+      where: { id },
+      include: { _count: { select: { applications: true } } },
+    });
     if (!resume) throw new NotFoundException('Resume not found');
     if (resume.userId !== userId) throw new ForbiddenException('Not your resume');
+    if (resume.isProfile) throw new BadRequestException('Hồ sơ gốc không thể xóa.');
+    if (resume._count.applications > 0) {
+      throw new BadRequestException('CV đã dùng để ứng tuyển nên không thể xóa để giữ lịch sử tuyển dụng.');
+    }
     await this.prisma.candidateResume.delete({ where: { id } });
     return { message: 'Resume deleted' };
   }

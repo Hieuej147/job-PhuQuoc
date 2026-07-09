@@ -12,7 +12,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, CheckCircle2, CreditCard } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle2, CreditCard, Sparkles } from "lucide-react";
 
 interface PricingPackage {
   id: string;
@@ -28,6 +28,8 @@ export default function CheckoutPage() {
 
   const [packages, setPackages] = useState<PricingPackage[]>([]);
   const [selectedPkg, setSelectedPkg] = useState<string | null>(null);
+  const [durationDays, setDurationDays] = useState<number | null>(null);
+  const [boostLevel, setBoostLevel] = useState(0);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export default function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ jobId, packageId: selectedPkg }),
+        body: JSON.stringify({ jobId, packageId: selectedPkg, durationDays: durationDays ?? undefined, boostLevel }),
       });
 
       if (!res.ok) {
@@ -91,6 +93,14 @@ export default function CheckoutPage() {
       setCheckoutLoading(false);
     }
   };
+
+  const selectedPackage = packages.find((pkg) => pkg.id === selectedPkg);
+  const effectiveDays = durationDays || selectedPackage?.days || 0;
+  const listingAmount = selectedPackage && effectiveDays
+    ? Math.round((selectedPackage.price / selectedPackage.days) * effectiveDays)
+    : 0;
+  const boostAmount = boostLevel * 50000 * effectiveDays;
+  const estimatedTotal = listingAmount + boostAmount;
 
   if (loading) {
     return (
@@ -155,6 +165,61 @@ export default function CheckoutPage() {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="size-4 text-amber-500" />
+            Tùy chọn hiển thị thử nghiệm
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-5 md:grid-cols-[1fr_1fr_220px]">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Số ngày đăng</label>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={effectiveDays || ""}
+              onChange={(event) => setDurationDays(Number(event.target.value) || null)}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[#0E7490]/30"
+              placeholder="Chọn gói trước"
+            />
+            <p className="text-xs text-muted-foreground">Demo UI trước, chưa thay đổi ranking trang chủ/jobs.</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Boost/top bài đăng</label>
+            <div className="grid grid-cols-4 gap-2">
+              {[0, 1, 2, 3].map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setBoostLevel(level)}
+                  className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
+                    boostLevel === level
+                      ? "border-[#0E7490] bg-[#0E7490] text-white"
+                      : "border-input bg-background hover:bg-muted"
+                  }`}
+                >
+                  {level === 0 ? "Tắt" : `Top ${level}`}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Option này để xem trước, logic xếp hạng nổi bật làm sau.</p>
+          </div>
+
+          <div className="rounded-lg border bg-muted/40 p-4">
+            <p className="text-xs text-muted-foreground">Ước tính</p>
+            <p className="mt-1 text-2xl font-bold text-[#0E7490]">
+              {estimatedTotal ? `${estimatedTotal.toLocaleString("vi-VN")}đ` : "Chọn gói"}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Đăng {effectiveDays || 0} ngày, boost level {boostLevel}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex justify-end">
         <Button

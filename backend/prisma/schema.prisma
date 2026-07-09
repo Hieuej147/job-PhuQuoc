@@ -58,6 +58,7 @@ enum JobStatus {
   PENDING
   ACTIVE
   CLOSED
+  EXPIRED
 }
 
 enum ApplicationStatus {
@@ -65,6 +66,11 @@ enum ApplicationStatus {
   REVIEWING
   ACCEPTED
   REJECTED
+}
+
+enum ApplicationMessageSenderRole {
+  CANDIDATE
+  EMPLOYER
 }
 
 enum NotificationType {
@@ -82,6 +88,22 @@ enum PaymentStatus {
   COMPLETED
   FAILED
   REFUNDED
+}
+
+enum CandidateQuotaPlan {
+  CANDIDATE_FREE
+  CANDIDATE_PLUS
+}
+
+enum EmployerQuotaPlan {
+  EMPLOYER_BASIC
+  EMPLOYER_PRO
+}
+
+enum JobCloseReason {
+  EXPIRED
+  EMPLOYER_CLOSED
+  ADMIN_CLOSED
 }
 
 enum BlogType {
@@ -109,15 +131,35 @@ model user {
 
   accounts             account[]
   sessions             session[]
-  companies            Company[]
+  company              Company?
   applications         JobApplication[]
   resumes              CandidateResume[]
   templates            ResumeTemplate[]
   notifications        Notification[]
+  applicationMessages  ApplicationMessage[]
   savedJobs            SavedJob[]
   savedCompanies       SavedCompany[]
   blogs                BlogPost[]
   payments             Payment[]
+  quotaPlan            UserQuotaPlan?
+  quotaPurchases       QuotaPurchase[]
+}
+
+model UserQuotaPlan {
+  id            String             @id @default(cuid())
+  userId        String             @unique
+  candidatePlan CandidateQuotaPlan @default(CANDIDATE_FREE)
+  employerPlan  EmployerQuotaPlan  @default(EMPLOYER_BASIC)
+  candidatePlanExpiresAt DateTime?
+  employerPlanExpiresAt  DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([candidatePlan])
+  @@index([employerPlan])
+  @@map("user_quota_plan")
 }
 
 model account {
@@ -251,7 +293,7 @@ model Company {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  owner user?       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner user        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ward  AddressWard? @relation(fields: [wardId], references: [id], onDelete: SetNull)
   jobs  Job[]
   savedCompanies SavedCompany[]
@@ -282,6 +324,14 @@ model Job {
   level          JobLevel?
   status         JobStatus      @default(DRAFT)
   deadline       DateTime?
+  publishedAt    DateTime?
+  closedAt       DateTime?
+  closeReason    JobCloseReason?
+  durationDays   Int?
+  boostLevel     Int            @default(0)
+  featuredUntil  DateTime?
+  activationId   String?
+  currentPaymentId String?
   categoryId     String
   companyId      String
   createdAt      DateTime       @default(now())
@@ -298,6 +348,8 @@ model Job {
   @@index([categoryId])
   @@index([companyId])
   @@index([status])
+  @@index([status, deadline])
+  @@index([featuredUntil, boostLevel])
   @@index([wardId])
   @@map("job")
 }
@@ -323,6 +375,13 @@ model JobApplication {
   resumeId    String?
   coverLetter String?
   status      ApplicationStatus @default(PENDING)
+  employerMessage String?
+  statusChangedAt DateTime?
+  chatClosedAt DateTime?
+  chatClosedBy String?
+  chatCloseReason String?
+  candidateDeletedAt DateTime?
+  employerDeletedAt DateTime?
   isBookmarked Boolean          @default(false)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -330,11 +389,33 @@ model JobApplication {
   user   user?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   job    Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
   resume CandidateResume? @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  messages ApplicationMessage[]
 
   @@unique([userId, jobId])
   @@index([userId])
   @@index([jobId])
+  @@index([userId, candidateDeletedAt])
+  @@index([jobId, employerDeletedAt])
   @@map("job_application")
+}
+
+model ApplicationMessage {
+  id                 String                       @id @default(cuid())
+  applicationId      String
+  senderId           String
+  senderRole         ApplicationMessageSenderRole
+  body               String
+  readAt             DateTime?
+  hiddenForCandidate Boolean                      @default(false)
+  hiddenForEmployer  Boolean                      @default(false)
+  createdAt          DateTime                     @default(now())
+
+  application JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  sender      user           @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
+  @@index([senderId, createdAt])
+  @@map("application_message")
 }
 
 // ============================================================
@@ -370,6 +451,7 @@ model CandidateResume {
   applications JobApplication[]
 
   @@index([userId])
+  @@index([userId, isProfile])
   @@map("candidate_resume")
 }
 
@@ -514,6 +596,11 @@ model Payment {
   jobId       String
   packageId   String
   amount      Int
+  listingAmount Int?
+  boostAmount Int       @default(0)
+  durationDays Int?
+  boostLevel  Int       @default(0)
+  activationId String?
   status      PaymentStatus @default(PENDING)
   gateway     String        @default("mock")
   gatewayRef  String?
@@ -528,6 +615,50 @@ model Payment {
   @@index([jobId])
   @@index([gatewayRef])
   @@map("payment")
+}
+
+// ============================================================
+// Quota Packages & Purchases
+// ============================================================
+
+model QuotaPackage {
+  id             String   @id @default(cuid())
+  name           String
+  targetPlan     String
+  durationMonths Int
+  price          Int
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  purchases      QuotaPurchase[]
+
+  @@index([targetPlan])
+  @@index([isActive])
+  @@map("quota_package")
+}
+
+model QuotaPurchase {
+  id             String        @id @default(cuid())
+  userId         String
+  packageId      String
+  targetPlan     String
+  amount         Int
+  durationMonths Int
+  status         PaymentStatus @default(PENDING)
+  gateway        String        @default("mock")
+  gatewayRef     String?       @unique
+  startsAt       DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime      @default(now())
+  completedAt    DateTime?
+
+  user    user         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  package QuotaPackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([packageId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("quota_purchase")
 }
 
 // ============================================================

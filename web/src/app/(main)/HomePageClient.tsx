@@ -6,15 +6,7 @@ import HomeCategories from "@/components/home/HomeCategories";
 import HomeFeaturedJobs from "@/components/home/HomeFeaturedJobs";
 import HomeWhyChoose from "@/components/home/HomeWhyChoose";
 import HomeBlogs from "@/components/home/HomeBlogs";
-
-const TYPE_MAP: Record<string, string> = {
-  FULL_TIME: "Full-time",
-  PART_TIME: "Part-time",
-  REMOTE: "Remote",
-  CONTRACT: "Hợp đồng",
-  INTERNSHIP: "Thực tập",
-  FREELANCE: "Freelance",
-};
+import { formatSalary, jobTypeLabel } from "@/lib/utils/format";
 
 const EXP_MAP: Record<string, string> = {
   NO_EXPERIENCE: "Không KN",
@@ -23,14 +15,6 @@ const EXP_MAP: Record<string, string> = {
   THREE_TO_FIVE_YEARS: "3-5 năm",
   OVER_FIVE_YEARS: ">5 năm",
 };
-
-function formatSalary(min?: number | null, max?: number | null): string {
-  if (!min && !max) return "Thỏa thuận";
-  const fmt = (n: number) => `${(n / 1000000).toFixed(0)}tr`;
-  if (min && max) return `${fmt(min)}-${fmt(max)}`;
-  if (min) return `Từ ${fmt(min)}`;
-  return `Đến ${fmt(max!)}`;
-}
 
 interface CategoryItem {
   id: string;
@@ -153,12 +137,12 @@ export default function HomePageClient({
           location: j.ward?.name
             ? `${j.ward.name}, Phú Quốc`
             : j.addressDetail || "Phú Quốc",
-          uiTagText: TYPE_MAP[j.type] || j.type || "Full-time",
+          uiTagText: jobTypeLabel(j.type) || "Full-time",
           uiTagStyle:
             "bg-[#0D9488]/10 text-[#0D9488] dark:bg-[#0D9488]/20 dark:text-[#2DD4BF]",
           uiLogoBg: "bg-[#0E7490]",
           labels: [
-            TYPE_MAP[j.type] || j.type,
+            jobTypeLabel(j.type),
             formatSalary(j.salaryMin, j.salaryMax),
             EXP_MAP[j.experience || ""] || "",
           ],

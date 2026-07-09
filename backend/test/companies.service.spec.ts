@@ -101,11 +101,21 @@ describe('CompaniesService', () => {
   describe('create', () => {
     it('should create company with auto-generated slug', async () => {
       const mockCompany = { id: '1', name: 'Test Company', slug: 'test-company-abc123' };
+      prismaMock.company.findUnique.mockResolvedValue(null);
       prismaMock.company.create.mockResolvedValue(mockCompany);
 
       const result = await service.create('user1', { name: 'Test Company' });
       expect(result.name).toBe('Test Company');
       expect(result.slug).toMatch(/^test-company-/);
+    });
+
+    it('should reject creating a second company for the same employer', async () => {
+      prismaMock.company.findUnique.mockResolvedValue({ id: 'company-1' });
+
+      await expect(service.create('user1', { name: 'Another Company' })).rejects.toThrow(
+        'Employer already has a company',
+      );
+      expect(prismaMock.company.create).not.toHaveBeenCalled();
     });
   });
 

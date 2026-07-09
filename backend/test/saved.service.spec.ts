@@ -77,6 +77,22 @@ describe('SavedService', () => {
       expect(result).toEqual({ saved: false });
     });
 
+    it('should remove a saved job by job id for compatibility', async () => {
+      const existing = { id: 'saved1', userId: 'user1', jobId: 'job1' };
+      prismaMock.savedJob.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(existing);
+      prismaMock.savedJob.delete.mockResolvedValue(existing);
+
+      const result = await service.removeSavedJob('user1', 'job1');
+
+      expect(prismaMock.savedJob.findUnique).toHaveBeenLastCalledWith({
+        where: { userId_jobId: { userId: 'user1', jobId: 'job1' } },
+      });
+      expect(prismaMock.savedJob.delete).toHaveBeenCalledWith({ where: { id: 'saved1' } });
+      expect(result).toEqual({ saved: false });
+    });
+
     it('should reject removing another user saved job', async () => {
       prismaMock.savedJob.findUnique.mockResolvedValue({ id: 'saved1', userId: 'user2', jobId: 'job1' });
 
@@ -127,6 +143,22 @@ describe('SavedService', () => {
 
       const result = await service.removeSavedCompany('user1', 'saved-company1');
 
+      expect(prismaMock.savedCompany.delete).toHaveBeenCalledWith({ where: { id: 'saved-company1' } });
+      expect(result).toEqual({ saved: false });
+    });
+
+    it('should remove a saved company by company id for compatibility', async () => {
+      const existing = { id: 'saved-company1', userId: 'user1', companyId: 'company1' };
+      prismaMock.savedCompany.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(existing);
+      prismaMock.savedCompany.delete.mockResolvedValue(existing);
+
+      const result = await service.removeSavedCompany('user1', 'company1');
+
+      expect(prismaMock.savedCompany.findUnique).toHaveBeenLastCalledWith({
+        where: { userId_companyId: { userId: 'user1', companyId: 'company1' } },
+      });
       expect(prismaMock.savedCompany.delete).toHaveBeenCalledWith({ where: { id: 'saved-company1' } });
       expect(result).toEqual({ saved: false });
     });

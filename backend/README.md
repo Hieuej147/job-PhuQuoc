@@ -856,7 +856,8 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | GET | /api/v1/jobs/my | EMPLOYER | Jobs của employer (tất cả status) |
 | GET | /api/v1/jobs/:id | PUBLIC | Chi tiết |
 | POST | /api/v1/jobs | EMPLOYER | Tạo job (status: DRAFT) |
-| PATCH | /api/v1/jobs/:id | OWNER | Cập nhật |
+| PATCH | /api/v1/jobs/:id | OWNER | Cập nhật nội dung. Nếu job ACTIVE thì không reset payment/deadline/Inngest expiry |
+| PATCH | /api/v1/jobs/:id/close | OWNER | Đóng tin sớm, public ẩn nhưng dashboard giữ lịch sử |
 | DELETE | /api/v1/jobs/:id | ADMIN | Xóa |
 
 ### Applications
@@ -871,7 +872,8 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | GET | /api/v1/applications/:id/resume | EMPLOYER | Lấy CV theo application ownership |
 | GET | /api/v1/applications/:id/resume-file | EMPLOYER | Stream PDF upload inline qua backend proxy |
 | PATCH | /api/v1/applications/:id/bookmark | EMPLOYER | Toggle bookmark |
-| DELETE | /api/v1/applications/:id | CANDIDATE | Rút đơn |
+| DELETE | /api/v1/applications/:id | CANDIDATE | Xoá khỏi workspace candidate, không hủy trạng thái ứng tuyển |
+| DELETE | /api/v1/applications/:id/employer | EMPLOYER | Xoá khỏi workspace employer |
 
 ### Resumes
 
@@ -1001,15 +1003,16 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | Event | Trigger | Handler |
 |-------|---------|---------|
 | application.created | Candidate nộp CV | Notification cho employer |
-| application.accepted | Employer chấp nhận | Notification cho candidate + schedule cleanup 30 ngày |
-| application.rejected | Employer từ chối | Notification cho candidate + schedule cleanup 14 ngày |
+| application.accepted | Employer chấp nhận | Notification cho candidate |
+| application.rejected | Employer từ chối | Notification cho candidate |
 | user.registered | User đăng ký | Welcome notification |
 | job.activated | Payment thành công | Notification + schedule expiry |
 | job.expiring-soon | 3 ngày trước deadline | Notify users đã lưu job |
 | job.expired | Đến deadline | Đóng job + notify owner |
+| quota.plan.activated | Mock quota purchase hoàn tất | Schedule quota downgrade theo `expiresAt` |
 | weekly-employer-summary | Cron Thu+Sat 9AM | Tổng hợp CV cho employer |
 
-### Functions (11)
+### Functions (13)
 
 | Function ID | Trigger | Hành động |
 |-------------|---------|-----------|
@@ -1018,12 +1021,22 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | on-application-created | application.created | APPLICATION_RECEIVED notification |
 | on-application-accepted | application.accepted | APPLICATION_ACCEPTED notification |
 | on-application-rejected | application.rejected | APPLICATION_REJECTED notification |
-| cleanup-accepted-application | application.accepted | Xoá application sau 30 ngày nếu vẫn ACCEPTED |
-| cleanup-rejected-application | application.rejected | Xoá application sau 14 ngày nếu vẫn REJECTED |
 | schedule-job-expiry | job.activated | Schedule job.expiring-soon + job.expired |
 | on-job-expiring-soon | job.expiring-soon | Notify saved-job users |
 | on-job-expired | job.expired | Close job + notify owner |
+| close-expired-active-jobs | Cron repair | Quét job ACTIVE quá deadline và đóng lại nếu event deadline bị miss |
+| quota-plan-expiry | quota.plan.activated | Đợi tới expiry rồi downgrade nếu plan vẫn còn đúng hạn đó |
+| repair-expired-quota-plans | Cron repair | Downgrade quota đã hết hạn nếu event bị miss |
+| cleanup-notifications | Cron 0 3 * * * | Xoá notification hết hạn hoặc đã đọc quá 90 ngày |
 | weekly-employer-summary | Cron 0 9 * * 4,6 | Summary notifications |
+
+### Job Edit vs Inngest Expiry
+
+- Employer sửa job ACTIVE qua `PATCH /api/v1/jobs/:id` chỉ cập nhật content fields trong DB, invalidate Redis cache và sync embedding.
+- API update job luôn bỏ qua `deadline`; deadline chỉ sinh từ checkout duration khi payment complete.
+- Edit job không emit lại `job.activated`, không tạo payment mới, không clone job và không restart Inngest expiry.
+- Event `job.expired` đã schedule từ lúc thanh toán vẫn dùng `jobId` để đọc lại DB. Function chỉ đóng job nếu job vẫn `ACTIVE` và deadline trong event còn khớp deadline hiện tại.
+- `close-expired-active-jobs` là cron repair chung, không thuộc riêng job nào; nó chỉ đóng các job ACTIVE đã quá deadline nếu còn sót.
 
 ---
 

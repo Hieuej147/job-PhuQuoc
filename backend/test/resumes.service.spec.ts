@@ -14,6 +14,7 @@ describe('ResumesService', () => {
         create: vi.fn(),
         update: vi.fn(),
         updateMany: vi.fn(),
+        count: vi.fn(),
         delete: vi.fn(),
       },
       resumeTemplate: {
@@ -81,6 +82,7 @@ describe('ResumesService', () => {
       
       prismaMock.resumeTemplate.findFirst.mockResolvedValue(mockTemplate);
       prismaMock.resumeTemplate.findUnique.mockResolvedValue(mockTemplate);
+      prismaMock.candidateResume.count.mockResolvedValue(0);
       prismaMock.candidateResume.create.mockResolvedValue(mockResume);
 
       const result = await service.create('user1', { title: 'My Resume' });
@@ -91,6 +93,7 @@ describe('ResumesService', () => {
       const mockTemplate = { id: 'custom-template', name: 'Custom' };
       const mockResume = { id: '1', title: 'My Resume', templateId: 'custom-template' };
       prismaMock.resumeTemplate.findUnique.mockResolvedValue(mockTemplate);
+      prismaMock.candidateResume.count.mockResolvedValue(0);
       prismaMock.candidateResume.create.mockResolvedValue(mockResume);
 
       const result = await service.create('user1', { title: 'My Resume', templateId: 'custom-template' });
@@ -130,7 +133,7 @@ describe('ResumesService', () => {
 
   describe('remove', () => {
     it('should delete resume when owner', async () => {
-      const mockResume = { id: '1', userId: 'user1' };
+      const mockResume = { id: '1', userId: 'user1', isProfile: false, _count: { applications: 0 } };
       prismaMock.candidateResume.findUnique.mockResolvedValue(mockResume);
       prismaMock.candidateResume.delete.mockResolvedValue(mockResume);
 
@@ -145,10 +148,18 @@ describe('ResumesService', () => {
     });
 
     it('should throw ForbiddenException when not owner', async () => {
-      const mockResume = { id: '1', userId: 'user1' };
+      const mockResume = { id: '1', userId: 'user1', isProfile: false, _count: { applications: 0 } };
       prismaMock.candidateResume.findUnique.mockResolvedValue(mockResume);
 
       await expect(service.remove('1', 'user2')).rejects.toThrow('Not your resume');
+    });
+
+    it('should reject deleting resume used in applications', async () => {
+      const mockResume = { id: '1', userId: 'user1', isProfile: false, _count: { applications: 1 } };
+      prismaMock.candidateResume.findUnique.mockResolvedValue(mockResume);
+
+      await expect(service.remove('1', 'user1')).rejects.toThrow('đã dùng để ứng tuyển');
+      expect(prismaMock.candidateResume.delete).not.toHaveBeenCalled();
     });
   });
 

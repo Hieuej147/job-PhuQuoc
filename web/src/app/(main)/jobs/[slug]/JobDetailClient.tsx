@@ -11,6 +11,8 @@ import { Briefcase, Loader2, X, CheckCircle2 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
+import { unwrapApiPayload } from "@/lib/api-client";
+import { companyInitials, formatSalary, jobTypeLabel } from "@/lib/utils/format";
 
 import JobDetailHero from "@/components/jobs/JobDetailHero";
 import {
@@ -64,6 +66,7 @@ interface JobData {
     district?: { id: string; name: string; slug: string; province?: { name: string } | null } | null;
   } | null;
   applications?: { id: string }[];
+  _count?: { applications?: number };
 }
 
 interface RelatedJob {
@@ -98,19 +101,6 @@ function extractResumeList(payload: any): any[] {
   return list.filter((resume: any) => resume?.id && resume?.title !== "PROFILE_MASTER");
 }
 
-function unwrapPayload<T = any>(payload: any): T {
-  return payload?.data?.data ?? payload?.data ?? payload;
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  FULL_TIME: "Full-time",
-  PART_TIME: "Part-time",
-  REMOTE: "Remote",
-  CONTRACT: "Hợp đồng",
-  INTERNSHIP: "Thực tập",
-  FREELANCE: "Freelance",
-};
-
 const EXP_LABELS: Record<string, string> = {
   NO_EXPERIENCE: "Không yêu cầu",
   UNDER_1_YEAR: "Dưới 1 năm",
@@ -130,14 +120,6 @@ const LEVEL_LABELS: Record<string, string> = {
   DIRECTOR: "Director",
 };
 
-function formatSalary(min?: number | null, max?: number | null): string {
-  if (!min && !max) return "Thỏa thuận";
-  const fmt = (n: number) => (n / 1000000).toFixed(0) + " triệu";
-  if (min && max) return `${fmt(min)} - ${fmt(max)}`;
-  if (min) return `Từ ${fmt(min)}`;
-  return `Đến ${fmt(max!)}`;
-}
-
 function getLocation(job: JobData): string {
   if (job.ward) {
     const parts = [job.ward.name];
@@ -146,16 +128,6 @@ function getLocation(job: JobData): string {
     return parts.join(", ");
   }
   return job.addressDetail || "Phú Quốc, Kiên Giang";
-}
-
-function getCompanyInitials(name: string): string {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 }
 
 export default function JobDetailClient({ job, relatedJobs }: JobDetailClientProps) {
@@ -189,7 +161,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         const resApp = await fetch(`/api/v1/applications/check/${job.id}`, { credentials: "include" });
         if (resApp.ok) {
           const dataApp = await resApp.json();
-          const appliedState = unwrapPayload<{ applied?: boolean }>(dataApp);
+          const appliedState = unwrapApiPayload<{ applied?: boolean }>(dataApp);
           if (active) {
             setIsApplied(Boolean(appliedState?.applied));
           }
@@ -231,10 +203,10 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
 
   const salary = formatSalary(job.salaryMin, job.salaryMax);
   const location = getLocation(job);
-  const companyInitials = getCompanyInitials(job.company.name);
+  const companyInitialsText = companyInitials(job.company.name);
 
   const overviewItems: OverviewItem[] = [
-    { icon: "work", iconColor: "text-[#005a71]", bgColor: "bg-[#005a71]/10", label: "Loại hình", value: TYPE_LABELS[job.type] || job.type },
+    { icon: "work", iconColor: "text-[#005a71]", bgColor: "bg-[#005a71]/10", label: "Loại hình", value: jobTypeLabel(job.type) },
     { icon: "payments", iconColor: "text-[#0d9488]", bgColor: "bg-[#0d9488]/10", label: "Mức lương", value: salary },
     { icon: "timeline", iconColor: "text-[#D97706]", bgColor: "bg-[#F59E0B]/10", label: "Kinh nghiệm", value: EXP_LABELS[job.experience || ""] || "Không yêu cầu" },
     { icon: "leaderboard", iconColor: "text-[#8b5cf6]", bgColor: "bg-[#8b5cf6]/10", label: "Cấp bậc", value: LEVEL_LABELS[job.level || ""] || "Chưa cập nhật" },
@@ -249,19 +221,19 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
     ...job,
     company: job.company.name,
     companyLogo: job.company.logo,
-    contractType: TYPE_LABELS[job.type] || job.type,
+    contractType: jobTypeLabel(job.type),
     salary,
     experience: EXP_LABELS[job.experience || ""] || "Không yêu cầu",
     level: LEVEL_LABELS[job.level || ""] || "",
     location,
-    companyInitials,
+    companyInitials: companyInitialsText,
     logoColor: "#0E7490",
     textColor: "#ffffff",
     isFeatured: false,
     isUrgent: false,
     daysLeft,
     postedDate: job.createdAt,
-    tags: [TYPE_LABELS[job.type] || job.type, salary, EXP_LABELS[job.experience || ""] || ""],
+    tags: [jobTypeLabel(job.type), salary, EXP_LABELS[job.experience || ""] || ""],
     startDate: job.createdAt,
     totalSlots: job.quantity || 1,
     companySize: job.company.size || "",
@@ -269,7 +241,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
     companyIndustry: job.company.industry || "",
     companyAddress: location,
     views: 0,
-    applicants: job.applications?.length || 0,
+    applicants: job._count?.applications ?? job.applications?.length ?? 0,
     industry: job.company.industry || "",
     required: job.requirements ? [job.requirements] : [],
     preferred: [],
@@ -282,10 +254,10 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
     id: r.id,
     slug: r.slug,
     logoTextColor: "#ffffff",
-    companyInitials: getCompanyInitials(r.company.name),
+    companyInitials: companyInitials(r.company.name),
     title: r.title,
     company: r.company.name,
-    contractType: TYPE_LABELS[r.type] || r.type,
+    contractType: jobTypeLabel(r.type),
     salary: formatSalary(r.salaryMin, r.salaryMax),
     location: r.ward?.name || "Phú Quốc",
   }));

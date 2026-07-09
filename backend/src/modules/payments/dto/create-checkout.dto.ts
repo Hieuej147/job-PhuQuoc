@@ -1,4 +1,5 @@
-import { IsString } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateCheckoutDto {
   @IsString()
@@ -6,4 +7,18 @@ export class CreateCheckoutDto {
 
   @IsString()
   packageId: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  durationDays?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(3)
+  boostLevel?: number;
 }
