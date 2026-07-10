@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { organizationJsonLd, webSiteJsonLd } from "@/lib/structured-data";
+import { organizationJsonLd, webSiteJsonLd } from "@/features/seo/structured-data";
 import HomePageClient from "./HomePageClient";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";

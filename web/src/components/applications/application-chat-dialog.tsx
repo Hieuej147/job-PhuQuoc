@@ -22,6 +22,7 @@ import {
   useMarkApplicationMessagesRead,
   useSendApplicationMessage,
 } from "@/features/applications/hooks/use-application-chat";
+import { useApplicationChatRealtime } from "@/features/realtime/use-application-chat-realtime";
 
 interface ApplicationChatDialogProps {
   open: boolean;
@@ -59,6 +60,7 @@ export function ApplicationChatDialog({
   const markReadMutation = useMarkApplicationMessagesRead(applicationId);
   const sendMessageMutation = useSendApplicationMessage(applicationId, currentRole);
   const messages = messagesQuery.data ?? [];
+  useApplicationChatRealtime(applicationId, open);
 
   const readonlyMessage = useMemo(() => {
     if (readOnlyReason) return readOnlyReason;
@@ -130,6 +132,13 @@ export function ApplicationChatDialog({
     }
   };
 
+  const handleDraftKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    if (!canSend || sending) return;
+    handleSend();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -189,6 +198,7 @@ export function ApplicationChatDialog({
               <Textarea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={handleDraftKeyDown}
                 placeholder="Nhập tin nhắn ngắn về lịch phỏng vấn hoặc thông tin bổ sung..."
                 maxLength={2000}
                 rows={3}

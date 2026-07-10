@@ -10,6 +10,7 @@ import { createJobExpiryFunctions } from "./functions/job-expiry.function";
 import { createUserFunctions } from "./functions/user.functions";
 import { createNotificationCleanupFunction } from "./functions/notification-cleanup.function";
 import { createQuotaPlanExpiryFunctions } from "./functions/quota-plan-expiry.function";
+import { RealtimeService } from "../realtime/realtime.service";
 import type { Request, Response } from "express";
 
 @Controller("inngest")
@@ -20,6 +21,7 @@ export class InngestController implements OnModuleInit {
     private readonly inngestService: InngestService,
     private readonly prisma: PrismaService,
     private readonly logger: PinoLoggerService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async onModuleInit() {
@@ -27,12 +29,12 @@ export class InngestController implements OnModuleInit {
       const client = this.inngestService.getClient();
 
       const functions = [
-        ...createNotificationFunctions(this.prisma),
-        ...createJobExpiryFunctions(this.prisma),
-        ...createUserFunctions(this.prisma),
+        ...createNotificationFunctions(this.prisma, this.realtime),
+        ...createJobExpiryFunctions(this.prisma, this.realtime),
+        ...createUserFunctions(this.prisma, this.realtime),
         ...createQuotaPlanExpiryFunctions(this.prisma),
         createNotificationCleanupFunction(this.prisma),
-        createWeeklySummaryFunction(this.prisma),
+        createWeeklySummaryFunction(this.prisma, this.realtime),
       ];
 
       this.handler = serve({

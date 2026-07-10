@@ -30,9 +30,13 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Sheet, SheetTrigger, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { getNotificationHref } from "@/lib/notifications";
-import { useQueryClient } from "@tanstack/react-query";
-import { useRecentNotifications, useUnreadNotifications } from "@/lib/dashboard-queries";
+import { getNotificationHref } from "@/features/notifications/utils";
+import {
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useRecentNotifications,
+  useUnreadNotifications,
+} from "@/features/notifications/queries";
 import { timeAgo } from "@/lib/utils/date";
 
 interface Notification {
@@ -52,15 +56,22 @@ export default function Header() {
   const pathname = usePathname();
   const { user: profile } = useAuth();
   const { setTheme } = useTheme();
-  const queryClient = useQueryClient();
-  const { data: unreadData } = useUnreadNotifications(!!profile);
-  const { data: recentNotifications } = useRecentNotifications(!!profile && notificationsOpen, 5);
+  const { data: unreadData, refetch: refetchUnread } = useUnreadNotifications(!!profile);
+  const { data: recentNotifications, refetch: refetchRecent } = useRecentNotifications(!!profile && notificationsOpen, 5);
+  const markNotificationRead = useMarkNotificationRead();
+  const markAllNotificationsRead = useMarkAllNotificationsRead();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    if (!notificationsOpen || !profile) return;
+    void refetchUnread();
+    void refetchRecent();
+  }, [notificationsOpen, profile, refetchRecent, refetchUnread]);
 
   const isLoggedIn = !!profile;
   const notifications = recentNotifications?.items || [];
@@ -101,18 +112,6 @@ export default function Header() {
   const role = profile?.role || "CANDIDATE";
   const dashboardLink = role === "EMPLOYER" ? "/employer/dashboard" : "/candidate/dashboard";
   const notificationsHref = role === "EMPLOYER" ? "/employer/notifications" : "/candidate/notifications";
-
-  const markNotificationRead = (id: string) => {
-    queryClient.setQueryData(["notifications", "unread-count"], (current: { count: number } | undefined) => ({
-      count: Math.max((current?.count || 0) - 1, 0),
-    }));
-    fetch(`/api/v1/notifications/${id}/read`, { method: "PATCH", credentials: "include" })
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ["notifications"] });
-        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      })
-      .catch(() => { });
-  };
 
   const userMenuItems = role === "EMPLOYER"
     ? [
@@ -209,7 +208,12 @@ export default function Header() {
                         <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px]">Thông báo</h3>
                         <p className="text-[13px] text-slate-500 mt-0.5">{unreadCount} chưa đọc</p>
                       </div>
-                      <button className="text-[13px] font-semibold text-[#005a71] dark:text-[#67e8f9] hover:underline">
+                      <button
+                        type="button"
+                        disabled={unreadCount === 0 || markAllNotificationsRead.isPending}
+                        onClick={() => markAllNotificationsRead.mutate()}
+                        className="text-[13px] font-semibold text-[#005a71] dark:text-[#67e8f9] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                      >
                         Đọc tất cả
                       </button>
                     </div>
@@ -227,7 +231,9 @@ export default function Header() {
                               <Link
                                 key={noti.id}
                                 href={href}
-                                onClick={() => !noti.isRead && markNotificationRead(noti.id)}
+                                onClick={() => {
+                                  if (!noti.isRead) markNotificationRead.mutate(noti.id);
+                                }}
                                 className="relative flex items-start gap-4 p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800/50 last:border-0 cursor-pointer"
                               >
                                 {/* Icon */}

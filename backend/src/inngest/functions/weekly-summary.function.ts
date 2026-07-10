@@ -1,8 +1,9 @@
 import { inngest } from '../client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { createNotificationInboxItem } from './notification-inbox.helper';
+import type { RealtimeService } from '../../realtime/realtime.service';
 
-export function createWeeklySummaryFunction(prisma: PrismaService) {
+export function createWeeklySummaryFunction(prisma: PrismaService, realtime?: RealtimeService) {
   return inngest.createFunction(
     { id: 'weekly-employer-summary', triggers: [{ cron: '0 9 * * 4,6' }] },
     async () => {
@@ -49,7 +50,7 @@ export function createWeeklySummaryFunction(prisma: PrismaService) {
           refType: null,
           dedupeKey: `weekly-employer-summary:${week}:${employer.id}`,
           expiresInDays: 90,
-        });
+        }, realtime);
       }
     },
   );

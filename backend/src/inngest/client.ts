@@ -6,16 +6,17 @@ import { createJobExpiryFunctions } from './functions/job-expiry.function';
 import { createUserFunctions } from './functions/user.functions';
 import { createNotificationCleanupFunction } from './functions/notification-cleanup.function';
 import { createQuotaPlanExpiryFunctions } from './functions/quota-plan-expiry.function';
+import type { RealtimeService } from '../realtime/realtime.service';
 
 export const inngest = new Inngest({ id: 'phuquoc-jobs' });
 
-export function createAllFunctions(prisma: PrismaService) {
+export function createAllFunctions(prisma: PrismaService, realtime?: RealtimeService) {
   return [
-    ...createNotificationFunctions(prisma),
-    ...createJobExpiryFunctions(prisma),
-    ...createUserFunctions(prisma),
+    ...createNotificationFunctions(prisma, realtime),
+    ...createJobExpiryFunctions(prisma, realtime),
+    ...createUserFunctions(prisma, realtime),
     ...createQuotaPlanExpiryFunctions(prisma),
     createNotificationCleanupFunction(prisma),
-    createWeeklySummaryFunction(prisma),
+    createWeeklySummaryFunction(prisma, realtime),
   ];
 }

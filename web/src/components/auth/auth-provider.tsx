@@ -49,6 +49,12 @@ export function AuthProvider({
     refresh();
   }, [initialUser, refresh]);
 
+  useEffect(() => {
+    if (initialUser === undefined) return;
+    setUser(initialUser);
+    setIsLoading(false);
+  }, [initialUser]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import CompanyDetailClient from "./CompanyDetailClient"
-import { organizationJsonLd, breadcrumbJsonLd } from "@/lib/structured-data"
+import { organizationJsonLd, breadcrumbJsonLd } from "@/features/seo/structured-data"
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000"
 

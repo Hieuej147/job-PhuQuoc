@@ -40,21 +40,35 @@ function getErrorDetails(body: any) {
 }
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(path, {
-    ...options,
-    credentials: options.credentials ?? "include",
-    headers:
-      options.body && !(options.body instanceof FormData)
-        ? { "Content-Type": "application/json", ...options.headers }
-        : options.headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      ...options,
+      credentials: options.credentials ?? "include",
+      headers:
+        options.body && !(options.body instanceof FormData)
+          ? { "Content-Type": "application/json", ...options.headers }
+          : options.headers,
+    });
+  } catch {
+    throw new ApiError("Không kết nối được máy chủ, vui lòng thử lại.", {
+      status: 503,
+      code: "NETWORK_ERROR",
+    });
+  }
+
   const body = await parseJson(response);
 
   if (!response.ok) {
-    throw new ApiError(getErrorMessage(body, `Request failed: ${response.status}`), {
+    const message =
+      response.status >= 500
+        ? "Máy chủ đang gặp sự cố, vui lòng thử lại."
+        : getErrorMessage(body, `Request failed: ${response.status}`);
+
+    throw new ApiError(message, {
       status: response.status,
       code: getErrorCode(body),
-      details: getErrorDetails(body),
+      details: response.status >= 500 ? undefined : getErrorDetails(body),
     });
   }
 

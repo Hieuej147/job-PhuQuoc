@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { RealtimeProvider } from "@/features/realtime/realtime-provider";
 import type { AuthUser } from "@/lib/auth";
 
 export function Providers({
@@ -47,16 +48,18 @@ export function Providers({
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         <TooltipProvider>
           <AuthProvider initialUser={initialUser}>
-            {isPrintRoute ? content : (
-              <CopilotKitProvider
-                runtimeUrl="/api/copilotkit"
-                credentials="include"
-                publicLicenseKey={process.env.NEXT_PUBLIC_COPILOTKIT_LICENSE_KEY}
-                showDevConsole={true}
-              >
-                {content}
-              </CopilotKitProvider>
-            )}
+            <RealtimeProvider>
+              {isPrintRoute ? content : (
+                <CopilotKitProvider
+                  runtimeUrl="/api/copilotkit"
+                  credentials="include"
+                  publicLicenseKey={process.env.NEXT_PUBLIC_COPILOTKIT_LICENSE_KEY}
+                  showDevConsole={true}
+                >
+                  {content}
+                </CopilotKitProvider>
+              )}
+            </RealtimeProvider>
           </AuthProvider>
         </TooltipProvider>
       </ThemeProvider>

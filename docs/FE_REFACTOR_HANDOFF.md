@@ -7,17 +7,36 @@ Tách các page còn dài thành feature modules để page chỉ còn compositi
 ## Đã dọn trong lượt lib/query cleanup
 
 - Mở rộng `web/src/lib/api-client.ts` thành helper fetch dùng chung: `apiRequest`, `apiGet`, `apiPost`, `apiPatch`, `apiDelete`, `unwrapApiPayload`, `ApiError`.
-- Chuyển chat application sang TanStack Query tại `web/src/features/applications/hooks/use-application-chat.ts`; polling 3 giây chỉ chạy khi dialog mở, gửi tin dùng optimistic update.
+- Chuyển chat application sang TanStack Query tại `web/src/features/applications/hooks/use-application-chat.ts`; realtime nhận tin qua Socket.IO, gửi tin vẫn dùng REST + optimistic update.
 - Chuyển logic register/verify riêng về `web/src/features/auth-register/api.ts`; `lib` không còn giữ helper chỉ phục vụ auth register.
-- Đổi `web/src/lib/dashboard-api.ts` thành `web/src/lib/dashboard-queries.ts` để đúng ý nghĩa TanStack Query hooks.
-- Gộp notification href/icon vào `web/src/lib/notifications.ts`; bỏ file icon rời trong `lib/utils`.
+- Đổi `web/src/lib/dashboard-api.ts` thành dashboard query hook rồi chuyển tiếp về `web/src/features/dashboard/queries.ts`; root `lib` không còn chứa dashboard domain query.
+- Gộp notification href/icon vào `web/src/features/notifications/utils.ts`; bỏ file icon rời trong `lib/utils`.
+- Chuyển JSON-LD/SEO helper khỏi root `lib` sang `web/src/features/seo/structured-data.ts`.
 - Dùng lại helper shared `timeAgo`, `formatSalary`, `jobTypeLabel`, `companyInitials` ở các page/card rõ ràng thay vì tự định nghĩa lặp.
 
 Rule mới:
 
 - `web/src/lib` chỉ giữ core/shared helper dùng nhiều domain.
 - Query/hook theo nghiệp vụ đặt trong `web/src/features/*`.
+- Domain navigation/util như notification href, dashboard summary query, SEO structured data không đặt ở root `lib`.
 - Khi gọi API mới, ưu tiên dùng `api-client.ts`; chỉ tự `fetch` khi có lý do riêng như route handler server-side, auth SDK flow, hoặc upload FormData cần xử lý đặc biệt.
+
+## Rule server auth và lỗi kết nối
+
+- `web/src/lib/server-auth.ts` là server-only helper vì dùng `cookies()` từ `next/headers` và chỉ được import trong Server Components/layout.
+- File này có thể giữ `"use server"` vì chỉ export async function `getServerAuthUser`.
+- Không export class/runtime object từ file có `"use server"`; nếu cần error class riêng thì tách sang file server-only khác không đặt directive.
+- Khi backend auth endpoint không kết nối được, helper chỉ `console.error` để dev đọc log FE/Next server và trả `null`; không ném lỗi ra UI.
+- Protected layouts (`candidate`, `employer`) giữ flow đơn giản: không có user thì redirect login/select-role.
+- API proxy route nên catch lỗi network và trả 502 sạch; không để lỗi runtime phá render FE.
+
+## Rule realtime sau Socket.IO
+
+- Realtime dùng `web/src/features/realtime/realtime-provider.tsx` và NestJS namespace `/realtime`.
+- Không thêm polling mặc định cho chat/notification. REST fetch lần đầu, Socket.IO cập nhật cache sau đó.
+- Chat dialog join room application khi mở và leave khi đóng; không subscribe application room toàn app.
+- Notification/header/sidebar/page dùng chung TanStack Query cache; socket event chỉ update cache hoặc invalidate dashboard.
+- Nếu socket mất kết nối, UI không crash; TanStack Query vẫn refetch khi focus/reconnect.
 
 ## Page ưu tiên
 
@@ -49,11 +68,12 @@ Rule mới:
 ## Còn nên dọn tiếp
 
 - `web/src/app/employer/jobs/create/page.tsx`: đã dọn deadline nhập tay và chuẩn hóa clone title, nhưng vẫn nên tách thành `features/employer-jobs` gồm form component, constants, mapper payload và hook create/clone.
-- `web/src/app/employer/jobs/page.tsx`: đã có thêm archive/restore/delete flow; nên tách tiếp thành job filters, job card, delete/archive dialog và hook `useEmployerJobs`.
+- `web/src/app/employer/jobs/page.tsx`: employer delete hiện chỉ ẩn job khỏi workspace; nên tách tiếp thành job filters, job card, delete dialog và hook `useEmployerJobs`.
 - `web/src/app/employer/jobs/[id]/checkout/page.tsx`: vẫn là page nghiệp vụ thanh toán/gia hạn; nên tách package selector, boost selector và checkout hook.
 - `web/src/app/employer/jobs/[id]/edit/page.tsx`: đã bỏ deadline khỏi payload; nên dùng chung form component với create để tránh lệch validation/content editor.
 - `web/src/app/employer/company/page.tsx`: còn tự parse response cho upload logo/company update; nên tách thành `features/employer-company/hooks` hoặc API helper riêng cho FormData.
-- `web/src/lib/auth.ts`: vẫn là wrapper auth flow dùng nhiều màn hình; có thể giữ trong `lib` hoặc tách tiếp thành `features/auth` nếu team muốn gom toàn bộ auth theo feature.
+- `web/src/lib/auth.ts`, `web/src/lib/auth-client.ts`, `web/src/lib/server-auth.ts`: vẫn là auth core dùng xuyên app; có thể gom thành `web/src/lib/auth/*` trong một lượt riêng nếu team muốn cây `lib` gọn hơn. Nếu gom, không import helper server này vào Client Component.
+- `web/src/lib/profile-completion.ts`, `web/src/lib/resume-pdf.ts`, `web/src/lib/resume-template-data.ts`: tạm giữ vì dính nhiều flow CV detail/print/export. Nếu refactor, chuyển theo nhóm sang `web/src/features/resumes/lib/*` và test kỹ toàn bộ template/print.
 - `web/src/app/api/copilotkit/[[...slug]]/route.ts` và `web/src/lib/server-auth.ts`: đang chạy ở server/route handler nên không ép dùng client helper.
 - `web/src/features/employer-applications/utils.ts`: còn `getInitials` riêng cho applicant avatar; chỉ nên thay nếu thống nhất dùng chung avatar initial toàn app.
 
@@ -62,7 +82,7 @@ Rule mới:
 - Job content là Markdown; editor được phép có UI giống rich editor nhưng payload vẫn là Markdown text.
 - Không dùng HTML raw cho description/requirements/benefits.
 - User không nhập `deadline` khi tạo/sửa job. Deadline chỉ đến từ checkout duration/payment completion.
-- Archive job là trạng thái workspace qua `archivedAt`, không phải `JobStatus` mới. Tab mặc định không hiện archived jobs; tab `Lưu trữ` dùng query `archived=true`.
+- Archive job là trạng thái hệ thống qua `archivedAt`, không phải `JobStatus` mới. FE employer v1 không có tab `Lưu trữ`/`Khôi phục`; archived jobs giữ lại cho admin/support sau này.
 - Archive không hoàn usage quota đã tiêu thụ; chỉ giảm active quota và workspace display count.
 
 ## Pattern đề xuất

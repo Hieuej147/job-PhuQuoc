@@ -7,19 +7,32 @@ import type { AuthUser } from "@/lib/auth";
 
 const agentUrl = process.env.AGENT_URL || "http://localhost:8125";
 const backendUrl = process.env.BACKEND_URL || "http://localhost:3000";
+let lastCopilotAuthUnavailableLogAt = 0;
 
-async function getUserFromCookie(cookie: string | null): Promise<AuthUser | null> {
+function logCopilotAuthUnavailableOnce(error: unknown) {
+  const now = Date.now();
+  if (now - lastCopilotAuthUnavailableLogAt < 30_000) return;
+  lastCopilotAuthUnavailableLogAt = now;
+  console.error("CopilotKit auth guard: backend is unavailable.", error);
+}
+
+async function getUserFromCookie(cookie: string | null): Promise<AuthUser | null | "backend-unavailable"> {
   if (!cookie) return null;
 
-  const response = await fetch(`${backendUrl}/api/v1/auth/me`, {
-    headers: { cookie },
-    cache: "no-store",
-  });
+  try {
+    const response = await fetch(`${backendUrl}/api/v1/auth/me`, {
+      headers: { cookie },
+      cache: "no-store",
+    });
 
-  if (!response.ok) return null;
+    if (!response.ok) return null;
 
-  const payload = await response.json().catch(() => null);
-  return payload?.data?.user || payload?.user || null;
+    const payload = await response.json().catch(() => null);
+    return payload?.data?.user || payload?.user || null;
+  } catch (error) {
+    logCopilotAuthUnavailableOnce(error);
+    return "backend-unavailable";
+  }
 }
 
 const agents = {
@@ -42,6 +55,9 @@ const app = createCopilotHonoHandler({
       if (route.method === "info" || route.method === "cpk-debug-events") return;
 
       const user = await getUserFromCookie(request.headers.get("cookie"));
+      if (user === "backend-unavailable") {
+        throw new Response("Backend unavailable", { status: 503 });
+      }
       if (!user) {
         throw new Response("Unauthorized", { status: 401 });
       }

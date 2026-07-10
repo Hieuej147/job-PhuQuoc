@@ -549,7 +549,7 @@ Client Response
 │ - PENDING → ACTIVE (via payment webhook)                        │
 │ - ACTIVE → EXPIRED (via deadline/Inngest)                       │
 │ - ACTIVE → CLOSED (manual close/archive)                        │
-│ - CLOSED/EXPIRED → (terminal for public listing; restore/checkout flow can republish) │
+│ - CLOSED/EXPIRED → terminal for public listing; republish must go through private checkout flow │
 │ - archivedAt != null hides job from public/default workspace    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -870,7 +870,7 @@ Payment ── N:1 ──► PricingPackage (packageId)
 |--------|------|------|-------|
 | GET | /api/v1/jobs | PUBLIC | Public search. Bỏ qua `status` từ client, chỉ trả `ACTIVE`, chưa hết hạn, `archivedAt = null` |
 | GET | /api/v1/jobs/slug/:slug | PUBLIC | Chi tiết theo slug, chỉ job đang public |
-| GET | /api/v1/jobs/my | EMPLOYER | Jobs của employer. Mặc định ẩn archived; dùng `archived=true` để xem lưu trữ |
+| GET | /api/v1/jobs/my | EMPLOYER | Jobs của employer. Mặc định ẩn archived; FE employer không expose chế độ xem archived |
 | GET | /api/v1/jobs/my/stats | EMPLOYER | Thống kê jobs theo status/archive |
 | GET | /api/v1/jobs/manage/:id | EMPLOYER | Detail nội bộ cho owner: sửa, checkout, clone, xem lịch sử |
 | GET | /api/v1/jobs/:id | PUBLIC | Chi tiết theo ID, chỉ job đang public |
@@ -878,7 +878,7 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | PATCH | /api/v1/jobs/:id | OWNER | Cập nhật nội dung. Nếu job ACTIVE thì không reset payment/deadline/Inngest expiry |
 | PATCH | /api/v1/jobs/:id/close | OWNER | Đóng tin sớm, public ẩn nhưng dashboard giữ lịch sử |
 | DELETE | /api/v1/jobs/:id/employer | OWNER | Employer lưu trữ mềm job, không hard delete |
-| PATCH | /api/v1/jobs/:id/restore | OWNER | Khôi phục job đã lưu trữ về workspace |
+| PATCH | /api/v1/jobs/:id/restore | OWNER | Route kỹ thuật giữ lại, không expose trong FE employer v1 |
 | DELETE | /api/v1/jobs/:id | ADMIN | Xóa |
 
 ### Applications
@@ -1189,3 +1189,23 @@ npx tsc --noEmit
 | Event-Driven | Inngest functions | Async cross-module communication |
 | Cache-Aside | CacheService | Redis caching + manual invalidation |
 | State Machine | Job/Application status | Validated transitions |
+
+## Realtime Socket.IO
+
+- Backend dùng `RealtimeModule` với Socket.IO namespace `/realtime`; chưa tách microservice riêng.
+- Socket auth dùng session cookie `better-auth.session_token`, cùng nguồn xác thực với REST.
+- Rooms chính:
+  - `user:{userId}` cho notification và dashboard invalidate.
+  - `application:{applicationId}` cho chat theo đơn ứng tuyển.
+  - `employer:{userId}` / `candidate:{userId}` cho mở rộng theo role.
+- REST vẫn là source of truth. Socket chỉ emit sau khi DB ghi thành công.
+- Redis adapter dùng `REDIS_URL` để scale nhiều backend instance; nếu Redis lỗi ở local, gateway vẫn chạy single instance và log warning.
+- Inngest vẫn xử lý workflow nền; helper tạo notification sẽ emit Socket.IO event sau khi upsert notification.
+- Event server emit:
+  - `application.message.created`
+  - `application.messages.read`
+  - `notification.created`
+  - `notification.read`
+  - `notification.all_read`
+  - `notification.unread_count.changed`
+  - `dashboard.invalidate`
