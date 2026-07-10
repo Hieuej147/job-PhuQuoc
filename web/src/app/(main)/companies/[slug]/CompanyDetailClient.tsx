@@ -21,6 +21,7 @@ const SIZE_LABELS: Record<string, string> = {
 
 interface CompanyData {
   id: string; name: string; slug: string; logo?: string | null;
+  coverImage?: string | null;
   website?: string | null; description?: string | null;
   size?: string | null; industry?: string | null;
   addressDetail?: string | null; ward?: { name: string; district?: { name: string } } | null;
@@ -110,7 +111,12 @@ export default function CompanyDetailClient({ company, jobsPromise }: Props) {
       {/* HERO */}
       <div>
         <div className="h-52 md:h-64 relative overflow-hidden" style={{ background: "linear-gradient(135deg,#0E7490,#0D9488)" }}>
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 50%,#67e8f9 0%,transparent 50%),radial-gradient(circle at 80% 20%,#fcd34d 0%,transparent 40%)" }} />
+          {company.coverImage ? (
+            <img src={company.coverImage} alt="Ảnh bìa công ty" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 50%,#67e8f9 0%,transparent 50%),radial-gradient(circle at 80% 20%,#fcd34d 0%,transparent 40%)" }} />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#005a71]/70 via-[#0E7490]/35 to-[#0D9488]/45" />
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#f7f9ff] dark:from-[#0a1929] to-transparent" />
           <div className="absolute top-4 left-4 md:left-8 flex items-center gap-2 text-xs text-white/70">
             <Link href="/" className="hover:text-white">Trang chủ</Link><span>›</span>

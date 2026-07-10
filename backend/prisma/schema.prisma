@@ -282,6 +282,8 @@ model Company {
   slug          String      @unique
   logo          String?
   logoPublicId  String?
+  coverImage    String?
+  coverImagePublicId String?
   website       String?
   description   String?
   wardId        String?
@@ -546,7 +548,7 @@ model BlogPost {
   title          String
   slug           String    @unique
   type           BlogType  @default(NORMAL)
-  content        String?   @db.Text
+  content        Json?
   landingContent Json?
   thumbnail      String?
   excerpt        String?

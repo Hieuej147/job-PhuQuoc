@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Spinner } from "@/components/ui/spinner";
 import { timeAgo } from "@/lib/utils/date";
 import { companyInitials } from "@/lib/utils/format";
+import { deleteSavedCompany, getSavedCompanies } from "@/features/saved-companies/api";
 
 interface SavedCompany {
     id: string;
@@ -47,12 +48,8 @@ export default function SavedCompaniesPage() {
     const [activeFilter, setActiveFilter] = useState("all");
 
     useEffect(() => {
-        fetch("/api/v1/saved/companies?limit=500", { credentials: "include" })
-            .then((r) => r.ok ? r.json() : null)
-            .then((d) => {
-                if (!d) return;
-                setItems(d.data?.items ?? d.data ?? []);
-            })
+        getSavedCompanies(500)
+            .then((d) => setItems(d.items ?? d ?? []))
             .catch(() => { })
             .finally(() => setLoading(false));
     }, []);
@@ -60,13 +57,8 @@ export default function SavedCompaniesPage() {
     const handleUnfollow = async (companyId: string, companyName: string) => {
         if (!confirm(`Bỏ theo dõi "${companyName}"?`)) return;
         try {
-            const res = await fetch(`/api/v1/saved/companies/${companyId}`, {
-                method: "DELETE",
-                credentials: "include",
-            });
-            if (res.ok) {
-                setItems((prev) => prev.filter((s) => s.companyId !== companyId));
-            }
+            await deleteSavedCompany(companyId);
+            setItems((prev) => prev.filter((s) => s.companyId !== companyId));
         } catch (e) {
             console.error(e);
         }

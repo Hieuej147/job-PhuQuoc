@@ -3,8 +3,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CloudinaryService } from './cloudinary.service';
 
 const COMPANY_LOGO_FOLDER = 'job-phuquoc/company-logos';
+const COMPANY_COVER_FOLDER = 'job-phuquoc/company-covers';
 const CANDIDATE_CV_FOLDER = 'job-phuquoc/candidate-cvs';
 const CANDIDATE_AVATAR_FOLDER = 'job-phuquoc/candidate-avatars';
+const POST_IMAGE_FOLDER = 'job-phuquoc/post-images';
 
 @Injectable()
 export class UploadService {
@@ -56,6 +58,51 @@ export class UploadService {
       data: {
         companyId: company.id,
         logo: result.secure_url,
+      },
+    };
+  }
+
+  async uploadCompanyCover(userId: string, file: Express.Multer.File) {
+    const company = await this.prisma.company.findUnique({
+      where: { ownerId: userId },
+      select: { id: true, coverImagePublicId: true },
+    });
+
+    if (!company) {
+      throw new NotFoundException('Vui lòng tạo hồ sơ công ty trước khi upload ảnh bìa');
+    }
+
+    const oldCoverPublicId = company.coverImagePublicId;
+    const result = await this.cloudinaryService.uploadImage(file, {
+      folder: `${COMPANY_COVER_FOLDER}/${company.id}`,
+      resource_type: 'image',
+      transformation: [
+        { width: 1600, height: 500, crop: 'fill', gravity: 'auto' },
+        { quality: 'auto', fetch_format: 'auto' },
+      ],
+    });
+
+    if (!result.secure_url || !result.public_id) {
+      throw new BadRequestException('Cloudinary không trả về URL ảnh bìa hợp lệ');
+    }
+
+    await this.prisma.company.update({
+      where: { id: company.id },
+      data: {
+        coverImage: result.secure_url,
+        coverImagePublicId: result.public_id,
+      },
+    });
+
+    if (oldCoverPublicId && oldCoverPublicId !== result.public_id) {
+      await this.deleteOldCompanyCover(oldCoverPublicId, company.id);
+    }
+
+    return {
+      message: 'Upload ảnh bìa thành công',
+      data: {
+        companyId: company.id,
+        coverImage: result.secure_url,
       },
     };
   }
@@ -160,11 +207,45 @@ export class UploadService {
     };
   }
 
+  async uploadPostImage(userId: string, file: Express.Multer.File) {
+    const result = await this.cloudinaryService.uploadImage(file, {
+      folder: `${POST_IMAGE_FOLDER}/${userId}`,
+      resource_type: 'image',
+      transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+    });
+
+    if (!result.secure_url || !result.public_id) {
+      throw new BadRequestException('Cloudinary không trả về URL ảnh hợp lệ');
+    }
+
+    return {
+      message: 'Upload ảnh thành công',
+      url: result.secure_url,
+      data: {
+        url: result.secure_url,
+        publicId: result.public_id,
+      },
+    };
+  }
+
   private async deleteOldLogo(publicId: string, companyId: string) {
     try {
       await this.cloudinaryService.deleteFile(publicId);
     } catch (error) {
       this.logger.warn(`Không xoá được logo cũ trên Cloudinary cho company ${companyId}: ${publicId}`);
+    }
+  }
+
+  private async deleteOldCompanyCover(publicId: string, companyId: string) {
+    if (!publicId.startsWith(`${COMPANY_COVER_FOLDER}/${companyId}/`)) {
+      this.logger.warn(`Bỏ qua xoá ảnh bìa không thuộc folder hệ thống cho company ${companyId}: ${publicId}`);
+      return;
+    }
+
+    try {
+      await this.cloudinaryService.deleteFile(publicId);
+    } catch (error) {
+      this.logger.warn(`Không xoá được ảnh bìa cũ trên Cloudinary cho company ${companyId}: ${publicId}`);
     }
   }
 

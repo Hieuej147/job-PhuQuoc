@@ -1,4 +1,5 @@
 import Cropper from "react-easy-crop";
+import type { Area } from "react-easy-crop";
 import {
   Dialog,
   DialogContent,
@@ -8,29 +9,43 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { LogoCropState } from "../types";
 
-interface CompanyLogoCropDialogProps {
+export interface ImageCropState {
+  imageUrl: string;
+  crop: { x: number; y: number };
+  zoom: number;
+  onCropChange: (crop: { x: number; y: number }) => void;
+  onZoomChange: (zoom: number) => void;
+  onCropComplete: (_croppedArea: Area, areaPixels: Area) => void;
+}
+
+interface ImageCropDialogProps {
   open: boolean;
-  cropState: LogoCropState;
+  title: string;
+  description: string;
+  aspect: number;
+  cropState: ImageCropState;
+  cropShape?: "rect" | "round";
   onCancel: () => void;
   onConfirm: () => void;
 }
 
-export function CompanyLogoCropDialog({
+export function ImageCropDialog({
   open,
+  title,
+  description,
+  aspect,
   cropState,
+  cropShape = "rect",
   onCancel,
   onConfirm,
-}: CompanyLogoCropDialogProps) {
+}: ImageCropDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Căn chỉnh logo</DialogTitle>
-          <DialogDescription>
-            Kéo ảnh để căn logo vào khung vuông, dùng thanh zoom nếu cần.
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -40,9 +55,9 @@ export function CompanyLogoCropDialog({
                 image={cropState.imageUrl}
                 crop={cropState.crop}
                 zoom={cropState.zoom}
-                aspect={1}
-                cropShape="rect"
-                showGrid={false}
+                aspect={aspect}
+                cropShape={cropShape}
+                showGrid={cropShape === "rect"}
                 onCropChange={cropState.onCropChange}
                 onZoomChange={cropState.onZoomChange}
                 onCropComplete={cropState.onCropComplete}

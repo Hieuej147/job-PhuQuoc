@@ -37,6 +37,7 @@
 - Public job APIs chỉ trả job `ACTIVE`, chưa hết hạn, `archivedAt = null`. Dashboard/edit/checkout phải dùng private route `/api/v1/jobs/manage/:id`.
 - Tạo/sửa job không còn field “Hạn nộp”. `deadline` chỉ set sau checkout theo số ngày đăng.
 - Job content vẫn là Markdown text; editor FE chỉ tạo Markdown, không gửi HTML raw.
+- Blog content dùng Tiptap JSON duy nhất; không lưu HTML mới. Public blog detail tăng view qua `/api/v1/blogs/slug/:slug/view` sau khi người dùng đọc đủ thời gian.
 - Employer bấm xoá job là **ẩn mềm khỏi workspace** qua `DELETE /api/v1/jobs/:id/employer`; FE employer không có tab “Lưu trữ”/“Khôi phục”. Record vẫn giữ `archivedAt` cho admin/support sau này.
 - Application delete chỉ ẩn khỏi workspace từng phía, không hard delete và không phải “rút đơn”.
 - Candidate đã apply vẫn xem được lịch sử job qua `GET /api/v1/applications/:id/job` kể cả khi job đã đóng/hết hạn/lưu trữ.
@@ -74,9 +75,9 @@ graph TB
     end
 
     subgraph DB["💾 Infrastructure"]
-        PG[("PostgreSQL 16<br/>Port 5435<br/>22 tables")]
+        PG[("PostgreSQL 16<br/>Port 5435<br/>27 tables")]
         RD[("Redis 7<br/>Port 6381<br/>Session + Cache")]
-        ING["Inngest<br/>─────────────────<br/>Event Bus<br/>13 async functions"]
+        ING["Inngest<br/>─────────────────<br/>Event Bus<br/>12 async functions"]
     end
 
     FE -->|"fetch + cookie"| V1
@@ -116,7 +117,7 @@ job-phuquoc/
 │   │       ├── */background/  # Non-blocking background work
 │   │       └── */infrastructure/ # Adapters: event publisher, provider gateway
 │   └── prisma/
-│       ├── schema.prisma      # 22 tables, 10 enums
+│       ├── schema.prisma      # 27 tables, 12 enums
 │       └── seed.ts            # Seed data
 ├── web/                        # Next.js Frontend
 │   ├── src/
@@ -162,7 +163,7 @@ Backend vẫn là **modular monolith**, nhưng các module quan trọng đã b�
 
 - API response không phụ thuộc vào việc gửi notification/event thành công nếu side effect là non-critical.
 - Apply job, accept/reject application, complete payment có thể phát sinh Inngest event ở phía BE.
-- Job embedding sync là background work; FE không nên chờ embedding xong sau khi tạo/sửa job.
+- Job embedding sync là background work sau payment activation thành công hoặc sau khi sửa job đang ACTIVE; FE không nên chờ embedding xong. Tạo job DRAFT không chạy embedding.
 - FE tiếp tục gọi same-origin BFF `/api/v1/*`, `/api/auth/*`, `/api/copilotkit`; layer nội bộ BE không đổi contract API nếu không có note riêng.
 
 ### Cài đặt
@@ -656,15 +657,15 @@ sequenceDiagram
     participant E as Employer
     participant FE as Frontend
     participant BE as Backend
-    participant Stripe as Stripe
+    participant Gateway as Stripe/Mock
 
     E->>FE: Select pricing package
     FE->>BE: POST /api/v1/payments/checkout<br/>{jobId, packageId}
     BE->>BE: Verify job is DRAFT
     BE->>BE: Verify employer owns company
-    BE->>Stripe: Create checkout session
-    BE-->>FE: {url: "https://checkout.stripe.com/..."}
-    FE->>E: Redirect to Stripe
+    BE->>Gateway: Create checkout session
+    BE-->>FE: {url, gateway: "stripe" hoặc "mock"}
+    FE->>E: Redirect theo URL trả về
 ```
 
 ---
@@ -679,9 +680,9 @@ sequenceDiagram
 
     Stripe->>BE: POST /api/v1/payments/webhook
     BE->>BE: Verify signature
-    BE->>DB: Update payment → COMPLETED
-    BE->>DB: Update job → ACTIVE + deadline
+    BE->>DB: Transaction payment → COMPLETED + job → ACTIVE/deadline/boost/currentPaymentId
     BE->>BE: Inngest: job.activated
+    BE->>BE: Sync job embedding sau khi transaction thành công
     BE-->>Stripe: {received: true}
 ```
 
@@ -1041,24 +1042,26 @@ erDiagram
 | 67 | GET | /api/v1/address/wards | Public | Phường/xã dạng phẳng cho filter/search |
 | 68 | GET | /api/v1/address/wards/:id | Public | Địa chỉ đầy đủ |
 
-#### Blogs (5 endpoints)
+#### Blogs (7 endpoints)
 
 | # | Method | Path | Auth | Mô tả |
 |---|--------|------|------|-------|
 | 71 | GET | /api/v1/blogs | Public | Danh sách blog |
-| 72 | GET | /api/v1/blogs/slug/:slug | Public | Chi tiết blog |
-| 73 | POST | /api/v1/blogs | ADMIN | Tạo blog |
-| 74 | PATCH | /api/v1/blogs/:id | ADMIN | Sửa blog |
-| 75 | DELETE | /api/v1/blogs/:id | ADMIN | Xóa blog |
+| 72 | GET | /api/v1/blogs/slug/:slug | Public | Chi tiết blog, không tự tăng view |
+| 73 | POST | /api/v1/blogs/slug/:slug/view | Public | Tăng lượt xem blog |
+| 74 | GET | /api/v1/blogs/my | Candidate/Employer/Admin | Bài viết của tôi |
+| 75 | POST | /api/v1/blogs | Candidate/Employer/Admin | Tạo blog Tiptap JSON |
+| 76 | PATCH | /api/v1/blogs/:id | Candidate/Employer/Admin | Sửa blog của mình hoặc Admin |
+| 77 | DELETE | /api/v1/blogs/:id | Candidate/Employer/Admin | Xóa blog của mình hoặc Admin |
 
 #### Blog Categories (4 endpoints)
 
 | # | Method | Path | Auth | Mô tả |
 |---|--------|------|------|-------|
-| 76 | GET | /api/v1/blog-categories | Public | Danh mục blog |
-| 77 | POST | /api/v1/blog-categories | ADMIN | Tạo danh mục |
-| 78 | PATCH | /api/v1/blog-categories/:id | ADMIN | Sửa danh mục |
-| 79 | DELETE | /api/v1/blog-categories/:id | ADMIN | Xóa danh mục |
+| 78 | GET | /api/v1/blog-categories | Public | Danh mục blog |
+| 79 | POST | /api/v1/blog-categories | ADMIN | Tạo danh mục |
+| 80 | PATCH | /api/v1/blog-categories/:id | ADMIN | Sửa danh mục |
+| 81 | DELETE | /api/v1/blog-categories/:id | ADMIN | Xóa danh mục |
 
 #### Saved (4 endpoints)
 
@@ -1222,6 +1225,7 @@ modules/<name>/
 
 - Backend **không còn export PDF bằng Puppeteer**. Candidate export CV bằng route FE `/resumes/:id/print` hoặc `/candidate/resumes/:id/print`, render cùng `ResumePrintDocument` rồi dùng `window.print()` / Save as PDF của browser.
 - Backend `GET /api/v1/resumes/:id` chỉ trả dữ liệu CV và kiểm owner.
+- AI/template CV preview trên FE render HTML đã sanitize trong iframe sandbox không chạy script. Không bật lại raw script cho CV; nếu cần edit-mode field click thì làm overlay/renderer tin cậy riêng.
 - Employer không mở CV bằng `resumeId` trực tiếp. Employer phải đi qua application:
   - `GET /api/v1/applications/:id/resume`: lấy payload `{ type: "resume" | "uploaded" }` sau khi backend kiểm tra application thuộc job của công ty employer.
   - `GET /api/v1/applications/:id/resume-file`: stream PDF upload qua backend proxy, trả `Content-Disposition: inline`.
@@ -1248,7 +1252,7 @@ modules/<name>/
 
 - Tạo job không còn chọn "Hạn nộp"; deadline chỉ được set sau checkout bằng số ngày đăng.
 - Employer sửa job đang ACTIVE qua `/employer/jobs/[id]/edit`; FE gọi `PATCH /api/v1/jobs/:id`.
-- Update job chỉ sửa nội dung, invalidate cache và sync embedding; không reset deadline/payment/status, không emit lại `job.activated`.
+- Update job chỉ sửa nội dung, invalidate cache và sync embedding nếu job đang ACTIVE/chưa hết hạn/chưa archive; không reset deadline/payment/status, không emit lại `job.activated`.
 - Inngest expiry đã schedule từ lúc thanh toán vẫn chạy theo `jobId` + deadline cũ; tới hạn function đọc lại DB và chỉ đóng job nếu deadline event còn khớp DB.
 - `close-expired-active-jobs` là cron repair chung để đóng job ACTIVE quá hạn nếu event `job.expired` bị miss; không clone job và không xoá job khỏi DB.
 - Employer “xoá tin” gọi `DELETE /api/v1/jobs/:id/employer`: ẩn mềm bằng `archivedAt`, public/default workspace ẩn job.

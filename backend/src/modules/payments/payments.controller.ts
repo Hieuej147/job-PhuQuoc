@@ -19,9 +19,9 @@ export class PaymentsController {
   @ApiBearerAuth('better-auth.session_token')
   @ApiOperation({
     summary: 'Tạo checkout session',
-    description: 'Employer chọn gói + tạo Stripe checkout. FE redirect user đến URL trả về.',
+    description: 'Employer chọn gói + tạo checkout. Backend dùng Stripe nếu cấu hình được, ngược lại trả mock checkout cho local/dev.',
   })
-  @ApiResponse({ status: 201, description: '{ url: "https://checkout.stripe.com/...", gateway: "stripe" }' })
+  @ApiResponse({ status: 201, description: '{ url: "...", gateway: "stripe" | "mock" }' })
   @ApiResponse({ status: 400, description: 'Job đã active hoặc đã có payment pending' })
   @ApiResponse({ status: 403, description: 'Không phải EMPLOYER hoặc không phải owner' })
   @ApiResponse({ status: 404, description: 'Job hoặc package không tồn tại' })

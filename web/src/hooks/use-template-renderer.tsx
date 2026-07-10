@@ -2,6 +2,7 @@
 
 import { useRenderTool } from "@copilotkit/react-core/v2";
 import { z } from "zod";
+import { buildSanitizedPreviewDocument } from "@/lib/html-safety";
 
 function LoadingCard({ text }: { text: string }) {
   return (
@@ -15,6 +16,8 @@ function LoadingCard({ text }: { text: string }) {
 }
 
 function CVPreviewInline({ html, css = "" }: { html: string; css?: string }) {
+  const srcDoc = buildSanitizedPreviewDocument(html, css);
+
   return (
     <div className="my-4 border rounded-xl overflow-hidden bg-white shadow-lg">
       <div className="px-4 py-2 bg-muted/30 border-b">
@@ -22,17 +25,10 @@ function CVPreviewInline({ html, css = "" }: { html: string; css?: string }) {
       </div>
       <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
         <iframe
-          srcDoc={`<!DOCTYPE html><html lang="vi"><head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              * { box-sizing: border-box; }
-              body { margin: 0; padding: 0; background: #f8fafc; }
-              ${css}
-            </style>
-          </head><body>${html}</body></html>`}
+          srcDoc={srcDoc}
           className="w-full"
           style={{ height: "800px", border: "none" }}
+          sandbox=""
           title="CV Preview"
         />
       </div>

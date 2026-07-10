@@ -145,8 +145,13 @@ export class JobsService {
       });
     }
 
-    // Xác định orderBy dựa trên sort param
-    let orderBy: Prisma.JobOrderByWithRelationInput | Prisma.JobOrderByWithRelationInput[] = { createdAt: 'desc' };
+    // Mặc định ưu tiên tin đã trả phí Top; sort cụ thể từ user sẽ override thứ tự này.
+    let orderBy: Prisma.JobOrderByWithRelationInput | Prisma.JobOrderByWithRelationInput[] = [
+      { boostLevel: 'desc' },
+      { featuredUntil: 'desc' },
+      { publishedAt: 'desc' },
+      { createdAt: 'desc' },
+    ];
     if (sort === 'salary_asc') {
       orderBy = [{ salaryMin: 'asc' }, { salaryMax: 'asc' }, { createdAt: 'desc' }];
     } else if (sort === 'salary_desc') {
@@ -313,8 +318,6 @@ export class JobsService {
     });
     await this.invalidateCache();
 
-    this.jobBackground.syncEmbedding(job);
-
     return job;
   }
 
@@ -326,7 +329,13 @@ export class JobsService {
     const updated = await this.prisma.job.update({ where: { id }, data: data as Prisma.JobUpdateInput });
     await this.invalidateCache();
 
-    this.jobBackground.syncEmbedding(updated);
+    if (
+      updated.status === JobStatus.ACTIVE &&
+      !updated.archivedAt &&
+      (!updated.deadline || updated.deadline.getTime() >= Date.now())
+    ) {
+      this.jobBackground.syncEmbedding(updated);
+    }
 
     return updated;
   }
@@ -630,6 +639,8 @@ export class JobsService {
       JOIN "job_embedding" je ON j.id = je."jobId"
       JOIN "company" c ON j."companyId" = c.id
       WHERE j.status = 'ACTIVE'
+        AND j."archivedAt" IS NULL
+        AND (j.deadline IS NULL OR j.deadline >= NOW())
       ORDER BY je.embedding <=> ${vectorString}::vector
       LIMIT ${limit}
     `;

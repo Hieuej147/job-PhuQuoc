@@ -7,12 +7,16 @@ export class CreateBlogDto {
   title: string;
 
   @IsOptional()
+  @IsString()
+  slug?: string;
+
+  @IsOptional()
   @IsEnum(BlogType)
   type?: BlogType;
 
   @ValidateIf((o) => o.type !== 'LANDING_PAGE')
-  @IsString()
-  content?: string;
+  @IsObject()
+  content?: Record<string, unknown>;
 
   @ValidateIf((o) => o.type === 'LANDING_PAGE')
   @IsObject()
@@ -41,12 +45,16 @@ export class UpdateBlogDto {
   title?: string;
 
   @IsOptional()
+  @IsString()
+  slug?: string;
+
+  @IsOptional()
   @IsEnum(BlogType)
   type?: BlogType;
 
   @IsOptional()
-  @IsString()
-  content?: string;
+  @IsObject()
+  content?: Record<string, unknown>;
 
   @IsOptional()
   @IsObject()

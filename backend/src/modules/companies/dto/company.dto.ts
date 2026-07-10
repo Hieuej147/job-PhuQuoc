@@ -22,6 +22,10 @@ export class CreateCompanyDto {
   @IsString()
   logo?: string;
 
+  @IsOptional()
+  @IsString()
+  coverImage?: string;
+
   
   @IsOptional()
   @IsString()
@@ -63,6 +67,10 @@ export class UpdateCompanyDto {
   @IsOptional()
   @IsString()
   logo?: string;
+
+  @IsOptional()
+  @IsString()
+  coverImage?: string;
 
   
   @IsOptional()

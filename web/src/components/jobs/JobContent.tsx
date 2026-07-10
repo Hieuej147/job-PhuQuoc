@@ -35,7 +35,7 @@ export function JobDescription({ description }: JobDescriptionProps) {
 }
 
 // ==========================================
-// COMPONENT 2: JobRequirements (supports HTML string)
+// COMPONENT 2: JobRequirements (supports Markdown string)
 // ==========================================
 
 interface JobRequirementsProps {
@@ -130,7 +130,7 @@ const getIconColorClass = (colorClass: string) => {
 };
 
 // ==========================================
-// COMPONENT 3: JobBenefits (supports HTML string or BenefitItem[])
+// COMPONENT 3: JobBenefits (supports Markdown string or BenefitItem[])
 // ==========================================
 
 interface JobBenefitsProps {

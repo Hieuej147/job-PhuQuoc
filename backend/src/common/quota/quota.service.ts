@@ -97,9 +97,23 @@ export class QuotaService {
     return {
       gateway: 'mock',
       sessionId,
-      url: `/quota/mock-success?session_id=${encodeURIComponent(sessionId)}`,
+      url: `/quota/checkout?session_id=${encodeURIComponent(sessionId)}`,
       purchase,
     };
+  }
+
+  async getCheckoutSession(sessionId: string, userId: string) {
+    const purchase = await this.prisma.quotaPurchase.findUnique({
+      where: { gatewayRef: sessionId },
+      include: { package: true },
+    });
+    if (!purchase) throw new NotFoundException('Quota purchase not found');
+    if (purchase.userId !== userId) {
+      throw new ForbiddenException('Quota purchase does not belong to current user');
+    }
+
+    const plans = await this.getUserPlans(userId);
+    return { purchase, plans };
   }
 
   async mockComplete(sessionId: string, userId?: string) {

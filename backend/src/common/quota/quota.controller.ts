@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { IsEnum, IsString } from 'class-validator';
 import { CandidateQuotaPlan, EmployerQuotaPlan } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -46,6 +46,13 @@ export class QuotaController {
   @ApiOperation({ summary: 'Tạo checkout mock để nâng gói quota' })
   checkout(@CurrentUser() user: UserSession, @Body() body: CreateQuotaCheckoutDto) {
     return this.quotaService.createCheckout(user.user.id, body.packageId);
+  }
+
+  @Get('checkout/:sessionId')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Chi tiết checkout quota mock' })
+  getCheckout(@CurrentUser() user: UserSession, @Param('sessionId') sessionId: string) {
+    return this.quotaService.getCheckoutSession(sessionId, user.user.id);
   }
 
   @Post('mock-complete')

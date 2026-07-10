@@ -19,6 +19,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatSalary, jobTypeLabel, companyInitials } from "@/lib/utils/format";
 import { timeAgo } from "@/lib/utils/date";
+import { deleteSavedJob, getSavedJobs } from "@/features/saved-jobs/api";
 
 interface SavedJob {
   id: string;
@@ -116,10 +117,7 @@ function JobCard({
     e.preventDefault();
     e.stopPropagation();
     try {
-      await fetch(`/api/v1/saved/jobs/${saved.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      await deleteSavedJob(saved.id);
       onUnsave(saved.id);
     } catch {}
   };
@@ -297,9 +295,8 @@ export default function SavedPage() {
   const [showSort, setShowSort] = useState(false);
 
   useEffect(() => {
-    fetch("/api/v1/saved/jobs?limit=100", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setItems(d.data?.items ?? d.data ?? []))
+    getSavedJobs(100)
+      .then((d) => setItems(d.items ?? d ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

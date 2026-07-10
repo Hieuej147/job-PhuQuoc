@@ -7,6 +7,8 @@ interface CompanyPreviewSidebarProps {
   name: string;
   logo: string;
   logoPreviewUrl: string;
+  coverImage: string;
+  coverPreviewUrl: string;
   industry: string;
   size: CompanySize;
   provinceId: string;
@@ -18,6 +20,8 @@ export function CompanyPreviewSidebar({
   name,
   logo,
   logoPreviewUrl,
+  coverImage,
+  coverPreviewUrl,
   industry,
   size,
   provinceId,
@@ -25,6 +29,7 @@ export function CompanyPreviewSidebar({
   description,
 }: CompanyPreviewSidebarProps) {
   const logoSrc = logoPreviewUrl || logo;
+  const coverSrc = coverPreviewUrl || coverImage;
 
   return (
     <div className="lg:col-span-1">
@@ -37,6 +42,8 @@ export function CompanyPreviewSidebar({
 
           <div className="m-4 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
             <div className="relative h-16 bg-gradient-to-r from-teal-700 to-teal-600">
+              {coverSrc ? <img src={coverSrc} alt="Ảnh bìa" className="absolute inset-0 h-full w-full object-cover" /> : null}
+              <div className="absolute inset-0 bg-gradient-to-r from-teal-900/40 to-teal-700/20" />
               <div className="absolute bottom-0 left-4 translate-y-1/2">
                 <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border-2 border-white bg-amber-100 text-sm font-bold text-amber-600 shadow-md">
                   {logoSrc ? (

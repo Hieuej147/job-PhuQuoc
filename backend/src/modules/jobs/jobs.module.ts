@@ -9,6 +9,6 @@ import { QuotaModule } from '../../common/quota/quota.module';
   imports: [QuotaModule],
   controllers: [JobsController],
   providers: [JobsService, EmbeddingService, JobBackgroundService],
-  exports: [JobsService],
+  exports: [JobsService, JobBackgroundService],
 })
 export class JobsModule {}

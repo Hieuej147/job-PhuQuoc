@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Server } from 'socket.io';
+import type { Namespace, Server } from 'socket.io';
 import { PinoLoggerService } from '../common/logger/pino-logger.service';
 import type {
   DashboardInvalidateScope,
@@ -9,11 +9,11 @@ import type {
 
 @Injectable()
 export class RealtimeService {
-  private server?: Server;
+  private server?: Server | Namespace;
 
   constructor(private readonly logger: PinoLoggerService) {}
 
-  bindServer(server: Server) {
+  bindServer(server: Server | Namespace) {
     this.server = server;
   }
 
@@ -63,4 +63,3 @@ export class RealtimeService {
     this.server.to(room).emit(event, payload);
   }
 }
-

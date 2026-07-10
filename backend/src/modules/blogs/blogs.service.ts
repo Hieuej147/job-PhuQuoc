@@ -2,17 +2,24 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CacheService } from "../../common/cache/cache.service";
-import { Prisma, BlogType } from "@prisma/client";
+import { Prisma, BlogType, Role } from "@prisma/client";
 
 function slugify(text: string): string {
   return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
+
+const EMPTY_DOC = { type: "doc", content: [{ type: "paragraph" }] };
 
 @Injectable()
 export class BlogsService {
@@ -100,10 +107,6 @@ export class BlogsService {
     const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, "slug", slug);
     const cached = await this.cache.get(cacheKey);
     if (cached) {
-      await this.prisma.blogPost.update({
-        where: { slug },
-        data: { views: { increment: 1 } },
-      });
       return cached;
     }
 
@@ -115,20 +118,34 @@ export class BlogsService {
       },
     });
     if (!blog) throw new NotFoundException("Blog not found");
-    await this.prisma.blogPost.update({
+
+    await this.cache.set(cacheKey, blog, this.CACHE_TTL);
+    return blog;
+  }
+
+  async incrementView(slug: string) {
+    const blog = await this.prisma.blogPost.findUnique({ where: { slug } });
+    if (!blog) throw new NotFoundException("Blog not found");
+
+    const updated = await this.prisma.blogPost.update({
       where: { slug },
       data: { views: { increment: 1 } },
     });
-    await this.cache.set(cacheKey, blog, this.CACHE_TTL);
-    return blog;
+
+    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, "slug", slug);
+    await this.cache.del(cacheKey);
+    await this.invalidateCache();
+
+    return updated;
   }
 
   async create(
     authorId: string,
     data: {
       title: string;
+      slug?: string;
       type?: BlogType;
-      content?: string;
+      content?: Record<string, unknown>;
       landingContent?: { html: string; css: string; js?: string };
       excerpt?: string;
       thumbnail?: string;
@@ -147,13 +164,16 @@ export class BlogsService {
       );
     }
 
-    const slug = slugify(data.title) + "-" + Date.now().toString(36);
+    const slug = await this.resolveUniqueSlug(data.slug || data.title);
     const blog = await this.prisma.blogPost.create({
       data: {
         title: data.title,
         slug,
         type,
-        content: type === BlogType.NORMAL ? data.content! : null,
+        content:
+          type === BlogType.NORMAL
+            ? ((data.content || EMPTY_DOC) as Prisma.InputJsonValue)
+            : Prisma.DbNull,
         landingContent:
           type === BlogType.LANDING_PAGE
             ? (data.landingContent as Prisma.InputJsonValue)
@@ -173,10 +193,13 @@ export class BlogsService {
 
   async update(
     id: string,
+    userId: string,
+    userRole: Role,
     data: {
       title?: string;
+      slug?: string;
       type?: BlogType;
-      content?: string;
+      content?: Record<string, unknown>;
       landingContent?: { html: string; css: string; js?: string };
       excerpt?: string;
       thumbnail?: string;
@@ -187,13 +210,18 @@ export class BlogsService {
     const blog = await this.prisma.blogPost.findUnique({ where: { id } });
     if (!blog) throw new NotFoundException("Blog not found");
 
+    if (blog.authorId !== userId && userRole !== Role.ADMIN) {
+      throw new ForbiddenException("Bạn không có quyền chỉnh sửa bài viết này");
+    }
+
     const updateData: Prisma.BlogPostUpdateInput = {};
 
     if (data.title !== undefined) {
       updateData.title = data.title;
-      if (data.title !== blog.title) {
-        updateData.slug = slugify(data.title) + "-" + Date.now().toString(36);
-      }
+    }
+
+    if (data.slug !== undefined) {
+      updateData.slug = await this.resolveUniqueSlug(data.slug || data.title || blog.title, id);
     }
 
     if (data.type !== undefined) {
@@ -203,14 +231,15 @@ export class BlogsService {
     const effectiveType = data.type || blog.type;
 
     if (effectiveType === BlogType.NORMAL) {
-      if (data.content !== undefined) updateData.content = data.content;
+      if (data.content !== undefined)
+        updateData.content = data.content as Prisma.InputJsonValue;
       if (data.landingContent !== undefined)
         updateData.landingContent = Prisma.DbNull;
     } else if (effectiveType === BlogType.LANDING_PAGE) {
       if (data.landingContent !== undefined)
         updateData.landingContent =
           data.landingContent as Prisma.InputJsonValue;
-      if (data.content !== undefined) updateData.content = null;
+      if (data.content !== undefined) updateData.content = Prisma.DbNull;
     }
 
     if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
@@ -231,12 +260,82 @@ export class BlogsService {
     return updated;
   }
 
-  async remove(id: string) {
+  async remove(id: string, userId: string, userRole: Role) {
     const blog = await this.prisma.blogPost.findUnique({ where: { id } });
     if (!blog) throw new NotFoundException("Blog not found");
+
+    if (blog.authorId !== userId && userRole !== Role.ADMIN) {
+      throw new ForbiddenException("Bạn không có quyền xóa bài viết này");
+    }
+
     await this.prisma.blogPost.delete({ where: { id } });
     await this.invalidateCache();
     return { message: "Blog deleted" };
+  }
+
+  async findMyBlogs(
+    authorId: string,
+    query: { page?: number; limit?: number; search?: string; orderBy?: string },
+  ) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const search = query.search || "";
+    const orderBy = query.orderBy || "newest";
+
+    const where: Prisma.BlogPostWhereInput = { authorId };
+
+    if (search)
+      where.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        { excerpt: { contains: search, mode: "insensitive" } },
+      ];
+
+    let prismaOrderBy:
+      | Prisma.BlogPostOrderByWithRelationInput
+      | Prisma.BlogPostOrderByWithRelationInput[] = { createdAt: "desc" };
+
+    if (orderBy === "views") {
+      prismaOrderBy = [{ views: "desc" }, { createdAt: "desc" }];
+    } else if (orderBy === "oldest") {
+      prismaOrderBy = { createdAt: "asc" };
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.blogPost.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { category: true },
+        orderBy: prismaOrderBy,
+      }),
+      this.prisma.blogPost.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  private async resolveUniqueSlug(rawSlug: string, ignoreId?: string) {
+    const base = slugify(rawSlug) || `bai-viet-${Date.now().toString(36)}`;
+    let slug = base;
+    let suffix = 1;
+
+    while (true) {
+      const existing = await this.prisma.blogPost.findUnique({
+        where: { slug },
+        select: { id: true },
+      });
+
+      if (!existing || existing.id === ignoreId) return slug;
+
+      suffix += 1;
+      slug = `${base}-${suffix}`;
+    }
   }
 
   private async invalidateCache() {

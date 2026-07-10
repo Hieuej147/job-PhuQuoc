@@ -53,6 +53,7 @@ export function CandidateSidebar() {
         { icon: "work_history", label: "Đơn ứng tuyển", href: "/candidate/applications", badge: applicationsCount, badgeClass: "bg-[#005a71] text-white" },
         { icon: "bookmark", label: "Việc làm đã lưu", href: "/candidate/saved" },
         { icon: "apartment", label: "Công ty theo dõi", href: "/candidate/saved-companies" },
+        { icon: "article", label: "Bài viết của tôi", href: "/candidate/blogs" },
       ],
     },
     {

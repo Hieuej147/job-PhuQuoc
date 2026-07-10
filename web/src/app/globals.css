@@ -503,6 +503,26 @@ html {
   }
 }
 
+.blog-image {
+  margin: 1.5rem auto;
+  text-align: center;
+}
+
+.blog-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 0.75rem;
+}
+
+.blog-image-caption {
+  margin-top: 0.5rem;
+  color: rgb(100 116 139);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;
