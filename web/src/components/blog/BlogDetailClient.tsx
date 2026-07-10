@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
 import { toast } from "sonner";
-import { RichContent } from "@/components/ui/rich-content";
 import { Blog } from "@/types/blog";
+import { BlogContentRender } from "./BlogContentRender";
+import { trackBlogView } from "@/features/blog-detail/api";
 
 interface BlogDetailClientProps {
   blog: Blog;
@@ -29,13 +30,33 @@ export default function BlogDetailClient({
   const [likeCount, setLikeCount] = useState(0);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [email, setEmail] = useState("");
+  const [viewCount, setViewCount] = useState(blog.views || 0);
+  const hasTrackedView = useRef(false);
 
   // Extract headings for TOC
   const headingsList = useMemo(() => {
     if (!blog.content) return [];
-    const matches = Array.from(blog.content.matchAll(/<h2[^>]*>(.*?)<\/h2>/g));
-    return matches.map((match) => match[1].replace(/^\d+\.\s*/, ""));
+    return extractHeadingsFromTiptap(blog.content);
   }, [blog.content]);
+
+  useEffect(() => {
+    hasTrackedView.current = false;
+    setViewCount(blog.views || 0);
+
+    const timer = window.setTimeout(async () => {
+      if (hasTrackedView.current) return;
+      hasTrackedView.current = true;
+
+      try {
+        await trackBlogView(blog.slug);
+        setViewCount((current) => current + 1);
+      } catch (error) {
+        console.error("Không thể ghi nhận lượt xem blog:", error);
+      }
+    }, 15000);
+
+    return () => window.clearTimeout(timer);
+  }, [blog.slug, blog.views]);
 
   // Handle scroll for TOC active states, reading progress and scroll animations
   useEffect(() => {
@@ -220,7 +241,7 @@ export default function BlogDetailClient({
                     <span className="material-symbols-outlined text-[14px]">
                       visibility
                     </span>{" "}
-                    {formatViews(blog.views)} lượt xem
+                    {formatViews(viewCount)} lượt xem
                   </span>
                 </div>
               </div>
@@ -235,9 +256,9 @@ export default function BlogDetailClient({
           {/* LEFT COLUMN: ARTICLE BODY */}
           <div className="lg:col-span-3">
             <article id="article-content" className="fade-up stagger-1">
-              <RichContent
-                html={blog.content || ""}
-                className="article-body max-w-none"
+              <BlogContentRender
+                content={normalizeBlogContent(blog.content)}
+                className="max-w-none"
               />
 
               {/* Tags */}
@@ -504,4 +525,44 @@ export default function BlogDetailClient({
       </div>
     </div>
   );
+}
+
+function extractHeadingsFromTiptap(content: unknown) {
+  const headings: string[] = [];
+
+  const walk = (node: any) => {
+    if (!node || typeof node !== "object") return;
+    if (node.type === "heading" && node.attrs?.level === 2) {
+      const text = collectText(node).replace(/^\d+\.\s*/, "").trim();
+      if (text) headings.push(text);
+    }
+
+    if (Array.isArray(node.content)) {
+      node.content.forEach(walk);
+    }
+  };
+
+  walk(content);
+  return headings;
+}
+
+function collectText(node: any): string {
+  if (!node || typeof node !== "object") return "";
+  if (typeof node.text === "string") return node.text;
+  if (!Array.isArray(node.content)) return "";
+  return node.content.map(collectText).join("");
+}
+
+function normalizeBlogContent(content: unknown) {
+  if (!content) return null;
+  if (typeof content === "object") return content as Record<string, unknown>;
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: String(content).replace(/<[^>]+>/g, " ").trim() }],
+      },
+    ],
+  };
 }

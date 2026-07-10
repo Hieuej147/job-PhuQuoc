@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import type { Area } from "react-easy-crop";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,21 +22,10 @@ import SocialsComponent from "@/components/candidate/profile/Socials";
 import Summary from "@/components/candidate/profile/Summary";
 import Checklist from "@/components/candidate/profile/CheckList";
 import { computeProfileCompletion } from "@/lib/profile-completion";
-interface Experience {
-  company: string;
-  position: string;
-  startYear: string;
-  endYear: string;
-  description: string;
-}
-
-interface Education {
-  school: string;
-  degree: string;
-  field: string;
-  startYear: string;
-  endYear: string;
-}
+import { ImageCropDialog } from "@/components/media/image-crop-dialog";
+import { createCroppedImageFile, isSupportedImage } from "@/components/media/image-crop";
+import { getProfileResume, saveProfileResume, uploadCandidateAvatar } from "@/features/candidate-profile/api";
+import type { Education, Experience } from "@/features/candidate-profile/types";
 
 export default function ProfilePage() {
   const { user, refresh } = useAuth();
@@ -45,6 +35,13 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarCropOpen, setAvatarCropOpen] = useState(false);
+  const [avatarCropUrl, setAvatarCropUrl] = useState("");
+  const [avatarCropName, setAvatarCropName] = useState("");
+  const [avatarCropType, setAvatarCropType] = useState("");
+  const [avatarCrop, setAvatarCrop] = useState({ x: 0, y: 0 });
+  const [avatarZoom, setAvatarZoom] = useState(1);
+  const [avatarCroppedArea, setAvatarCroppedArea] = useState<Area | null>(null);
   const [editing, setEditing] = useState(false);
 
   // Active section to edit
@@ -77,12 +74,15 @@ export default function ProfilePage() {
 
   // Fetch profile on mount
   useEffect(() => {
+    return () => {
+      if (avatarCropUrl) URL.revokeObjectURL(avatarCropUrl);
+    };
+  }, [avatarCropUrl]);
+
+  useEffect(() => {
     async function fetchProfile() {
       try {
-        const res = await fetch("/api/v1/resumes/profile", { credentials: "include" });
-        if (res.ok) {
-          const payload = await res.json();
-          const p = payload?.data?.data || payload?.data || {};
+        const p = await getProfileResume();
 
           setName(p.name || user?.name || "");
           setPhone(p.phone || user?.phone || "");
@@ -104,7 +104,6 @@ export default function ProfilePage() {
           setWebsite(socials.website || "");
 
           setHasLoaded(true);
-        }
       } catch (err) {
         console.error("Error fetching profile:", err);
       } finally {
@@ -195,22 +194,10 @@ export default function ProfilePage() {
     };
 
     try {
-      const res = await fetch("/api/v1/resumes/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(saveData),
-      });
-
-      if (res.ok) {
-        await refresh();
-        if (showToast) {
-          toast.success("Lưu thông tin hồ sơ thành công!");
-        }
-      } else {
-        const errorData = await res.json().catch(() => null);
-        toast.error(errorData?.message || "Lỗi khi lưu thông tin.");
-        return false;
+      await saveProfileResume(saveData);
+      await refresh();
+      if (showToast) {
+        toast.success("Lưu thông tin hồ sơ thành công!");
       }
     } catch (err) {
       console.error("Error saving profile:", err);
@@ -235,29 +222,54 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!isSupportedImage(file)) {
+      toast.error("Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File vượt quá giới hạn 5MB");
+      e.target.value = "";
+      return;
+    }
+
+    if (avatarCropUrl) URL.revokeObjectURL(avatarCropUrl);
+    setAvatarCrop({ x: 0, y: 0 });
+    setAvatarZoom(1);
+    setAvatarCroppedArea(null);
+    setAvatarCropName(file.name);
+    setAvatarCropType(file.type);
+    setAvatarCropUrl(URL.createObjectURL(file));
+    setAvatarCropOpen(true);
+    e.target.value = "";
+  };
+
+  const handleAvatarCropCancel = () => {
+    setAvatarCropOpen(false);
+    if (avatarCropUrl) {
+      URL.revokeObjectURL(avatarCropUrl);
+      setAvatarCropUrl("");
+    }
+  };
+
+  const handleAvatarCropConfirm = async () => {
+    if (!avatarCropUrl || !avatarCroppedArea) return;
+
     setUploadingAvatar(true);
-    const formData = new FormData();
-    formData.append("file", file);
 
     try {
-      const res = await fetch("/api/v1/upload/candidate-avatar", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-
-      if (res.ok) {
-        const result = await res.json();
-        const avatarUrl = result?.data?.avatar ?? result?.avatar;
-        if (avatarUrl) {
-          setAvatar(avatarUrl);
-          await refresh();
-          toast.success("Cập nhật ảnh đại diện thành công!");
-        }
-      } else {
-        const errorData = await res.json().catch(() => null);
-        toast.error(errorData?.message || "Lỗi khi upload ảnh.");
-      }
+      const croppedFile = await createCroppedImageFile(
+        avatarCropUrl,
+        avatarCroppedArea,
+        avatarCropName || "candidate-avatar.webp",
+        avatarCropType || "image/webp",
+        { width: 500, height: 500 },
+      );
+      const avatarUrl = await uploadCandidateAvatar(croppedFile);
+      setAvatar(avatarUrl);
+      await refresh();
+      toast.success("Cập nhật ảnh đại diện thành công!");
+      handleAvatarCropCancel();
     } catch (err) {
       console.error("Error uploading avatar:", err);
       toast.error("Lỗi kết nối khi tải ảnh đại diện.");
@@ -338,6 +350,23 @@ export default function ProfilePage() {
 
   return (
     <div className="p-6 space-y-6">
+      <ImageCropDialog
+        open={avatarCropOpen}
+        title="Căn chỉnh ảnh đại diện"
+        description="Kéo ảnh để chọn vùng hiển thị avatar. Ảnh sẽ được crop vuông trước khi upload."
+        aspect={1}
+        cropShape="round"
+        cropState={{
+          imageUrl: avatarCropUrl,
+          crop: avatarCrop,
+          zoom: avatarZoom,
+          onCropChange: setAvatarCrop,
+          onZoomChange: setAvatarZoom,
+          onCropComplete: (_croppedArea, areaPixels) => setAvatarCroppedArea(areaPixels),
+        }}
+        onCancel={handleAvatarCropCancel}
+        onConfirm={handleAvatarCropConfirm}
+      />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Hồ sơ cá nhân</h1>

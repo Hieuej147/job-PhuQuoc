@@ -140,6 +140,7 @@ describe('JobsService', () => {
 
       expect(result.status).toBe('DRAFT');
       expect(result.companyId).toBe('company1');
+      expect(jobBackgroundMock.syncEmbedding).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when company not found', async () => {
@@ -180,12 +181,72 @@ describe('JobsService', () => {
       const mockJob = {
         id: '1',
         company: { ownerId: 'user1' },
+        archivedAt: null,
       };
       prismaMock.job.findUnique.mockResolvedValue(mockJob);
       prismaMock.job.update.mockResolvedValue({ ...mockJob, title: 'Updated' });
 
       const result = await service.update('1', 'user1', { title: 'Updated' });
       expect(result.title).toBe('Updated');
+    });
+
+    it('should not sync embedding when updating a draft job', async () => {
+      const mockJob = {
+        id: '1',
+        company: { ownerId: 'user1' },
+        archivedAt: null,
+      };
+      prismaMock.job.findUnique.mockResolvedValue(mockJob);
+      prismaMock.job.update.mockResolvedValue({
+        ...mockJob,
+        title: 'Draft Updated',
+        status: 'DRAFT',
+        deadline: null,
+      });
+
+      await service.update('1', 'user1', { title: 'Draft Updated' });
+
+      expect(jobBackgroundMock.syncEmbedding).not.toHaveBeenCalled();
+    });
+
+    it('should sync embedding when updating an active visible job', async () => {
+      const mockJob = {
+        id: '1',
+        company: { ownerId: 'user1' },
+        archivedAt: null,
+      };
+      const updated = {
+        ...mockJob,
+        title: 'Active Updated',
+        description: 'Markdown content',
+        status: 'ACTIVE',
+        deadline: new Date(Date.now() + 86400000),
+      };
+      prismaMock.job.findUnique.mockResolvedValue(mockJob);
+      prismaMock.job.update.mockResolvedValue(updated);
+
+      await service.update('1', 'user1', { title: 'Active Updated' });
+
+      expect(jobBackgroundMock.syncEmbedding).toHaveBeenCalledWith(updated);
+    });
+
+    it('should not sync embedding when active job is already expired', async () => {
+      const mockJob = {
+        id: '1',
+        company: { ownerId: 'user1' },
+        archivedAt: null,
+      };
+      prismaMock.job.findUnique.mockResolvedValue(mockJob);
+      prismaMock.job.update.mockResolvedValue({
+        ...mockJob,
+        title: 'Expired Updated',
+        status: 'ACTIVE',
+        deadline: new Date(Date.now() - 86400000),
+      });
+
+      await service.update('1', 'user1', { title: 'Expired Updated' });
+
+      expect(jobBackgroundMock.syncEmbedding).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when job not found', async () => {

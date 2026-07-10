@@ -4,7 +4,6 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -39,32 +38,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
-import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
 import { formatSalary, jobTypeLabel } from "@/lib/utils/format";
-
-interface Job {
-  id: string;
-  title: string;
-  slug: string;
-  status: JobStatus;
-  salaryMin: number | null;
-  salaryMax: number | null;
-  type: string;
-  level?: string | null;
-  createdAt: string;
-  deadline?: string | null;
-  ward?: { name: string; district?: { name: string } | null } | null;
-  _count?: { applications: number };
-  archivedAt?: string | null;
-}
-
-type JobStatus = "ALL" | "ACTIVE" | "PENDING" | "DRAFT" | "CLOSED" | "EXPIRED";
-type JobSort = "newest" | "most-apps" | "expiring";
-
-type JobsResponse = { items?: Job[] } | Job[];
-type JobStats = Record<JobStatus, number>;
-
-const EMPTY_STATS: JobStats = { ALL: 0, ACTIVE: 0, PENDING: 0, DRAFT: 0, CLOSED: 0, EXPIRED: 0 };
+import { STATUS_FILTERS } from "@/features/employer-jobs/constants";
+import { useEmployerJobs } from "@/features/employer-jobs/hooks/use-employer-jobs";
+import type { EmployerJob, JobSort, JobStatus } from "@/features/employer-jobs/types";
 
 const statusMap: Record<Exclude<JobStatus, "ALL">, { label: string; icon: LucideIcon; className: string; accentClass: string }> = {
   ACTIVE: {
@@ -99,21 +76,7 @@ const statusMap: Record<Exclude<JobStatus, "ALL">, { label: string; icon: Lucide
   },
 };
 
-const statusFilters: { value: JobStatus; label: string }[] = [
-  { value: "ALL", label: "Tất cả" },
-  { value: "ACTIVE", label: "Đang tuyển" },
-  { value: "PENDING", label: "Chờ duyệt" },
-  { value: "DRAFT", label: "Nháp" },
-  { value: "CLOSED", label: "Đã đóng" },
-  { value: "EXPIRED", label: "Hết hạn" },
-];
-
-function unwrapJobs(payload: JobsResponse) {
-  if (Array.isArray(payload)) return payload;
-  return Array.isArray(payload.items) ? payload.items : [];
-}
-
-function getLocation(job: Job) {
+function getLocation(job: EmployerJob) {
   if (!job.ward) return "Chưa cập nhật địa điểm";
   return [job.ward.name, job.ward.district?.name].filter(Boolean).join(", ");
 }
@@ -142,90 +105,27 @@ function StatCard({ status, label, count, active, onClick }: { status: JobStatus
 }
 
 export default function EmployerJobsPage() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [stats, setStats] = useState<JobStats>(EMPTY_STATS);
-  const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState<JobStatus>("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [sortBy, setSortBy] = useState<JobSort>("newest");
-  const [closingJob, setClosingJob] = useState<Job | null>(null);
-  const [deletingJob, setDeletingJob] = useState<Job | null>(null);
-  const [rememberCloseConfirm, setRememberCloseConfirm] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [searchQuery]);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({ limit: "100", status: filterStatus, sort: sortBy });
-    if (debouncedSearch) params.set("search", debouncedSearch);
-
-    try {
-      const [jobsPayload, statsPayload] = await Promise.all([
-        apiGet<JobsResponse>(`/api/v1/jobs/my?${params.toString()}`),
-        apiGet<Partial<JobStats>>("/api/v1/jobs/my/stats"),
-      ]);
-      setJobs(unwrapJobs(jobsPayload));
-      setStats({ ...EMPTY_STATS, ...statsPayload });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể tải danh sách tin đăng");
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedSearch, filterStatus, sortBy]);
-
-  useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
-
-  const closeJob = async (job: Job) => {
-    try {
-      await apiPatch<Partial<Job>>(`/api/v1/jobs/${job.id}/close`);
-      await fetchData();
-      toast.success("Đã đóng tin. Tin vẫn được giữ trong dashboard.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể đóng tin tuyển dụng");
-    }
-  };
-
-  const requestCloseJob = async (job: Job) => {
-    if (window.localStorage.getItem("skipConfirm:closeJob") === "true") {
-      await closeJob(job);
-      return;
-    }
-    setClosingJob(job);
-  };
-
-  const confirmCloseJob = async () => {
-    if (!closingJob) return;
-    if (rememberCloseConfirm) {
-      window.localStorage.setItem("skipConfirm:closeJob", "true");
-    }
-    await closeJob(closingJob);
-    setClosingJob(null);
-    setRememberCloseConfirm(false);
-  };
-
-  const archiveJob = async (job: Job) => {
-    try {
-      await apiDelete<{ mode?: "archived"; message?: string }>(`/api/v1/jobs/${job.id}/employer`);
-      await fetchData();
-      toast.success("Đã xóa tin khỏi danh sách quản lý");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể xóa tin khỏi danh sách");
-    }
-  };
-
-  const confirmDeleteJob = async () => {
-    if (!deletingJob) return;
-    await archiveJob(deletingJob);
-    setDeletingJob(null);
-  };
-
-  const totalApplications = useMemo(() => jobs.reduce((sum, job) => sum + (job._count?.applications ?? 0), 0), [jobs]);
+  const {
+    jobs,
+    stats,
+    loading,
+    filterStatus,
+    setFilterStatus,
+    searchQuery,
+    setSearchQuery,
+    sortBy,
+    setSortBy,
+    closingJob,
+    setClosingJob,
+    deletingJob,
+    setDeletingJob,
+    rememberCloseConfirm,
+    setRememberCloseConfirm,
+    requestCloseJob,
+    confirmCloseJob,
+    confirmDeleteJob,
+    totalApplications,
+  } = useEmployerJobs();
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -253,7 +153,7 @@ export default function EmployerJobsPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {statusFilters.map((item) => (
+        {STATUS_FILTERS.map((item) => (
           <StatCard
             key={item.value}
             status={item.value}
@@ -287,7 +187,7 @@ export default function EmployerJobsPage() {
           </select>
         </div>
         <div className="mt-3 flex gap-2 overflow-x-auto border-t border-border/60 pt-3">
-          {statusFilters.map((item) => (
+          {STATUS_FILTERS.map((item) => (
             <button
               key={item.value}
               type="button"
@@ -314,6 +214,8 @@ export default function EmployerJobsPage() {
             const statusConfig = getStatusConfig(job.status);
             const StatusIcon = statusConfig.icon;
             const applicationCount = job._count?.applications ?? 0;
+            const isBoosted = Boolean(job.boostLevel && job.boostLevel > 0 && (!job.featuredUntil || new Date(job.featuredUntil).getTime() >= Date.now()));
+            const boostLabel = isBoosted ? `Top ${4 - Math.min(Math.max(job.boostLevel || 0, 1), 3)}` : null;
 
             return (
               <div key={job.id} className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
@@ -327,12 +229,18 @@ export default function EmployerJobsPage() {
                         <StatusIcon className="size-3.5" />
                         {statusConfig.label}
                       </span>
+                      {boostLabel && (
+                        <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-600 dark:text-amber-300">
+                          ⭐ {boostLabel}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1.5"><Briefcase className="size-4" />{jobTypeLabel(job.type)}{job.level ? ` • ${job.level}` : ""}</span>
                       <span className="flex items-center gap-1.5">{formatSalary(job.salaryMin, job.salaryMax)}</span>
                       <span className="flex items-center gap-1.5"><Calendar className="size-4" />{job.deadline ? `Hết hạn: ${new Date(job.deadline).toLocaleDateString("vi-VN")}` : "Chưa có hạn đăng"}</span>
+                      {boostLabel && job.featuredUntil && <span>Top đến: {new Date(job.featuredUntil).toLocaleDateString("vi-VN")}</span>}
                       <span className="truncate">{getLocation(job)}</span>
                     </div>
 

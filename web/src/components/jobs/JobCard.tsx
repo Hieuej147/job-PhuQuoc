@@ -40,7 +40,7 @@ export default function JobCard({ job, onBookmark, isBookmarked }: JobCardProps)
       {/* 1. Nhãn "NỔI BẬT" - Chỉ hiển thị khi thuộc tính isFeatured là true */}
       {job.isFeatured && (
         <div className="absolute top-0 left-0 bg-[#F59E0B] text-white text-[10px] font-bold px-3 py-1 rounded-br-xl z-10">
-          ⭐ NỔI BẬT
+          ⭐ {job.featuredLabel || "NỔI BẬT"}
         </div>
       )}
 

@@ -64,6 +64,7 @@ export function EmployerSidebar() {
         { icon: "post_add", label: "Đăng tin mới", href: "/employer/jobs/create" },
         { icon: "work", label: "Quản lý tin đăng", href: "/employer/jobs", badge: jobsCount, badgeClass: "bg-[#005a71] text-white" },
         { icon: "group", label: "Hồ sơ ứng viên", href: "/employer/applications", badge: applicantsCount, badgeClass: "bg-[#F59E0B] text-white" },
+        { icon: "article", label: "Bài viết của tôi", href: "/employer/blogs" },
       ],
     },
     {

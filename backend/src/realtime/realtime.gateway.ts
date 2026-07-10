@@ -7,7 +7,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import type { Server, Socket } from 'socket.io';
+import type { Namespace, Server, Socket } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
@@ -17,6 +17,7 @@ import { SocketAuthService } from './socket-auth.service';
 import type { RealtimeUser } from './realtime.types';
 
 type AuthedSocket = Socket & { data: { user?: RealtimeUser } };
+type GatewaySocketServer = Server | Namespace;
 
 @WebSocketGateway({
   namespace: '/realtime',
@@ -27,7 +28,7 @@ type AuthedSocket = Socket & { data: { user?: RealtimeUser } };
 })
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   @WebSocketServer()
-  private server!: Server;
+  private server!: GatewaySocketServer;
 
   constructor(
     private readonly config: ConfigService,
@@ -36,7 +37,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
     private readonly socketAuth: SocketAuthService,
   ) {}
 
-  async afterInit(server: Server) {
+  async afterInit(server: GatewaySocketServer) {
     this.realtime.bindServer(server);
     await this.tryUseRedisAdapter(server);
     this.logger.log('Realtime gateway initialized at /realtime', 'RealtimeGateway');
@@ -91,18 +92,31 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
     return { ok: Boolean(socket.data.user) };
   }
 
-  private async tryUseRedisAdapter(server: Server) {
+  private async tryUseRedisAdapter(server: GatewaySocketServer) {
     const redisUrl = this.config.get<string>('REDIS_URL');
     if (!redisUrl) return;
 
     try {
       const pubClient = new Redis(redisUrl);
       const subClient = pubClient.duplicate();
-      server.adapter(createAdapter(pubClient as never, subClient as never));
+      const ioServer = this.resolveRootServer(server);
+      ioServer.adapter(createAdapter(pubClient as never, subClient as never));
       this.logger.log('Realtime Redis adapter enabled', 'RealtimeGateway');
     } catch (error) {
       this.logger.warn(`Realtime Redis adapter disabled: ${(error as Error).message}`, 'RealtimeGateway');
     }
   }
-}
 
+  private resolveRootServer(server: GatewaySocketServer): Server {
+    if (typeof (server as Server).adapter === 'function') {
+      return server as Server;
+    }
+
+    const namespace = server as Namespace;
+    if (namespace.server && typeof namespace.server.adapter === 'function') {
+      return namespace.server;
+    }
+
+    throw new Error('Socket.IO root server adapter API is unavailable');
+  }
+}

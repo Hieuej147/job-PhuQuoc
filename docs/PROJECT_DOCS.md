@@ -1,7 +1,7 @@
 # Phú Quốc Jobs — Project Documentation
 
 > Tài liệu kỹ thuật toàn diện cho dự án PQJobs — nền tảng tuyển dụng đảo Phú Quốc.
-> Cập nhật: 09/07/2026
+> Cập nhật: 10/07/2026
 
 ---
 
@@ -26,12 +26,13 @@
 
 ## 1. Tổng quan dự án
 
-### 1.0 Cập nhật quan trọng 09/07/2026
+### 1.0 Cập nhật quan trọng 10/07/2026
 
 - Backend vẫn là **NestJS modular monolith**, nhưng quota đã được refactor theo NestJS DI: `common/quota/quota.service.ts` là application service, còn `quota-expiry.service.ts` chỉ dành cho Inngest worker/repair và dùng Prisma trực tiếp.
 - `storage-quota.ts` đã bị xoá; import quota mới phải đi qua `quota.service`, `quota.types`, `quota.constants` hoặc `quota-policy`.
 - Prisma hiện dùng **Prisma 7** với `prisma.config.ts`; không để connection URL trong `schema.prisma`.
 - Job content vẫn lưu **Markdown** cho `description`, `requirements`, `benefits`; frontend render bằng Markdown renderer, không lưu HTML raw.
+- Blog content lưu **Tiptap JSON** trong `blog_post.content`; bài mới không lưu HTML. View count không tăng khi SSR fetch chi tiết, mà tăng qua endpoint riêng sau khi người dùng đọc đủ thời gian.
 - `Job.deadline` vẫn có trong DB nhưng **không nhận từ form tạo/sửa job**. Deadline chỉ được set khi checkout/payment complete theo số ngày đăng.
 - Employer không hard delete job từ workspace. `DELETE /jobs/:id/employer` là ẩn mềm qua `archivedAt`; dữ liệu tuyển dụng/thanh toán vẫn giữ cho admin/support, không có tab lưu trữ user-facing ở FE employer v1.
 - Public job routes chỉ trả job `ACTIVE`, chưa hết hạn, `archivedAt = null`. Dashboard/private route dùng `/jobs/manage/:id` hoặc application history để xem tin cũ.
@@ -39,6 +40,9 @@
 - Application chat chỉ cho gửi khi application `ACCEPTED` và chưa `chatClosedAt`; `REJECTED` chỉ xem lời nhắn read-only.
 - Chat/notification/dashboard realtime dùng NestJS Socket.IO Gateway namespace `/realtime`; REST vẫn là source of truth, socket chỉ cập nhật cache FE sau khi DB ghi thành công.
 - Quota upgrade có package/purchase theo thời hạn: `QuotaPackage`, `QuotaPurchase`, `UserQuotaPlan`; Inngest có event `quota.plan.activated` và repair hết hạn hằng ngày.
+- Quota upgrade FE đi qua checkout page mock `/quota/checkout?session_id=...`; modal nâng gói chỉ tạo checkout và redirect, không complete ngầm.
+- Ảnh đại diện candidate, logo công ty và ảnh bìa công ty đều crop trên FE trước khi upload. Company cover lưu `Company.coverImage/coverImagePublicId` và upload qua `/api/v1/upload/company-cover`.
+- Job Top 1/2/3 dùng `Job.boostLevel` (`3=Top 1`, `2=Top 2`, `1=Top 3`) và `featuredUntil`; public jobs sort mặc định ưu tiên boost trước rồi mới đến thời gian đăng.
 
 ### 1.1 Mục tiêu
 
@@ -293,12 +297,12 @@ BlogType          = NORMAL | LANDING_PAGE
 │  │ userId ───────────│──▶ user │ name              │                         │
 │  │ title             │         │ description?      │                         │
 │  │ address?          │         │ previewUrl?       │                         │
-│  │ summary?          │         │ htmlTemplate      │                         │
-│  │ socialLinks? (JSON│         │ cssTemplate       │                         │
-│  │ education? (JSON) │         │ isPublic          │                         │
-│  │ experience? (JSON)│         │ userId? ──────────│──▶ user                 │
-│  │ projects? (JSON)  │         │ isActive          │                         │
-│  │ skills? (String)  │         └──────────────────┘                         │
+│  │ summary?          │         │ isPublic          │                         │
+│  │ socialLinks? (JSON│         │ userId? ──────────│──▶ user                 │
+│  │ education? (JSON) │         │ isActive          │                         │
+│  │ experience? (JSON)│         └──────────────────┘                         │
+│  │ projects? (JSON)  │                                                      │
+│  │ skills? (String)  │                                                      │
 │  │ degree?           │                                                      │
 │  │ languages?        │                                                      │
 │  │ isDefault         │                                                      │
@@ -723,8 +727,7 @@ UpdateResumeDto: (tất cả optional)
 CreateTemplateDto:
   name         : string (required)
   description? : string
-  htmlTemplate : string (required)
-  cssTemplate  : string (required)
+  previewUrl?  : string
   isPublic?    : boolean
 
 UpdateTemplateDto: (tất cả optional)
@@ -733,8 +736,8 @@ UpdateTemplateDto: (tất cả optional)
 **AI CV persist contract:**
 
 - `templateId` chỉ do DB sinh khi gọi `POST /resumes/templates`.
-- Agent/FE chỉ gửi template draft: `name`, `htmlTemplate`, `cssTemplate`, `isPublic`.
-- Nếu template validator fail, backend trả `400` và không tạo `ResumeTemplate`.
+- Agent/FE chỉ gửi template metadata: `name`, `description?`, `previewUrl?`, `isPublic?`.
+- Schema hiện không lưu HTML/CSS trong `ResumeTemplate`; AI CV HTML/CSS chỉ dùng để preview phía FE.
 - Sau khi backend trả template `id`, agent dùng id đó làm `templateId` khi gọi `POST /resumes`.
 - PDF export chỉ chạy sau khi đã có `resumeId` thật.
 
@@ -765,10 +768,12 @@ NotificationQueryDto:
 | Method | Path | Auth | Roles | Body/Query | Mô tả |
 |--------|------|------|-------|------------|--------|
 | `GET` | `/blogs` | `@Public()` | - | `BlogQueryDto` | Danh sách blog (đã publish) |
-| `GET` | `/blogs/slug/:slug` | `@Public()` | - | - | Blog theo slug (tăng views) |
-| `POST` | `/blogs` | Có | ADMIN | `CreateBlogDto` | Tạo blog |
-| `PATCH` | `/blogs/:id` | Có | ADMIN | `UpdateBlogDto` | Cập nhật blog |
-| `DELETE` | `/blogs/:id` | Có | ADMIN | - | Xóa blog |
+| `GET` | `/blogs/slug/:slug` | `@Public()` | - | - | Blog theo slug, không tự tăng views |
+| `POST` | `/blogs/slug/:slug/view` | `@Public()` | - | - | Tăng lượt xem sau khi FE xác nhận người dùng đã đọc |
+| `GET` | `/blogs/my` | Có | CANDIDATE, EMPLOYER, ADMIN | `BlogQueryDto` | Danh sách blog của tác giả hiện tại |
+| `POST` | `/blogs` | Có | CANDIDATE, EMPLOYER, ADMIN | `CreateBlogDto` | Tạo blog Tiptap JSON |
+| `PATCH` | `/blogs/:id` | Có | CANDIDATE, EMPLOYER, ADMIN | `UpdateBlogDto` | Cập nhật blog; tác giả hoặc ADMIN |
+| `DELETE` | `/blogs/:id` | Có | CANDIDATE, EMPLOYER, ADMIN | - | Xóa blog; tác giả hoặc ADMIN |
 
 **DTOs:**
 
@@ -866,6 +871,8 @@ UpdatePricingDto: (tất cả optional)
 CreateCheckoutDto:
   jobId     : string (required)
   packageId : string (required)
+  durationDays? : number (1-365, bị quota giới hạn)
+  boostLevel?   : number (0-3, bị quota giới hạn)
 ```
 
 ---
@@ -976,13 +983,15 @@ QueryAuditDto:
 | Route | File | Mô tả |
 |-------|------|--------|
 | `/blog` | `src/app/blog/page.tsx` | Danh sách blog. Category tabs, sort, pagination. JSON-LD Blog |
-| `/blog/[slug]` | `src/app/blog/[slug]/page.tsx` | Chi tiết blog. TOC, reading progress. Nếu type=LANDING_PAGE → iframe. JSON-LD Article |
+| `/blog/[slug]` | `src/app/blog/[slug]/page.tsx` | Chi tiết blog. Render Tiptap JSON, TOC, reading progress, delayed view count. Nếu type=LANDING_PAGE → iframe. JSON-LD Article |
+| `/blog/new` | `src/app/blog/new/page.tsx` | Candidate/Employer/Admin tạo bài blog bằng Tiptap editor |
+| `/blog/[slug]/edit` | `src/app/blog/[slug]/edit/page.tsx` | Tác giả/Admin chỉnh sửa bài blog |
 
 #### Thanh toán
 
 | Route | File | Mô tả |
 |-------|------|--------|
-| `/payment/success` | `src/app/payment/success/page.tsx` | Callback thanh toán. Gọi mock-complete. Hiển thị success/error |
+| `/payment/success` | `src/app/(main)/payment/success/page.tsx` | Callback thanh toán. Gọi mock-complete cho mock gateway. Hiển thị success/error |
 
 #### Template CV
 
@@ -1102,7 +1111,7 @@ QueryAuditDto:
 
 | Component | File | Mô tả |
 |-----------|------|--------|
-| `TemplateRenderer` | `components/cv/template-renderer.tsx` | Render CV HTML trong iframe. Auto-resize, edit mode |
+| `TemplateRenderer` | `components/cv/template-renderer.tsx` | Render CV HTML đã sanitize trong iframe sandbox không chạy script |
 
 #### Dashboard Components
 
@@ -1116,7 +1125,8 @@ QueryAuditDto:
 | Component | File | Mô tả |
 |-----------|------|--------|
 | `BlogPageClient` | `components/blog/BlogPageClient.tsx` | Blog listing. Featured post, category tabs, pagination, sidebar |
-| `BlogDetailClient` | `components/blog/BlogDetailClient.tsx` | Blog detail. Reading progress, TOC, engagement buttons |
+| `BlogDetailClient` | `components/blog/BlogDetailClient.tsx` | Blog detail. Render Tiptap JSON, delayed view count, reading progress, TOC |
+| `BlogEditor` | `components/blog/BlogEditor.tsx` | Tiptap editor cho blog; payload lưu JSON duy nhất |
 
 #### UI Components (shadcn/ui)
 
@@ -1535,11 +1545,13 @@ Redirect → Stripe / Mock
 Payment success → POST /payments/mock-complete hoặc Stripe webhook
     │
     ▼
-PaymentsService.completePayment()
-    │  1. Update payment status = COMPLETED
-    │  2. Calculate deadline = now + package.days
-    │  3. JobContractService.activateJob(jobId, deadline) → status = ACTIVE
+PaymentCompletionService.completeBySession()/completeByJob()
+    │  1. Transaction: verify payment PENDING + job not archived/active
+    │  2. Transaction: update payment = COMPLETED
+    │  3. Transaction: activate job, set deadline/currentPaymentId/boost
     │  4. Send Inngest event: job.activated
+    │  5. Audit log best-effort
+    │  6. Sync job embedding after successful paid activation
     ▼
 Inngest: schedule-job-expiry
     │  Schedule job.expiring-soon (3 days trước deadline)
@@ -1609,7 +1621,7 @@ generate_template_node:
     │  5. cv_flow = "preview", progress = 80
     │  6. Return ToolMessage với HTML/CSS
     ▼
-Frontend render CV preview (useTemplateRenderer → iframe)
+Frontend render CV preview (useTemplateRenderer → sanitized iframe, không chạy script)
     │
     ▼
 User muốn sửa: "Đổi header thành xanh đậm"
@@ -1631,12 +1643,12 @@ LLM gọi tool: save_resume { title }
     │
     ▼
 save_resume_node:
-    │  1. Review/repair template draft lần cuối
-    │  2. POST /resumes/templates { name, htmlTemplate, cssTemplate, isPublic }
-    │  3. Backend validator pass → DB tạo ResumeTemplate.id
+    │  1. Review/repair nội dung CV lần cuối
+    │  2. Chọn ResumeTemplate hiện có hoặc tạo template metadata nếu cần
+    │  3. ResumeTemplate schema hiện chỉ lưu metadata: name/description/previewUrl/isPublic/userId/isActive
     │  4. POST /resumes { title, summary, skills, templateId, ... }
     │  5. cv_flow = "done"
-    │  6. Return resume ID + template ID
+    │  6. Return resume ID
     ▼
 User muốn PDF: "Export PDF"
     │
@@ -1674,11 +1686,12 @@ PaymentsService.createCheckout()
               │  Verify signature
               │  Extract session/job info
               ▼
-              PaymentsService.completePayment()
-              │  1. status = COMPLETED
-              │  2. deadline = now + days
-              │  3. job.status = ACTIVE
+              PaymentCompletionService.completeBySession()
+              │  1. Transaction: payment COMPLETED + job ACTIVE
+              │  2. deadline = now + paid duration
+              │  3. set boostLevel/featuredUntil/currentPaymentId
               │  4. Send job.activated event
+              │  5. Sync embedding after successful activation
               ▼
               Job ACTIVE → hiển thị trên trang tìm kiếm
 ```
@@ -1695,7 +1708,7 @@ PaymentsService.createCheckout()
 | `application.accepted` | `{ applicationId, jobTitle, companyName, employerId?, candidateId? }` | Đơn được chấp nhận |
 | `application.rejected` | `{ applicationId, jobTitle, companyName, employerId?, candidateId? }` | Đơn bị từ chối |
 | `user.registered` | `{ userId, email, name }` | User đăng ký mới |
-| `job.activated` | `{ jobId, deadline? }` | Job được kích hoạt (sau thanh toán) |
+| `job.activated` | `{ jobId, deadline?, activationId? }` | Job được kích hoạt sau payment completion thành công |
 | `job.expiring-soon` | `{ jobId, deadline? }` | Job sắp hết hạn (3 ngày trước) |
 | `job.expired` | `{ jobId, deadline? }` | Job hết hạn |
 | `quota.plan.activated` | `{ userId, targetPlan, expiresAt, purchaseId }` | Gói quota được kích hoạt sau mock checkout |
@@ -1844,6 +1857,8 @@ Stage 2 (runner): python:3.12-slim
 | `EMAIL_FROM` | Optional | Sender email |
 | `GOOGLE_CLIENT_ID` | Optional | Google OAuth |
 | `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth |
+
+**Gmail/Gmail AI note:** Code hiện chỉ có Google OAuth qua better-auth và email provider Resend/Nodemailer cho auth/notification. Chưa có Gmail API mailbox sync hoặc Gmail AI workflow. Trước khi implement cần chốt OAuth scopes, consent, refresh-token storage, revoke policy, data retention/logging và quyền đọc nội dung email thật.
 | `STRIPE_SECRET_KEY` | Optional | Stripe payments |
 | `STRIPE_PUBLISHABLE_KEY` | Optional | Stripe frontend |
 | `STRIPE_WEBHOOK_SECRET` | Optional | Stripe webhook |
@@ -1901,10 +1916,11 @@ Stage 2 (runner): python:3.12-slim
 
 | # | Vấn đề | File | Mức độ |
 |---|--------|------|--------|
-| 1 | **User tự escalate role** — `PATCH /auth/me` chấp nhận field `role`, user có thể tự đổi CANDIDATE → EMPLOYER | `auth.controller.ts:24-35`, `auth.service.ts:33-49` | 🔴 Critical |
-| 2 | **JWT bypass isActive/isLocked** — JWT path trong AuthGuard kiểm tra DB nhưng có thể bypass nếu JWKS key bị leak | `auth.guard.ts:87-117` | 🔴 Critical |
-| 3 | **Inngest serve handler chưa mount đúng** — Mount cả ở main.ts và controller, có thể gây confusion | `inngest.controller.ts`, `main.ts` | 🔴 Critical |
-| 4 | **Payment completion không có transaction** — Không dùng Prisma transaction, có thể inconsistency nếu fail giữa chừng | `payments.service.ts:140-151` | 🔴 Critical |
+| 1 | **JWT bypass isActive/isLocked nếu JWKS/private key bị leak** — JWT path có DB check, nhưng key leak vẫn là sự cố nghiêm trọng cần rotate key/secret | `auth/guards/auth.guard.ts` | 🔴 Critical |
+| 2 | **Inngest external side effects cần repair/idempotency rõ hơn** — Runtime source of truth hiện là bootstrap `main.ts` mount `serve()` tại `/api/inngest`; controller cũ đã xoá | `main.ts`, `inngest/functions/*` | 🟡 Medium |
+| 3 | **Payment side effects ngoài transaction vẫn best-effort** — Payment update + job activation đã nằm trong DB transaction; Inngest event, audit log và embedding chạy sau transaction nên cần idempotency/repair khi provider ngoài lỗi | `payments/application/payment-completion.service.ts` | 🟡 Medium |
+
+Đã xử lý so với report cũ: `PATCH /auth/me` không còn nhận `role`; chọn role đi qua `PATCH /auth/select-role` và `AuthService.selectRole()` chặn đổi role nếu user đã có role.
 
 ### 12.2 Medium Issues
 
@@ -2088,7 +2104,6 @@ backend/
 │   │   ├── client.ts                     # Inngest client
 │   │   ├── events.types.ts               # Event type definitions
 │   │   ├── inngest.service.ts            # Inngest service
-│   │   ├── inngest.controller.ts         # Serve handler
 │   │   ├── inngest.module.ts             # @Global()
 │   │   └── functions/
 │   │       ├── notification.functions.ts  # 4 notification handlers
@@ -2111,7 +2126,7 @@ backend/
 │       ├── applications/                 # 7 endpoints
 │       ├── resumes/                      # 13 endpoints
 │       ├── notifications/                # 4 endpoints
-│       ├── blogs/                        # 5 endpoints
+│       ├── blogs/                        # 7 endpoints
 │       ├── blog-categories/              # 4 endpoints
 │       ├── saved/                        # 4 endpoints
 │       ├── pricing/                      # 5 endpoints

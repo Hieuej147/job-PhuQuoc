@@ -2,7 +2,7 @@
 
 import { Crown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { apiGet, apiPost } from "@/lib/api-client";
@@ -43,7 +43,7 @@ interface QuotaPackage {
 }
 
 export function QuotaUpgradeDialog({ open, onOpenChange, resource, used, limit }: QuotaUpgradeDialogProps) {
-  const queryClient = useQueryClient();
+  const router = useRouter();
   const [upgrading, setUpgrading] = useState(false);
   const [packages, setPackages] = useState<QuotaPackage[]>([]);
   const [selectedPackageId, setSelectedPackageId] = useState<string>("");
@@ -74,19 +74,12 @@ export function QuotaUpgradeDialog({ open, onOpenChange, resource, used, limit }
     }
     setUpgrading(true);
     try {
-      const checkoutBody = await apiPost<{ sessionId?: string }>("/api/v1/quota/checkout", {
+      const checkoutBody = await apiPost<{ sessionId?: string; url?: string }>("/api/v1/quota/checkout", {
         packageId: selectedPackageId,
       });
-      const sessionId = checkoutBody.sessionId;
-      if (!sessionId) throw new Error("Thiếu session thanh toán quota");
-
-      await apiPost("/api/v1/quota/mock-complete", { sessionId });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
-        queryClient.invalidateQueries({ queryKey: ["quota"] }),
-      ]);
-      toast.success("Đã nâng gói quota demo");
+      if (!checkoutBody.url) throw new Error("Thiếu URL thanh toán quota");
       onOpenChange(false);
+      router.push(checkoutBody.url);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể nâng gói quota");
     } finally {
@@ -108,7 +101,7 @@ export function QuotaUpgradeDialog({ open, onOpenChange, resource, used, limit }
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-lg border bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-          Chọn thời hạn gói demo. Phase này dùng mock payment, chưa cần Stripe thật.
+          Chọn thời hạn gói. Bạn sẽ được chuyển sang trang thanh toán mock để xác nhận.
         </div>
         <div className="grid gap-2">
           {availablePackages.map((item) => (
@@ -139,7 +132,7 @@ export function QuotaUpgradeDialog({ open, onOpenChange, resource, used, limit }
             Để sau
           </Button>
           <Button type="button" onClick={handleUpgrade} disabled={upgrading}>
-            {upgrading ? "Đang nâng..." : "Nâng gói demo"}
+            {upgrading ? "Đang tạo checkout..." : "Tiếp tục thanh toán"}
           </Button>
         </div>
       </DialogContent>

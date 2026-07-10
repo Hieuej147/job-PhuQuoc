@@ -14,9 +14,13 @@ export interface Blog {
   createdAt: string;
   updatedAt?: string;
   author?: {
+    id?: string;
     name: string;
+    image?: string | null;
   };
   category?: BlogCategory;
-  content?: string;
+  categoryId?: string | null;
+  content?: Record<string, unknown> | null;
   type?: string;
+  isPublished?: boolean;
 }

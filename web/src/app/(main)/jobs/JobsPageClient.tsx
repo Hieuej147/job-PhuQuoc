@@ -9,6 +9,7 @@ import JobList from "@/components/jobs/JobList";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
 import { companyInitials, formatSalary, jobTypeLabel } from "@/lib/utils/format";
+import { getSavedJobIdsForSearch, getWards, saveJobFromSearch, searchJobs, unsaveJobFromSearch } from "@/features/jobs-search/api";
 
 interface JobItem {
   id: string;
@@ -25,6 +26,8 @@ interface JobItem {
   category?: { id: string; name: string; slug: string } | null;
   createdAt: string;
   deadline?: string | null;
+  boostLevel?: number | null;
+  featuredUntil?: string | null;
   _count?: { applications?: number };
 }
 
@@ -71,6 +74,10 @@ function mapJobType(item: JobItem) {
   const daysLeft = item.deadline
     ? Math.max(0, Math.ceil((new Date(item.deadline).getTime() - Date.now()) / 86400000))
     : null;
+  const isFeatured = Boolean(
+    item.boostLevel && item.boostLevel > 0 && (!item.featuredUntil || new Date(item.featuredUntil).getTime() >= Date.now()),
+  );
+  const featuredLabel = isFeatured ? `Top ${4 - Math.min(Math.max(item.boostLevel || 0, 1), 3)}` : undefined;
   return {
     id: item.id,
     slug: item.slug,
@@ -86,7 +93,8 @@ function mapJobType(item: JobItem) {
     level: LEVEL_MAP[item.level || ""] || "",
     industry: item.category?.name || "",
     location: item.ward ? `${item.ward.name}, Phú Quốc` : item.addressDetail || "Phú Quốc",
-    isFeatured: false,
+    isFeatured,
+    featuredLabel,
     isUrgent: false,
     daysLeft,
     postedDate: item.createdAt,
@@ -112,10 +120,9 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
   // Fetch wards dynamically from API
   // should be click to fetch, but for now we fetch on mount
   useEffect(() => {
-    fetch("/api/v1/address/wards?limit=50", { credentials: "include" })
-      .then((r) => r.json())
+    getWards()
       .then((d) => {
-        const items = d.data?.items || d.data || [];
+        const items = d.items || d || [];
         setWards(items);
       })
       .catch(() => { });
@@ -131,10 +138,8 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
     let active = true;
     (async () => {
       try {
-        const res = await fetch("/api/v1/saved/jobs?limit=200", { credentials: "include" });
-        if (!res.ok) return;
-        const data = await res.json();
-        const items = data.data?.items || data.items || [];
+        const data = await getSavedJobIdsForSearch();
+        const items = data.items || data || [];
         const ids = items.map((item: any) => item.jobId);
         if (active) setBookmarkedIds(new Set(ids));
       } catch {
@@ -210,13 +215,10 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
       if (s === "salary_low") params.set("sort", "salary_asc");
       if (s === "salary_high") params.set("sort", "salary_desc");
       if (s === "expiring_soon") params.set("sort", "expiring_soon");
-      const res = await fetch(`/api/v1/jobs?${params.toString()}`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setJobs(data.data?.items || []);
-        setTotalJobs(data.data?.total || 0);
-        setTotalPages(data.data?.totalPages || 0);
-      }
+      const data = await searchJobs(params.toString());
+      setJobs(data.items || []);
+      setTotalJobs(data.total || 0);
+      setTotalPages(data.totalPages || 0);
     } catch {
       // keep current data
     } finally {
@@ -276,22 +278,19 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
         return;
       }
 
-      const res = await fetch(`/api/v1/saved/jobs/${id}`, {
-        method: "POST",
-        credentials: "include",
+      const wasSaved = bookmarkedIds.has(id);
+      if (wasSaved) await unsaveJobFromSearch(id);
+      else await saveJobFromSearch(id);
+      setBookmarkedIds(prev => {
+        const next = new Set(prev);
+        if (wasSaved) next.delete(id);
+        else next.add(id);
+        return next;
       });
-      if (res.ok) {
-        setBookmarkedIds(prev => {
-          const next = new Set(prev);
-          if (next.has(id)) next.delete(id);
-          else next.add(id);
-          return next;
-        });
-      }
     } catch {
       // silently fail
     }
-  }, [router, user]);
+  }, [bookmarkedIds, router, user]);
 
   const handleSearch = useCallback((keyword: string, location: string, industry: string) => {
     updateFilters({ keyword, location, industries: industry ? [industry] : [] });

@@ -22,6 +22,8 @@ export interface HomeJobItem {
   uiTagText: string;
   uiTagStyle: string;
   uiLogoBg: string;
+  isFeatured?: boolean;
+  featuredLabel?: string;
   labels: string[];
   CreateAt?: string;
 }
@@ -114,8 +116,13 @@ export default function JobCard({ job }: JobCardProps) {
       href={`/jobs/${job.slug}`}
       className="bg-primary-foreground p-5 rounded-xl border border-slate-200/80 hover:border-[#0891b2]/40 shadow-sm hover:shadow-md transition-all relative flex flex-col justify-between group overflow-hidden"
     >
+      {job.isFeatured && (
+        <div className="absolute left-0 top-0 z-10 rounded-br-xl bg-[#F59E0B] px-3 py-1 text-[10px] font-bold text-white">
+          ⭐ {job.featuredLabel || "NỔI BẬT"}
+        </div>
+      )}
       <div>
-        <div className="flex justify-between items-center">
+        <div className={`flex justify-between items-center ${job.isFeatured ? "pt-3" : ""}`}>
           <div
             className={`w-9 h-9 rounded-lg ${job.uiLogoBg} flex items-center justify-center text-[12px] font-bold`}
           >

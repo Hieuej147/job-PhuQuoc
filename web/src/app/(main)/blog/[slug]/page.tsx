@@ -9,6 +9,7 @@ import { Eye, Calendar, ArrowLeft, User } from "lucide-react";
 import { Metadata } from "next";
 import { LandingPageIframe } from "@/components/blog/LandingPageIframe";
 import BlogDetailClient from "@/components/blog/BlogDetailClient";
+import { BlogViewTracker } from "@/components/blog/BlogViewTracker";
 import { articleJsonLd, breadcrumbJsonLd } from "@/features/seo/structured-data";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
@@ -115,13 +116,6 @@ async function BlogDetailPageContent({ params }: RouteProps) {
     fetchPopularBlogs(),
   ]);
 
-  // Extract h2 headings for TOC
-  const headings = (() => {
-    if (!blog.content) return [];
-    const matches = Array.from(blog.content.matchAll(/<h2[^>]*>(.*?)<\/h2>/g));
-    return matches.map((match: any) => match[1].replace(/^\d+\.\s*/, ""));
-  })();
-
   const formattedDate = new Date(blog.createdAt).toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -172,6 +166,7 @@ async function BlogDetailPageContent({ params }: RouteProps) {
           if (isFullHtml && blog.landingContent) {
             return (
               <div className="w-screen h-screen overflow-hidden">
+                <BlogViewTracker slug={blog.slug} />
                 <LandingPageIframe
                   css={blog.landingContent.css}
                   html={blog.landingContent.html}
@@ -183,6 +178,7 @@ async function BlogDetailPageContent({ params }: RouteProps) {
           }
           return (
             <>
+              <BlogViewTracker slug={blog.slug} />
               <main className="flex-grow max-w-7xl w-full mx-auto px-4 py-8">
                 <Link
                   href="/blog"

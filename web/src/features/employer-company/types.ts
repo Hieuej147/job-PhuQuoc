@@ -1,5 +1,3 @@
-import type { Area } from "react-easy-crop";
-
 export type CompanySize =
   | ""
   | "SIZE_1_50"
@@ -33,6 +31,7 @@ export interface Company {
   description: string | null;
   website: string | null;
   logo: string | null;
+  coverImage: string | null;
   wardId: string | null;
   addressDetail: string | null;
   size: CompanySize | null;
@@ -50,15 +49,6 @@ export interface Company {
       } | null;
     } | null;
   } | null;
-}
-
-export interface LogoCropState {
-  imageUrl: string;
-  crop: { x: number; y: number };
-  zoom: number;
-  onCropChange: (crop: { x: number; y: number }) => void;
-  onZoomChange: (zoom: number) => void;
-  onCropComplete: (_croppedArea: Area, areaPixels: Area) => void;
 }
 
 export const COMPANY_SIZES: { value: Exclude<CompanySize, "">; label: string }[] = [

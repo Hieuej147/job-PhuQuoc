@@ -31,6 +31,8 @@ interface JobItem {
   salaryMin?: number | null;
   salaryMax?: number | null;
   experience?: string | null;
+  boostLevel?: number | null;
+  featuredUntil?: string | null;
   addressDetail?: string | null;
   company?: {
     name: string;
@@ -124,6 +126,9 @@ export default function HomePageClient({
   const mappedJobs = useMemo(
     () =>
       jobs.map((j: JobItem) => {
+        const isFeatured = Boolean(
+          j.boostLevel && j.boostLevel > 0 && (!j.featuredUntil || new Date(j.featuredUntil).getTime() >= Date.now()),
+        );
         return {
           id: j.id,
           title: j.title,
@@ -141,6 +146,8 @@ export default function HomePageClient({
           uiTagStyle:
             "bg-[#0D9488]/10 text-[#0D9488] dark:bg-[#0D9488]/20 dark:text-[#2DD4BF]",
           uiLogoBg: "bg-[#0E7490]",
+          isFeatured,
+          featuredLabel: isFeatured ? `Top ${4 - Math.min(Math.max(j.boostLevel || 0, 1), 3)}` : undefined,
           labels: [
             jobTypeLabel(j.type),
             formatSalary(j.salaryMin, j.salaryMax),

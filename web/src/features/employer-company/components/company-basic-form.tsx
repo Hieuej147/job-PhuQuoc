@@ -19,6 +19,12 @@ interface CompanyBasicFormProps {
   size: CompanySize;
   setSize: (value: CompanySize) => void;
   logo: string;
+  coverImage: string;
+  coverPreviewUrl: string;
+  selectedCoverFile: File | null;
+  uploadingCover: boolean;
+  onCoverFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onCoverUpload: () => void;
   logoPreviewUrl: string;
   selectedLogoFile: File | null;
   uploadingLogo: boolean;
@@ -49,14 +55,47 @@ export function CompanyBasicForm(props: CompanyBasicFormProps) {
         <CardContent className="space-y-6">
           <div>
             <label className="mb-1.5 block text-sm font-medium">
-              Ảnh bìa công ty <span className="text-xs text-muted-foreground">(sắp ra mắt)</span>
+              Ảnh bìa công ty
             </label>
             <div className="relative flex h-[140px] w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed bg-muted/30">
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <ImageIcon className="size-8 text-muted-foreground/60" />
-                <p className="text-xs font-semibold">Tính năng ảnh bìa sẽ được bổ sung sau</p>
-                <p className="text-[11px] opacity-70">PNG, JPG • Tối đa 5MB • 1200×400px</p>
+              {props.coverPreviewUrl || props.coverImage ? (
+                <img
+                  src={props.coverPreviewUrl || props.coverImage}
+                  alt="Ảnh bìa công ty"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <ImageIcon className="size-8 text-muted-foreground/60" />
+                  <p className="text-xs font-semibold">Thêm ảnh bìa để trang công ty nổi bật hơn</p>
+                  <p className="text-[11px] opacity-70">PNG, JPG, WEBP • Tối đa 5MB • Khuyến nghị 1600×500px</p>
+                </div>
+              )}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <div className="relative">
+                <Input
+                  type="file"
+                  accept="image/png, image/jpeg, image/jpg, image/webp"
+                  onChange={props.onCoverFileChange}
+                  className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                  disabled={props.uploadingCover}
+                />
+                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs" disabled={props.uploadingCover}>
+                  <ImageIcon className="mr-1.5 size-3.5" />
+                  Chọn ảnh bìa
+                </Button>
               </div>
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 px-3 text-xs"
+                disabled={props.uploadingCover || !props.selectedCoverFile}
+                onClick={props.onCoverUpload}
+              >
+                {props.uploadingCover ? <Spinner size="sm" className="mr-1.5" /> : null}
+                {props.uploadingCover ? "Đang tải..." : "Tải ảnh bìa lên"}
+              </Button>
             </div>
           </div>
 

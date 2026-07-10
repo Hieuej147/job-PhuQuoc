@@ -31,6 +31,7 @@ Backend API cho website tìm việc làm tại Phú Quốc, xây dựng với Ne
 - Job user-facing delete của employer là **archive mềm**, không hard delete. Dữ liệu job/payment/application/quota purchase giữ lại cho admin/support.
 - Application user-facing delete chỉ set `candidateDeletedAt` hoặc `employerDeletedAt`, không xoá vật lý.
 - `Job.deadline` chỉ set từ checkout/payment duration. Create/update job DTO không nhận deadline.
+- Job embedding chỉ sync sau khi payment completion kích hoạt job thành `ACTIVE`, hoặc khi employer sửa một job đang `ACTIVE`, chưa hết hạn và chưa archive. Tạo job `DRAFT` không chạy embedding.
 - Chat application chỉ gửi được khi application `ACCEPTED` và chưa đóng; `REJECTED` chỉ xem lời nhắn read-only.
 
 ## Kiến trúc tổng quan
@@ -51,8 +52,8 @@ Backend hiện là **Modular Monolith theo bounded context**. Không tách micro
 Ví dụ đã áp dụng:
 
 - `applications/infrastructure/application-events.publisher.ts`: publish application events ra Inngest, không để `ApplicationsService` gọi event bus trực tiếp.
-- `jobs/background/job-background.service.ts`: sync embedding chạy nền, không block create/update job response.
-- `payments/application/payment-completion.service.ts`: use case hoàn tất payment -> active job -> emit event -> audit log.
+- `jobs/background/job-background.service.ts`: sync embedding chạy nền sau paid activation hoặc active-job edit, không block request response.
+- `payments/application/payment-completion.service.ts`: use case hoàn tất payment; DB transaction cập nhật payment + active job trước, sau đó emit event, audit best-effort và sync embedding.
 - `common/quota/quota.service.ts`: quota application service trong Nest request flow.
 - `common/quota/quota-expiry.service.ts`: quota expiry/repair helper cho Inngest, không phụ thuộc `InngestService`.
 
@@ -178,7 +179,7 @@ Quy tắc maintain:
 │  │          │ │          │ │          │ │          │ │          ││
 │  │ Primary  │ │ Session  │ │ Events   │ │ Payments │ │ Email    ││
 │  │ Database │ │ Cache    │ │ Async    │ │ Gateway  │ │ OTP      ││
-│  │ 23 tables│ │ TTL 5min │ │ 10 funcs │ │ Webhook  │ │ Verify   ││
+│  │ 27 tables│ │ TTL 5min │ │ 12 funcs │ │ Webhook  │ │ Verify   ││
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘│
 │                                                                     │
 │  ┌──────────┐ ┌──────────┐                                        │
@@ -561,7 +562,7 @@ Client Response
 ```
 backend/
 ├── prisma/
-│   ├── schema.prisma          # Database schema (22 tables, 10 enums)
+│   ├── schema.prisma          # Database schema (27 tables, 12 enums)
 │   ├── seed.ts                # Seed data (categories, templates, pricing)
 │   └── migrations/
 ├── src/
@@ -606,7 +607,6 @@ backend/
 │   │   ├── events.types.ts    # 16 event type definitions
 │   │   ├── inngest.module.ts  # @Global()
 │   │   ├── inngest.service.ts # send() / sendBatch()
-│   │   ├── inngest.controller.ts # POST /inngest webhook
 │   │   └── functions/
 │   │       ├── notification.functions.ts  # 4 notification handlers
 │   │       ├── user.functions.ts          # Welcome notification
@@ -922,13 +922,12 @@ Payment ── N:1 ──► PricingPackage (packageId)
 
 **Luồng lưu CV từ AI agent**
 
-1. Agent tạo draft template gồm `name`, `htmlTemplate`, `cssTemplate`, `isPublic`.
-2. Agent review/repair draft để tránh backend validator reject các pattern không an toàn như `script`, event handler, `@import`, `url(...)`.
-3. Agent gọi `POST /api/v1/resumes/templates`.
-4. Backend validate HTML/CSS; nếu không hợp lệ thì trả `400` và không tạo record.
-5. Prisma/DB sinh `ResumeTemplate.id`; agent chỉ được dùng id backend trả về.
-6. Agent gọi `POST /api/v1/resumes` với `templateId` đó.
-7. Export PDF dùng FE print route `/resumes/:id/print`; backend chỉ trả dữ liệu CV và kiểm quyền.
+1. Agent/FE render draft CV bằng HTML/CSS ở frontend preview đã sanitize.
+2. Nếu cần tạo template, agent chỉ gửi metadata `name`, `description?`, `previewUrl?`, `isPublic?` tới `POST /api/v1/resumes/templates`.
+3. `ResumeTemplate` schema hiện không lưu `htmlTemplate/cssTemplate`; template record chỉ là metadata + owner/public state.
+4. Prisma/DB sinh `ResumeTemplate.id`; agent chỉ được dùng id backend trả về.
+5. Agent gọi `POST /api/v1/resumes` với `templateId` đó.
+6. Export PDF dùng FE print route `/resumes/:id/print`; backend chỉ trả dữ liệu CV và kiểm quyền.
 
 `templateId` là DB-generated. FE/agent không được tự tạo hoặc dùng id giả.
 
@@ -973,10 +972,12 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | Method | Path | Auth | Mô tả |
 |--------|------|------|-------|
 | GET | /api/v1/blogs | PUBLIC | Danh sách (chỉ published) |
-| GET | /api/v1/blogs/slug/:slug | PUBLIC | Chi tiết |
-| POST | /api/v1/blogs | ADMIN | Tạo bài |
-| PATCH | /api/v1/blogs/:id | ADMIN | Sửa bài |
-| DELETE | /api/v1/blogs/:id | ADMIN | Xóa |
+| GET | /api/v1/blogs/slug/:slug | PUBLIC | Chi tiết, không tự tăng view |
+| POST | /api/v1/blogs/slug/:slug/view | PUBLIC | Tăng lượt xem sau khi FE xác nhận người dùng đã đọc |
+| GET | /api/v1/blogs/my | CANDIDATE/EMPLOYER/ADMIN | Danh sách bài của tác giả hiện tại |
+| POST | /api/v1/blogs | CANDIDATE/EMPLOYER/ADMIN | Tạo bài, content là Tiptap JSON |
+| PATCH | /api/v1/blogs/:id | CANDIDATE/EMPLOYER/ADMIN | Sửa bài, chỉ tác giả hoặc ADMIN |
+| DELETE | /api/v1/blogs/:id | CANDIDATE/EMPLOYER/ADMIN | Xóa bài, chỉ tác giả hoặc ADMIN |
 
 ### Blog Categories
 
@@ -997,12 +998,12 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | PATCH | /api/v1/pricing/:id | ADMIN | Sửa gói |
 | DELETE | /api/v1/pricing/:id | ADMIN | Xóa gói |
 
-### Payments (Stripe)
+### Payments (Stripe + Mock)
 
 | Method | Path | Auth | Mô tả |
 |--------|------|------|-------|
-| POST | /api/v1/payments/checkout | EMPLOYER | Tạo Stripe checkout session |
-| POST | /api/v1/payments/webhook | PUBLIC | Stripe webhook callback |
+| POST | /api/v1/payments/checkout | EMPLOYER | Tạo checkout session. Gateway là `stripe` nếu `STRIPE_SECRET_KEY` khả dụng, nếu không là `mock` |
+| POST | /api/v1/payments/webhook | PUBLIC | Stripe webhook callback; mock webhook có thể dùng header `x-payment-gateway: mock` |
 | POST | /api/v1/payments/mock-complete | EMPLOYER | Mock complete (dev only) |
 | GET | /api/v1/payments/my | EMPLOYER | Lịch sử thanh toán |
 | GET | /api/v1/payments/:id | EMPLOYER,ADMIN | Chi tiết payment |
@@ -1075,11 +1076,18 @@ Quota module hiện tại:
 
 ### Job Edit vs Inngest Expiry
 
-- Employer sửa job ACTIVE qua `PATCH /api/v1/jobs/:id` chỉ cập nhật content fields trong DB, invalidate Redis cache và sync embedding.
+- Employer sửa job ACTIVE qua `PATCH /api/v1/jobs/:id` chỉ cập nhật content fields trong DB, invalidate Redis cache và sync embedding nếu job vẫn public-visible.
 - API update job luôn bỏ qua `deadline`; deadline chỉ sinh từ checkout duration khi payment complete.
 - Edit job không emit lại `job.activated`, không tạo payment mới, không clone job và không restart Inngest expiry.
 - Event `job.expired` đã schedule từ lúc thanh toán vẫn dùng `jobId` để đọc lại DB. Function chỉ đóng job nếu job vẫn `ACTIVE` và deadline trong event còn khớp deadline hiện tại.
 - `close-expired-active-jobs` là cron repair chung, không thuộc riêng job nào; nó chỉ đóng các job ACTIVE đã quá deadline nếu còn sót.
+
+### Inngest Serve Source of Truth
+
+- Runtime endpoint hiện dùng `main.ts` mount `serve()` tại `/api/inngest`.
+- `InngestModule` chỉ export `InngestService`; không đăng ký controller serve riêng để tránh hai handler cùng phục vụ event.
+- Controller Inngest cũ đã xoá; không thêm lại handler thứ hai trong module.
+- Khi deploy, cấu hình Inngest trỏ về `POST /api/inngest`.
 
 ---
 
@@ -1133,9 +1141,11 @@ Quota module hiện tại:
 
 ### Cloudinary Uploads
 
-- Logo công ty được upload qua `POST /api/v1/upload/company-logo`.
+- Logo công ty được crop trên FE rồi upload qua `POST /api/v1/upload/company-logo`.
 - DB lưu URL hiển thị ở `Company.logo` và Cloudinary public id ở `Company.logoPublicId`.
 - Khi employer đổi logo, backend upload ảnh mới, cập nhật DB thành công rồi mới xoá logo cũ bằng `logoPublicId`.
+- Ảnh bìa công ty được crop 1600x500 trên FE rồi upload qua `POST /api/v1/upload/company-cover`; DB lưu `Company.coverImage` và `Company.coverImagePublicId`.
+- Avatar candidate được crop vuông trên FE rồi upload qua `POST /api/v1/upload/candidate-avatar`; backend sync `user.image/user.imagePublicId` và profile resume `CandidateResume.avatar/avatarPublicId`.
 - CV PDF ứng tuyển được upload qua `POST /api/v1/upload/candidate-cv`, form-data field `file`, chỉ nhận PDF tối đa 10MB.
 - CV PDF được lưu trên Cloudinary `image/upload` trong folder `job-phuquoc/candidate-cvs/{userId}`; employer xem qua `GET /api/v1/applications/:id/resume-file`, không mở URL Cloudinary trực tiếp.
 - Nếu gặp CV cũ ở `image/upload` bị Cloudinary chặn public delivery, backend tạo signed download URL nội bộ rồi stream PDF inline.

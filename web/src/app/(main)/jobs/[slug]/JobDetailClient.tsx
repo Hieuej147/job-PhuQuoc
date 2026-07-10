@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
 import { unwrapApiPayload } from "@/lib/api-client";
 import { companyInitials, formatSalary, jobTypeLabel } from "@/lib/utils/format";
+import { checkApplication, getSavedJobIds, saveJob, unsaveJob } from "@/features/job-detail/api";
 
 import JobDetailHero from "@/components/jobs/JobDetailHero";
 import {
@@ -145,26 +146,16 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
     let active = true;
     (async () => {
       try {
-        // Kiểm tra đã lưu việc làm chưa
-        const resSaved = await fetch("/api/v1/saved/jobs?limit=200", { credentials: "include" });
-        if (resSaved.ok) {
-          const dataSaved = await resSaved.json();
-          const itemsSaved = dataSaved.data?.items || dataSaved.items || [];
-          if (active) {
-            setIsSaved(itemsSaved.some((item: any) => item.jobId === job.id));
-          }
+        const savedIds = await getSavedJobIds();
+        if (active) {
+          setIsSaved(savedIds.has(job.id));
         }
       } catch {}
 
       try {
-        // Kiểm tra đã ứng tuyển việc làm chưa
-        const resApp = await fetch(`/api/v1/applications/check/${job.id}`, { credentials: "include" });
-        if (resApp.ok) {
-          const dataApp = await resApp.json();
-          const appliedState = unwrapApiPayload<{ applied?: boolean }>(dataApp);
-          if (active) {
-            setIsApplied(Boolean(appliedState?.applied));
-          }
+        const applied = await checkApplication(job.id);
+        if (active) {
+          setIsApplied(applied);
         }
       } catch {}
     })();
@@ -177,13 +168,11 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       return;
     }
     try {
-      const res = await fetch(`/api/v1/saved/jobs/${job.id}`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (res.ok) setIsSaved((prev) => !prev);
+      if (isSaved) await unsaveJob(job.id);
+      else await saveJob(job.id);
+      setIsSaved((prev) => !prev);
     } catch {}
-  }, [user, router, job.id, job.slug]);
+  }, [user, router, job.id, job.slug, isSaved]);
 
   const deadlinePercent = useMemo(() => {
     if (!job.deadline) return 0;

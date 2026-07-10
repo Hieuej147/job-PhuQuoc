@@ -14,6 +14,7 @@ export interface JobType {
   industry: string;
   location: string;
   isFeatured: boolean;
+  featuredLabel?: string;
   isUrgent: boolean;
   daysLeft: number | null;
   postedDate: string;
