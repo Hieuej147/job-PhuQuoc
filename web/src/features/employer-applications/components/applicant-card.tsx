@@ -1,4 +1,12 @@
-import { Briefcase, FileText, GraduationCap, MapPin, MessageCircle, Star, Trash2 } from "lucide-react";
+import {
+  Briefcase,
+  FileText,
+  GraduationCap,
+  MapPin,
+  MessageCircle,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { EmployerApplication } from "../types";
@@ -9,7 +17,6 @@ import {
   getApplicationExperience,
   getInitials,
   getLatestMessage,
-  getSkillsList,
   statusMap,
 } from "../utils";
 
@@ -25,17 +32,31 @@ interface ApplicantCardProps {
   onStatus: (app: EmployerApplication, status: string) => void;
 }
 
-export function ApplicantCard({ app, index, focused, onBookmark, onViewCv, onChat, onCloseChat, onDelete, onStatus }: ApplicantCardProps) {
+export function ApplicantCard({
+  app,
+  index,
+  focused,
+  onBookmark,
+  onViewCv,
+  onChat,
+  onCloseChat,
+  onDelete,
+  onStatus,
+}: ApplicantCardProps) {
   const cvName = app.resume?.name || app.user.name;
-  const statusConfig = statusMap[app.status] || { label: app.status, class: "border-border bg-muted text-muted-foreground", dot: "bg-muted-foreground" };
-  const skills = getSkillsList(app.resume?.skills);
+  const statusConfig = statusMap[app.status] || {
+    label: app.status,
+    class: "border-border bg-muted text-muted-foreground",
+    dot: "bg-muted-foreground",
+  };
   const address = app.resume?.address || "Phú Quốc, Kiên Giang";
   const school = getApplicationEducation(app);
   const exp = getApplicationExperience(app);
   const latestMessage = getLatestMessage(app);
   const hasMessage = Boolean(latestMessage || app.employerMessage);
   const canChat = app.status === "ACCEPTED" && !app.chatClosedAt;
-  const canViewReadonlyMessage = (app.status === "REJECTED" || Boolean(app.chatClosedAt)) && hasMessage;
+  const canViewReadonlyMessage =
+    (app.status === "REJECTED" || Boolean(app.chatClosedAt)) && hasMessage;
 
   return (
     <Card
@@ -47,7 +68,9 @@ export function ApplicantCard({ app, index, focused, onBookmark, onViewCv, onCha
       <CardContent className="space-y-4 p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${cardGradients[index % cardGradients.length]} text-base font-bold text-white shadow-md ring-1 ring-primary/10`}>
+            <div
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${cardGradients[index % cardGradients.length]} text-base font-bold text-white shadow-md ring-1 ring-primary/10`}
+            >
               {getInitials(cvName)}
             </div>
             <div className="space-y-0.5">
@@ -55,7 +78,9 @@ export function ApplicantCard({ app, index, focused, onBookmark, onViewCv, onCha
                 {cvName}
               </h3>
               <p className="text-xs text-muted-foreground">
-                <span className="font-semibold text-foreground">{app.job.title}</span>
+                <span className="font-semibold text-foreground">
+                  {app.job.title}
+                </span>
                 <span className="mx-2">•</span>
                 <span>{formatTimeAgo(app.createdAt)}</span>
               </p>
@@ -63,8 +88,12 @@ export function ApplicantCard({ app, index, focused, onBookmark, onViewCv, onCha
           </div>
 
           <div className="flex items-center gap-3">
-            <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold ${statusConfig.class}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${statusConfig.dot}`} />
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold ${statusConfig.class}`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${statusConfig.dot}`}
+              />
               {statusConfig.label}
             </span>
             <button
@@ -72,7 +101,9 @@ export function ApplicantCard({ app, index, focused, onBookmark, onViewCv, onCha
               onClick={() => onBookmark(app.id)}
               className="p-1 text-muted-foreground transition-colors hover:text-yellow-500"
             >
-              <Star className={`h-4 w-4 ${app.isBookmarked ? "fill-yellow-500 text-yellow-500" : ""}`} />
+              <Star
+                className={`h-4 w-4 ${app.isBookmarked ? "fill-yellow-500 text-yellow-500" : ""}`}
+              />
             </button>
           </div>
         </div>
@@ -92,15 +123,6 @@ export function ApplicantCard({ app, index, focused, onBookmark, onViewCv, onCha
           </div>
         </div>
 
-
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {skills.map((skill) => (
-            <span key={skill} className="rounded-md border border-border bg-muted px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-              {skill}
-            </span>
-          ))}
-        </div>
-
         {latestMessage && (
           <p className="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
             {latestMessage}
@@ -110,25 +132,46 @@ export function ApplicantCard({ app, index, focused, onBookmark, onViewCv, onCha
         <div className="flex flex-col items-stretch justify-between gap-3 border-t border-border pt-3 sm:flex-row sm:items-center">
           <div className="flex flex-wrap items-center gap-2">
             {app.cvUrl || app.resumeId ? (
-              <Button size="sm" onClick={() => onViewCv(app)} className="flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold">
+              <Button
+                size="sm"
+                onClick={() => onViewCv(app)}
+                className="flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold"
+              >
                 <FileText className="h-4 w-4" />
                 <span>Xem CV đầy đủ</span>
               </Button>
             ) : (
-              <span className="text-xs italic text-muted-foreground">Không đính kèm CV</span>
+              <span className="text-xs italic text-muted-foreground">
+                Không đính kèm CV
+              </span>
             )}
             {(canChat || canViewReadonlyMessage) && (
-              <Button size="sm" variant="outline" onClick={() => onChat(app)} className="border-border bg-background text-xs text-foreground hover:bg-muted">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onChat(app)}
+                className="border-border bg-background text-xs text-foreground hover:bg-muted"
+              >
                 <MessageCircle className="h-4 w-4" />
                 {canChat ? "Nhắn tin" : "Xem lời nhắn"}
               </Button>
             )}
             {canChat && (
-              <Button size="sm" variant="outline" onClick={() => onCloseChat(app)} className="border-amber-500/30 bg-amber-500/10 text-xs text-amber-700 hover:bg-amber-500/20 dark:text-amber-300">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onCloseChat(app)}
+                className="border-amber-500/30 bg-amber-500/10 text-xs text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+              >
                 Đóng trao đổi
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => onDelete(app)} className="border-rose-500/30 bg-rose-500/10 text-xs text-rose-700 hover:bg-rose-500/20 dark:text-rose-300">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onDelete(app)}
+              className="border-rose-500/30 bg-rose-500/10 text-xs text-rose-700 hover:bg-rose-500/20 dark:text-rose-300"
+            >
               <Trash2 className="h-4 w-4" />
               Xoá
             </Button>
@@ -136,20 +179,34 @@ export function ApplicantCard({ app, index, focused, onBookmark, onViewCv, onCha
 
           <div className="flex flex-wrap items-center gap-2">
             {app.status === "ACCEPTED" || app.status === "REJECTED" ? (
-              <span className={`rounded-lg border px-4 py-2 text-xs font-semibold ${statusConfig.class}`}>
+              <span
+                className={`rounded-lg border px-4 py-2 text-xs font-semibold ${statusConfig.class}`}
+              >
                 Đã kết thúc: {statusConfig.label}
               </span>
             ) : (
               <>
                 {app.status === "PENDING" && (
-                  <Button size="sm" onClick={() => onStatus(app, "REVIEWING")} className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-500/20 dark:text-blue-300">
+                  <Button
+                    size="sm"
+                    onClick={() => onStatus(app, "REVIEWING")}
+                    className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-500/20 dark:text-blue-300"
+                  >
                     Đang xem xét
                   </Button>
                 )}
-                <Button size="sm" onClick={() => onStatus(app, "ACCEPTED")} className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300">
+                <Button
+                  size="sm"
+                  onClick={() => onStatus(app, "ACCEPTED")}
+                  className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
+                >
                   <span>✓ Chấp nhận</span>
                 </Button>
-                <Button size="sm" onClick={() => onStatus(app, "REJECTED")} className="flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-500/20 dark:text-rose-300">
+                <Button
+                  size="sm"
+                  onClick={() => onStatus(app, "REJECTED")}
+                  className="flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-500/20 dark:text-rose-300"
+                >
                   <span>✗ Từ chối</span>
                 </Button>
               </>

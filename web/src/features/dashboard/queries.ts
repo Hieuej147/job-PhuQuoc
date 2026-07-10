@@ -1,16 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api-client";
-
-export interface NotificationItem {
-  id: string;
-  type: string;
-  title: string;
-  content: string;
-  isRead: boolean;
-  createdAt: string;
-  refId?: string | null;
-  refType?: string | null;
-}
+import type { NotificationItem } from "@/features/notifications/queries";
 
 export interface CandidateDashboardSummary {
   applications: { total: number; recent: any[] };
@@ -55,24 +45,6 @@ export function useEmployerDashboardSummary(enabled = true) {
     queryKey: ["dashboard", "employer-summary"],
     queryFn: () => apiGet<EmployerDashboardSummary>("/api/v1/dashboard/employer-summary"),
     staleTime: 30_000,
-    enabled,
-  });
-}
-
-export function useUnreadNotifications(enabled = true) {
-  return useQuery({
-    queryKey: ["notifications", "unread-count"],
-    queryFn: () => apiGet<{ count: number }>("/api/v1/notifications/unread-count"),
-    staleTime: 15_000,
-    enabled,
-  });
-}
-
-export function useRecentNotifications(enabled = true, limit = 5) {
-  return useQuery({
-    queryKey: ["notifications", "recent", limit],
-    queryFn: () => apiGet<{ items: NotificationItem[] }>(`/api/v1/notifications?limit=${limit}`),
-    staleTime: 10_000,
     enabled,
   });
 }

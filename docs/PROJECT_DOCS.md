@@ -33,10 +33,11 @@
 - Prisma hiện dùng **Prisma 7** với `prisma.config.ts`; không để connection URL trong `schema.prisma`.
 - Job content vẫn lưu **Markdown** cho `description`, `requirements`, `benefits`; frontend render bằng Markdown renderer, không lưu HTML raw.
 - `Job.deadline` vẫn có trong DB nhưng **không nhận từ form tạo/sửa job**. Deadline chỉ được set khi checkout/payment complete theo số ngày đăng.
-- Employer không hard delete job từ workspace. `DELETE /jobs/:id/employer` là lưu trữ mềm qua `archivedAt`; dữ liệu tuyển dụng/thanh toán vẫn giữ cho admin/support.
+- Employer không hard delete job từ workspace. `DELETE /jobs/:id/employer` là ẩn mềm qua `archivedAt`; dữ liệu tuyển dụng/thanh toán vẫn giữ cho admin/support, không có tab lưu trữ user-facing ở FE employer v1.
 - Public job routes chỉ trả job `ACTIVE`, chưa hết hạn, `archivedAt = null`. Dashboard/private route dùng `/jobs/manage/:id` hoặc application history để xem tin cũ.
 - Candidate/employer “xoá” application chỉ ẩn khỏi workspace bằng `candidateDeletedAt` / `employerDeletedAt`; record vẫn giữ, không còn xoá vật lý khi cả hai bên xoá.
 - Application chat chỉ cho gửi khi application `ACCEPTED` và chưa `chatClosedAt`; `REJECTED` chỉ xem lời nhắn read-only.
+- Chat/notification/dashboard realtime dùng NestJS Socket.IO Gateway namespace `/realtime`; REST vẫn là source of truth, socket chỉ cập nhật cache FE sau khi DB ghi thành công.
 - Quota upgrade có package/purchase theo thời hạn: `QuotaPackage`, `QuotaPurchase`, `UserQuotaPlan`; Inngest có event `quota.plan.activated` và repair hết hạn hằng ngày.
 
 ### 1.1 Mục tiêu
@@ -371,8 +372,8 @@ DRAFT ──(chọn package + thanh toán)──▶ PENDING ──(payment succe
 Workspace archive:
 - `archivedAt != null` không phải `JobStatus` riêng.
 - Public routes ẩn archived jobs.
-- Employer route mặc định ẩn archived jobs, nhưng có thể xem bằng `GET /jobs/my?archived=true`.
-- Restore chỉ đưa job về workspace; muốn public lại phải checkout/gia hạn.
+- Employer route mặc định ẩn archived jobs; FE employer v1 không expose tab lưu trữ/khôi phục.
+- Archived jobs là dữ liệu hệ thống giữ lại cho admin/support đối soát sau này.
 
 #### Application Status Machine
 
@@ -583,7 +584,7 @@ UpdateCategoryDto:
 | Method | Path | Auth | Roles | Body/Query | Mô tả |
 |--------|------|------|-------|------------|--------|
 | `GET` | `/jobs` | `@Public()` | - | `JobQueryDto` | Public search: luôn ép `ACTIVE`, chưa hết hạn, `archivedAt = null` |
-| `GET` | `/jobs/my` | Có | EMPLOYER | `MyJobsQueryDto` | Việc làm của employer; mặc định ẩn archived, dùng `archived=true` để xem lưu trữ |
+| `GET` | `/jobs/my` | Có | EMPLOYER | `MyJobsQueryDto` | Việc làm của employer; mặc định ẩn archived, FE employer không dùng chế độ xem archived |
 | `GET` | `/jobs/my/stats` | Có | EMPLOYER | - | Thống kê job workspace theo status/archive |
 | `GET` | `/jobs/slug/:slug` | `@Public()` | - | - | Public detail theo slug, chỉ job đang public |
 | `GET` | `/jobs/manage/:id` | Có | EMPLOYER | - | Detail nội bộ cho owner: sửa, checkout, clone, xem job đã đóng/lưu trữ |
@@ -592,7 +593,7 @@ UpdateCategoryDto:
 | `PATCH` | `/jobs/:id` | Có | Owner | `UpdateJobDto` | Cập nhật việc làm (chỉ owner công ty) |
 | `PATCH` | `/jobs/:id/close` | Có | Owner | - | Đóng tin sớm, public ẩn nhưng dashboard giữ lịch sử |
 | `DELETE` | `/jobs/:id/employer` | Có | Owner | - | Employer lưu trữ mềm job, không hard delete |
-| `PATCH` | `/jobs/:id/restore` | Có | Owner | - | Khôi phục job đã lưu trữ về workspace |
+| `PATCH` | `/jobs/:id/restore` | Có | Owner | - | Route kỹ thuật giữ lại, không expose trong FE employer v1 |
 | `DELETE` | `/jobs/:id` | Có | ADMIN | - | Xóa việc làm |
 
 **DTOs:**
@@ -671,7 +672,7 @@ UpdateApplicationStatusDto:
 
 Chat rule:
   - PENDING / REVIEWING: chỉ xem trạng thái, không chat.
-  - ACCEPTED: mở chat hai chiều ngắn; giới hạn 100 messages/application, 2000 ký tự/message.
+  - ACCEPTED: mở chat hai chiều ngắn qua REST + Socket.IO realtime; giới hạn 100 messages/application, 2000 ký tự/message.
   - REJECTED: employer message lưu DB và hiển thị read-only, candidate không reply.
   - chatClosedAt có giá trị: chỉ xem lịch sử, không gửi thêm.
 ```
@@ -1138,11 +1139,17 @@ QueryAuditDto:
 |------|--------|
 | `lib/auth.ts` | Auth utilities: signIn, signUp, signOut, getUserProfile, OTP functions |
 | `lib/auth-client.ts` | better-auth client cho Google OAuth |
+| `lib/server-auth.ts` | Server-only auth helper cho Server Components/layout; dùng `cookies()` và không đặt `"use server"` vì không phải Server Action |
+| `lib/api-client.ts` | API client dùng chung: unwrap response, `ApiError`, `apiGet/apiPost/apiPatch/apiDelete` |
 | `lib/utils.ts` | `cn()` function (clsx + tailwind-merge) |
-| `lib/structured-data.ts` | SEO JSON-LD generators: Organization, WebSite, JobPosting, Article, Breadcrumb, LocalBusiness |
 | `lib/utils/date.ts` | `timeAgo()` — thời gian tương đối tiếng Việt |
 | `lib/utils/format.ts` | `formatSalary()`, job type/experience labels |
-| `lib/utils/notifications.ts` | Notification type → emoji icon mapping |
+| `features/dashboard/queries.ts` | TanStack Query hooks cho candidate/employer dashboard summary |
+| `features/notifications/queries.ts` | TanStack Query hooks cho notification list, unread count, mark read/read-all |
+| `features/notifications/utils.ts` | Notification href/icon mapping |
+| `features/realtime/realtime-provider.tsx` | Socket.IO provider cập nhật notification/dashboard cache |
+| `features/realtime/use-application-chat-realtime.ts` | Join/leave application room và merge message realtime vào cache |
+| `features/seo/structured-data.ts` | SEO JSON-LD generators: Organization, WebSite, JobPosting, Article, Breadcrumb, LocalBusiness |
 
 ---
 
@@ -2199,14 +2206,22 @@ web/
 │   │   ├── use-auth-token.ts           # Auth token
 │   │   └── use-mobile.ts              # Responsive
 │   └── lib/
+│       ├── api-client.ts                # API client + ApiError
 │       ├── auth.ts                      # Auth utilities
 │       ├── auth-client.ts              # better-auth client
+│       ├── server-auth.ts              # Server-only auth helper
 │       ├── utils.ts                     # cn() utility
-│       ├── structured-data.ts          # SEO JSON-LD
 │       └── utils/
 │           ├── date.ts                  # timeAgo()
-│           ├── format.ts               # formatSalary()
-│           └── notifications.ts        # Noti icons
+│           └── format.ts               # formatSalary()
+│   └── features/
+│       ├── dashboard/
+│       │   └── queries.ts              # Dashboard TanStack Query hooks
+│       ├── notifications/
+│       │   ├── queries.ts              # Notification TanStack Query hooks
+│       │   └── utils.ts                # Notification href/icon
+│       └── seo/
+│           └── structured-data.ts      # SEO JSON-LD
 ```
 
 ### 14.3 Agent Key Files

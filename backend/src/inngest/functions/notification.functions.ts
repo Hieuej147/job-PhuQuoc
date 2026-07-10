@@ -2,8 +2,9 @@ import { inngest } from '../client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { TypedInngestContext } from '../inngest.types';
 import { createNotificationInboxItem } from './notification-inbox.helper';
+import type { RealtimeService } from '../../realtime/realtime.service';
 
-export function createNotificationFunctions(prisma: PrismaService) {
+export function createNotificationFunctions(prisma: PrismaService, realtime?: RealtimeService) {
   const onApplicationCreated = inngest.createFunction(
     { id: 'on-application-created', triggers: [{ event: 'application.created' }] },
     async ({ event }: TypedInngestContext<'application.created'>) => {
@@ -17,7 +18,7 @@ export function createNotificationFunctions(prisma: PrismaService) {
         refId: applicationId,
         refType: 'application',
         dedupeKey: `application.created:${applicationId}:${employerId}`,
-      });
+      }, realtime);
     },
   );
 
@@ -34,7 +35,7 @@ export function createNotificationFunctions(prisma: PrismaService) {
         refId: applicationId,
         refType: 'application',
         dedupeKey: `application.accepted:${applicationId}:${candidateId}`,
-      });
+      }, realtime);
     },
   );
 
@@ -51,7 +52,7 @@ export function createNotificationFunctions(prisma: PrismaService) {
         refId: applicationId,
         refType: 'application',
         dedupeKey: `application.rejected:${applicationId}:${candidateId}`,
-      });
+      }, realtime);
     },
   );
 
@@ -76,7 +77,7 @@ export function createNotificationFunctions(prisma: PrismaService) {
         refType: 'job',
         dedupeKey: `job.activated:${jobId}:${job.company.ownerId}`,
         expiresInDays: 180,
-      });
+      }, realtime);
     },
   );
 

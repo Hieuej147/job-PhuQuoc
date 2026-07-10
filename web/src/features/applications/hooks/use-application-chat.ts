@@ -44,9 +44,9 @@ export function useApplicationMessages(applicationId: string | null, open: boole
       return sortMessages(items);
     },
     enabled: open && Boolean(applicationId),
-    refetchInterval: open ? 3000 : false,
-    refetchIntervalInBackground: false,
     staleTime: 1000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 }
 
@@ -95,9 +95,11 @@ export function useSendApplicationMessage(
     },
     onSuccess: (message, _body, context) => {
       if (!applicationId) return;
-      queryClient.setQueryData<ApplicationMessage[]>(queryKey, (current = []) =>
-        sortMessages(current.map((item) => (item.id === context?.optimisticId ? message : item))),
-      );
+      queryClient.setQueryData<ApplicationMessage[]>(queryKey, (current = []) => {
+        const withoutOptimistic = current.filter((item) => item.id !== context?.optimisticId);
+        if (withoutOptimistic.some((item) => item.id === message.id)) return sortMessages(withoutOptimistic);
+        return sortMessages([...withoutOptimistic, message]);
+      });
     },
     onSettled: () => {
       if (!applicationId) return;

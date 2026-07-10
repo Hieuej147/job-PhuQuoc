@@ -38,7 +38,7 @@ interface Education {
 }
 
 export default function ProfilePage() {
-  const { user, setUser } = useAuth();
+  const { user, refresh } = useAuth();
   const [hasLoaded, setHasLoaded] = useState(false);
 
   // Loading & Saving states
@@ -203,15 +203,7 @@ export default function ProfilePage() {
       });
 
       if (res.ok) {
-        // Refresh auth user state
-        const authRes = await fetch("/api/v1/auth/me", { credentials: "include" });
-        if (authRes.ok) {
-          const authPayload = await authRes.json();
-          const updatedUser = authPayload?.data?.user || authPayload?.user || null;
-          if (updatedUser) {
-            setUser(updatedUser);
-          }
-        }
+        await refresh();
         if (showToast) {
           toast.success("Lưu thông tin hồ sơ thành công!");
         }
@@ -259,7 +251,8 @@ export default function ProfilePage() {
         const avatarUrl = result?.data?.avatar ?? result?.avatar;
         if (avatarUrl) {
           setAvatar(avatarUrl);
-          await handleSave({ avatar: avatarUrl });
+          await refresh();
+          toast.success("Cập nhật ảnh đại diện thành công!");
         }
       } else {
         const errorData = await res.json().catch(() => null);

@@ -9,7 +9,7 @@ import { Eye, Calendar, ArrowLeft, User } from "lucide-react";
 import { Metadata } from "next";
 import { LandingPageIframe } from "@/components/blog/LandingPageIframe";
 import BlogDetailClient from "@/components/blog/BlogDetailClient";
-import { articleJsonLd, breadcrumbJsonLd } from "@/lib/structured-data";
+import { articleJsonLd, breadcrumbJsonLd } from "@/features/seo/structured-data";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
 

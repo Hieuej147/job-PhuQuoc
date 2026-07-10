@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEmployerDashboardSummary } from "@/lib/dashboard-queries";
+import { useEmployerDashboardSummary } from "@/features/dashboard/queries";
+import { useUnreadNotifications } from "@/features/notifications/queries";
 
 interface WardData {
   name?: string;
@@ -23,10 +24,11 @@ interface CompanyData {
 export function EmployerSidebar() {
   const pathname = usePathname();
   const { data: summary } = useEmployerDashboardSummary();
+  const { data: unreadNotifications } = useUnreadNotifications();
   const company = summary?.company as CompanyData | null | undefined;
   const jobsCount = summary?.jobs.total || 0;
   const applicantsCount = summary?.applications.total || 0;
-  const unreadCount = summary?.notifications.unreadCount || 0;
+  const unreadCount = unreadNotifications?.count ?? summary?.notifications.unreadCount ?? 0;
 
   const companyName = company?.name || "Công ty";
   const initials = companyName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();

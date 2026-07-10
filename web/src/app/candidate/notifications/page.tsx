@@ -1,22 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, CheckCircle2, Clock, ShieldAlert, Info, RefreshCw } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { timeAgo } from "@/lib/utils/date";
-import { getNotificationHref } from "@/lib/notifications";
-
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  content: string;
-  isRead: boolean;
-  createdAt: string;
-  refId?: string | null;
-  refType?: string | null;
-}
+import { getNotificationHref } from "@/features/notifications/utils";
+import {
+  type NotificationItem,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotificationsList,
+} from "@/features/notifications/queries";
 
 function getNotiIcon(type: string) {
   switch (type) {
@@ -30,40 +24,37 @@ function getNotiIcon(type: string) {
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, isError, refetch, isFetching } = useNotificationsList(true, 50);
+  const markNotificationRead = useMarkNotificationRead();
+  const markAllNotificationsRead = useMarkAllNotificationsRead();
+  const notifications = data?.items || [];
 
-  useEffect(() => {
-    fetch("/api/v1/notifications?limit=50", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setNotifications(d.data?.items || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  const markAsRead = async (id: string) => {
-    await fetch(`/api/v1/notifications/${id}/read`, { method: "PATCH", credentials: "include" });
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-  };
-
-  const openNotification = async (notification: Notification) => {
-    if (!notification.isRead) await markAsRead(notification.id);
+  const openNotification = (notification: NotificationItem) => {
+    if (!notification.isRead) markNotificationRead.mutate(notification.id);
     router.push(getNotificationHref(notification, "CANDIDATE"));
   };
 
-  const markAllAsRead = async () => {
-    await fetch("/api/v1/notifications/read-all", { method: "PATCH", credentials: "include" });
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-  };
-
-  if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
+  if (isLoading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
 
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Thông báo</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Thông báo</h1>
+          {isError && (
+            <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+              Không kết nối được máy chủ, hệ thống sẽ tự thử lại.
+            </p>
+          )}
+        </div>
         {notifications.some((n) => !n.isRead) && (
-          <button onClick={markAllAsRead} className="text-sm text-[#0E7490] hover:underline">Đọc tất cả</button>
+          <button
+            onClick={() => markAllNotificationsRead.mutate()}
+            disabled={markAllNotificationsRead.isPending}
+            className="text-sm text-[#0E7490] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Đọc tất cả
+          </button>
         )}
       </div>
 
@@ -71,9 +62,17 @@ export default function NotificationsPage() {
         <div className="text-center py-12">
           <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">Chưa có thông báo</p>
+          {isError && (
+            <button onClick={() => refetch()} className="mt-3 text-sm font-semibold text-[#0E7490] hover:underline">
+              Thử lại
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
+          {isFetching && (
+            <p className="text-xs text-gray-400">Đang đồng bộ thông báo mới...</p>
+          )}
           {notifications.map((n) => {
             const { icon, bg } = getNotiIcon(n.type);
             return (

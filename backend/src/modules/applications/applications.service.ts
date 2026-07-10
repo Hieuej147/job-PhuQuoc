@@ -16,6 +16,7 @@ import { ApplicationQueryDto } from './dto/application-query.dto';
 import { ApplicationEventsPublisher } from './infrastructure/application-events.publisher';
 import { QuotaService } from '../../common/quota/quota.service';
 import { CacheService } from '../../common/cache/cache.service';
+import { RealtimeService } from '../../realtime/realtime.service';
 
 const APPLICATION_MESSAGE_LIMIT = 100;
 const APPLICATION_MESSAGE_MAX_LENGTH = 2000;
@@ -31,6 +32,7 @@ export class ApplicationsService {
     private readonly eventsPublisher: ApplicationEventsPublisher,
     private readonly quotaService: QuotaService,
     private readonly cache?: CacheService,
+    private readonly realtime?: RealtimeService,
   ) {}
 
   async apply(userId: string, data: CreateApplicationDto) {
@@ -116,7 +118,24 @@ export class ApplicationsService {
         include: {
           user: { select: { id: true, name: true, email: true, phone: true } },
           job: { select: { id: true, title: true, company: { select: { name: true } } } },
-          resume: { select: { id: true, title: true, name: true, email: true, phone: true } },
+          resume: {
+            select: {
+              id: true,
+              title: true,
+              name: true,
+              email: true,
+              phone: true,
+              avatar: true,
+              address: true,
+              degree: true,
+              skills: true,
+              languages: true,
+              socialLinks: true,
+              education: true,
+              experience: true,
+              projects: true,
+            },
+          },
           messages: {
             where: { hiddenForEmployer: false },
             orderBy: { createdAt: 'desc' },
@@ -146,7 +165,24 @@ export class ApplicationsService {
         where: { jobId, employerDeletedAt: null }, skip: (page - 1) * limit, take: limit,
         include: {
           user: { select: { id: true, name: true, email: true, phone: true } },
-          resume: { select: { id: true, title: true, name: true, email: true, phone: true } },
+          resume: {
+            select: {
+              id: true,
+              title: true,
+              name: true,
+              email: true,
+              phone: true,
+              avatar: true,
+              address: true,
+              degree: true,
+              skills: true,
+              languages: true,
+              socialLinks: true,
+              education: true,
+              experience: true,
+              projects: true,
+            },
+          },
           messages: {
             where: { hiddenForEmployer: false },
             orderBy: { createdAt: 'desc' },
@@ -415,6 +451,10 @@ export class ApplicationsService {
       },
       data: { readAt: new Date() },
     });
+    this.realtime?.emitApplicationMessagesRead(applicationId, {
+      readerId: userId,
+      readAt: new Date(),
+    });
     return { updated: result.count };
   }
 
@@ -460,6 +500,7 @@ export class ApplicationsService {
       },
       include: { sender: { select: { id: true, name: true, image: true } } },
     });
+    this.realtime?.emitApplicationMessage(input.applicationId, message);
 
     const recipientId =
       role === ApplicationMessageSenderRole.CANDIDATE
@@ -473,7 +514,7 @@ export class ApplicationsService {
       !(await this.isChatOpen(input.applicationId, recipientId));
 
     if (shouldNotify) {
-      await this.prisma.notification.upsert({
+      const notification = await this.prisma.notification.upsert({
         where: {
           userId_dedupeKey: {
             userId: recipientId,
@@ -495,6 +536,12 @@ export class ApplicationsService {
           expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
         },
       });
+      if (this.realtime) {
+        const unread = await this.prisma.notification.count({ where: { userId: recipientId, isRead: false } });
+        this.realtime.emitNotificationCreated(recipientId, notification);
+        this.realtime.emitUnreadCountChanged(recipientId, unread);
+        this.realtime.emitDashboardInvalidate(recipientId, role === ApplicationMessageSenderRole.CANDIDATE ? 'employer' : 'candidate', 'application-message');
+      }
     }
 
     return message;

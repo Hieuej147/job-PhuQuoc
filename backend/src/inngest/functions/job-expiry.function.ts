@@ -3,8 +3,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { JobStatus } from '@prisma/client';
 import type { TypedInngestContext, CronInngestContext } from '../inngest.types';
 import { createNotificationInboxItem } from './notification-inbox.helper';
+import type { RealtimeService } from '../../realtime/realtime.service';
 
-export function createJobExpiryFunctions(prisma: PrismaService) {
+export function createJobExpiryFunctions(prisma: PrismaService, realtime?: RealtimeService) {
   const onJobActivated = inngest.createFunction(
     { id: 'schedule-job-expiry', triggers: [{ event: 'job.activated' }] },
     async ({ event, step }: TypedInngestContext<'job.activated'>) => {
@@ -57,7 +58,7 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
           refType: 'job',
           dedupeKey: `job.expiring-soon:${jobId}:${saved.userId}`,
           expiresInDays: 180,
-        });
+        }, realtime);
       }
     },
   );
@@ -90,7 +91,7 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
         refType: 'job',
         dedupeKey: `job.expired:${jobId}:${job.company.ownerId}`,
         expiresInDays: 180,
-      });
+      }, realtime);
     },
   );
 
@@ -144,7 +145,7 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
             refType: 'job',
             dedupeKey: `job.expired:${job.id}:${job.company.ownerId}`,
             expiresInDays: 180,
-          });
+          }, realtime);
         });
       }
 

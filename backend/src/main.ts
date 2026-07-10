@@ -10,6 +10,7 @@ import { GlobalExceptionFilter } from "./common/filters/global-exception.filter"
 import { ResponseTransformInterceptor } from "./common/interceptors/response-transform.interceptor";
 import { inngest, createAllFunctions } from "./inngest/client";
 import { PrismaService } from "./prisma/prisma.service";
+import { RealtimeService } from "./realtime/realtime.service";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -22,7 +23,8 @@ async function bootstrap() {
 
   // Create Inngest functions with PrismaService
   const prisma = app.get(PrismaService);
-  const functions = createAllFunctions(prisma);
+  const realtime = app.get(RealtimeService);
+  const functions = createAllFunctions(prisma, realtime);
 
   // Mount Inngest handler at /api/inngest
   app.use(

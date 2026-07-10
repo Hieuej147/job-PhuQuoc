@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+let lastAuthProxyUnavailableLogAt = 0;
+
+function logAuthProxyUnavailableOnce(error: unknown) {
+  const now = Date.now();
+  if (now - lastAuthProxyUnavailableLogAt < 30_000) return;
+  lastAuthProxyUnavailableLogAt = now;
+  console.error("Auth proxy: backend is unavailable.", error);
+}
+
+function authBackendUnavailableResponse() {
+  return NextResponse.json(
+    {
+      statusCode: 502,
+      message: "Không kết nối được máy chủ xác thực.",
+      code: "BACKEND_UNAVAILABLE",
+    },
+    { status: 502 },
+  );
+}
 
 export async function GET(
   request: NextRequest,
@@ -38,11 +57,8 @@ export async function GET(
 
     return nextResponse;
   } catch (error) {
-    console.error("Auth proxy error:", error);
-    return NextResponse.json(
-      { error: "Proxy error" },
-      { status: 502 },
-    );
+    logAuthProxyUnavailableOnce(error);
+    return authBackendUnavailableResponse();
   }
 }
 
@@ -87,10 +103,7 @@ export async function POST(
 
     return nextResponse;
   } catch (error) {
-    console.error("Auth proxy error:", error);
-    return NextResponse.json(
-      { error: "Proxy error" },
-      { status: 502 },
-    );
+    logAuthProxyUnavailableOnce(error);
+    return authBackendUnavailableResponse();
   }
 }

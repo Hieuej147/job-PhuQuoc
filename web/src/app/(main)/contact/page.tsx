@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { localBusinessJsonLd } from "@/lib/structured-data";
+import { localBusinessJsonLd } from "@/features/seo/structured-data";
 
 export const metadata: Metadata = {
   title: "Liên Hệ | PQJobs",

@@ -22,7 +22,7 @@ import type {
   DashboardNotification,
 } from "@/features/employer-dashboard/types";
 import { timeAgo } from "@/features/employer-dashboard/utils";
-import { useEmployerDashboardSummary } from "@/lib/dashboard-queries";
+import { useEmployerDashboardSummary } from "@/features/dashboard/queries";
 
 export default function EmployerDashboard() {
   const { data: summary, isLoading: loading, error, refetch } = useEmployerDashboardSummary();

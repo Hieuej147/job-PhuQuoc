@@ -37,10 +37,10 @@
 - Public job APIs chỉ trả job `ACTIVE`, chưa hết hạn, `archivedAt = null`. Dashboard/edit/checkout phải dùng private route `/api/v1/jobs/manage/:id`.
 - Tạo/sửa job không còn field “Hạn nộp”. `deadline` chỉ set sau checkout theo số ngày đăng.
 - Job content vẫn là Markdown text; editor FE chỉ tạo Markdown, không gửi HTML raw.
-- Employer bấm xoá job là **lưu trữ mềm** qua `DELETE /api/v1/jobs/:id/employer`; tab mặc định ẩn archived, dùng `GET /jobs/my?archived=true` để xem kho lưu trữ.
+- Employer bấm xoá job là **ẩn mềm khỏi workspace** qua `DELETE /api/v1/jobs/:id/employer`; FE employer không có tab “Lưu trữ”/“Khôi phục”. Record vẫn giữ `archivedAt` cho admin/support sau này.
 - Application delete chỉ ẩn khỏi workspace từng phía, không hard delete và không phải “rút đơn”.
 - Candidate đã apply vẫn xem được lịch sử job qua `GET /api/v1/applications/:id/job` kể cả khi job đã đóng/hết hạn/lưu trữ.
-- Chat application dùng TanStack Query polling 3 giây khi dialog mở. Chỉ `ACCEPTED` mới chat hai chiều; `REJECTED` chỉ xem lời nhắn read-only.
+- Chat application dùng REST + TanStack Query làm source of truth, nhận realtime qua Socket.IO `/realtime`. Chỉ `ACCEPTED` mới chat hai chiều; `REJECTED` chỉ xem lời nhắn read-only.
 - Quota UI dùng `/api/v1/quota/me`, `/quota/packages`, `/quota/checkout`, `/quota/mock-complete`; package có thời hạn và Inngest tự downgrade khi hết hạn.
 - BE quota code đã tách DI: FE không bị ảnh hưởng contract, nhưng không còn file backend `storage-quota.ts`.
 
@@ -963,7 +963,7 @@ erDiagram
 | # | Method | Path | Auth | Mô tả |
 |---|--------|------|------|-------|
 | 30 | GET | /api/v1/jobs | Public | Tìm kiếm việc làm public, BE luôn ép ACTIVE + chưa hết hạn + chưa archived |
-| 31 | GET | /api/v1/jobs/my | EMPLOYER | Jobs của tôi; mặc định ẩn archived, dùng `archived=true` để xem lưu trữ |
+| 31 | GET | /api/v1/jobs/my | EMPLOYER | Jobs của tôi; mặc định ẩn archived. FE employer không dùng chế độ xem archived |
 | 31a | GET | /api/v1/jobs/my/stats | EMPLOYER | Thống kê tin đăng theo status/archive |
 | 32 | GET | /api/v1/jobs/slug/:slug | Public | Chi tiết theo slug, chỉ job public |
 | 32a | GET | /api/v1/jobs/manage/:id | EMPLOYER | Chi tiết nội bộ để edit/checkout/clone/archive |
@@ -971,8 +971,8 @@ erDiagram
 | 34 | POST | /api/v1/jobs | EMPLOYER | Tạo job DRAFT, không gửi deadline, content là Markdown |
 | 35 | PATCH | /api/v1/jobs/:id | OWNER | Cập nhật job, ACTIVE không reset payment/deadline/Inngest |
 | 35a | PATCH | /api/v1/jobs/:id/close | OWNER | Đóng tin sớm |
-| 35b | DELETE | /api/v1/jobs/:id/employer | OWNER | Lưu trữ mềm job khỏi workspace/public |
-| 35c | PATCH | /api/v1/jobs/:id/restore | OWNER | Khôi phục job đã lưu trữ về workspace |
+| 35b | DELETE | /api/v1/jobs/:id/employer | OWNER | Ẩn mềm job khỏi workspace/public, DB vẫn giữ để admin/support đối soát |
+| 35c | PATCH | /api/v1/jobs/:id/restore | OWNER | Route kỹ thuật giữ lại, không expose trong FE employer v1 |
 | 36 | DELETE | /api/v1/jobs/:id | ADMIN | Admin xóa job |
 | 36b | POST | /api/v1/jobs/search-vector | Public | (RAG AI) Tìm semantic qua vector |
 
@@ -1240,7 +1240,7 @@ modules/<name>/
 - Candidate không được hủy/rút trạng thái ứng tuyển để apply lại tùy ý. `GET /applications/check/:jobId` vẫn trả `applied: true` nếu record còn tồn tại.
 - Chat application:
   - `PENDING/REVIEWING`: chỉ xem trạng thái, không có nút chat.
-  - `ACCEPTED`: chat hai chiều ngắn, polling 3 giây bằng TanStack Query khi dialog mở.
+  - `ACCEPTED`: chat hai chiều ngắn, nhận tin realtime qua Socket.IO khi dialog mở.
   - `REJECTED`: employer message read-only, candidate không reply.
   - `chatClosedAt`: chỉ xem lịch sử, không gửi thêm.
 
@@ -1251,9 +1251,8 @@ modules/<name>/
 - Update job chỉ sửa nội dung, invalidate cache và sync embedding; không reset deadline/payment/status, không emit lại `job.activated`.
 - Inngest expiry đã schedule từ lúc thanh toán vẫn chạy theo `jobId` + deadline cũ; tới hạn function đọc lại DB và chỉ đóng job nếu deadline event còn khớp DB.
 - `close-expired-active-jobs` là cron repair chung để đóng job ACTIVE quá hạn nếu event `job.expired` bị miss; không clone job và không xoá job khỏi DB.
-- Employer “xoá tin” gọi `DELETE /api/v1/jobs/:id/employer`: lưu trữ mềm bằng `archivedAt`, public/default workspace ẩn job.
-- Muốn xem job đã lưu trữ: `GET /api/v1/jobs/my?archived=true`. Muốn sửa/checkout/xem detail nội bộ: `GET /api/v1/jobs/manage/:id`.
-- Restore job đã lưu trữ chỉ đưa về workspace; muốn public lại phải checkout/gia hạn.
+- Employer “xoá tin” gọi `DELETE /api/v1/jobs/:id/employer`: ẩn mềm bằng `archivedAt`, public/default workspace ẩn job.
+- FE employer không có tab lưu trữ/khôi phục trong v1. Archived job được giữ cho admin/support sau này; muốn sửa/checkout/xem detail nội bộ của job còn trong workspace thì dùng `GET /api/v1/jobs/manage/:id`.
 - Candidate đã apply vào job cũ dùng `GET /api/v1/applications/:id/job` để xem lịch sử tin, không dùng public job route.
 
 ### Quota và package
@@ -1269,3 +1268,12 @@ modules/<name>/
 - `ApplicationsModule` sở hữu quyền xem CV theo application ownership.
 - `UploadModule`/`CloudinaryService` là technical storage adapter, dùng cho logo công ty và CV PDF upload.
 - FE không truyền `userId` để xem CV; quyền xem luôn dựa trên session/cookie và backend ownership check.
+
+### Realtime chat, notification và dashboard
+
+- FE kết nối Socket.IO tới backend namespace `/realtime` thông qua `RealtimeProvider`.
+- Socket chỉ đẩy event realtime; REST API vẫn là source of truth cho chat, notification và dashboard.
+- Chat application mở dialog thì emit `application.join { applicationId }`, đóng dialog thì `application.leave`.
+- Notification không polling mặc định nữa; server emit `notification.created`, `notification.read`, `notification.all_read`, `notification.unread_count.changed`.
+- Dashboard không stream payload lớn; server emit `dashboard.invalidate`, FE invalidate query `["dashboard"]` để refetch đúng lúc.
+- Nếu socket disconnect, FE giữ dữ liệu cũ và fallback bằng refetch khi focus/reconnect.

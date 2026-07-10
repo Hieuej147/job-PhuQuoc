@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+let lastProxyUnavailableLogAt = 0;
+
+function logProxyUnavailableOnce(error: unknown) {
+  const now = Date.now();
+  if (now - lastProxyUnavailableLogAt < 30_000) return;
+  lastProxyUnavailableLogAt = now;
+  console.error("API proxy: backend is unavailable.", error);
+}
+
+function backendUnavailableResponse() {
+  return NextResponse.json(
+    {
+      statusCode: 502,
+      message: "Không kết nối được máy chủ API.",
+      code: "BACKEND_UNAVAILABLE",
+    },
+    { status: 502 },
+  );
+}
 
 async function proxyRequest(request: NextRequest, slug: string[]) {
   const path = slug ? `/${slug.join("/")}` : "";
@@ -46,8 +65,8 @@ async function proxyRequest(request: NextRequest, slug: string[]) {
 
     return nextResponse;
   } catch (error) {
-    console.error("API proxy error:", error);
-    return NextResponse.json({ error: "Proxy error" }, { status: 502 });
+    logProxyUnavailableOnce(error);
+    return backendUnavailableResponse();
   }
 }
 

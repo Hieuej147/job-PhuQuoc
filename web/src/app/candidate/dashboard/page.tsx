@@ -13,7 +13,7 @@ import { CandidateDashboardAiTab } from "@/components/ai/dashboard-ai-tab";
 import { timeAgo } from "@/lib/utils/date";
 import { formatSalary, jobTypeLabel, companyInitials } from "@/lib/utils/format";
 import { useAuth } from "@/components/auth/auth-provider";
-import { useCandidateDashboardSummary } from "@/lib/dashboard-queries";
+import { useCandidateDashboardSummary } from "@/features/dashboard/queries";
 import { computeProfileCompletion } from "@/lib/profile-completion";
 import { QuotaUsageCard } from "@/components/quota/quota-usage-card";
 
