@@ -953,6 +953,8 @@ QueryAuditDto:
 
 ## 5. Frontend Routes & Components
 
+> Quy ước đặt file FE chi tiết nằm tại [`docs/FE_FOLDER_STRUCTURE_GUIDE.md`](./FE_FOLDER_STRUCTURE_GUIDE.md). Rule ngắn: `app/` là route boundary, `features/*` chứa domain logic, `components/ui` là UI primitive, `lib` chỉ chứa core shared.
+
 ### 5.1 Page Routes
 
 #### Trang công khai (SSR + SEO)
