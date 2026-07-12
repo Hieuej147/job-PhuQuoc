@@ -9,6 +9,8 @@ export interface JobContract {
   companyId: string;
   salaryMin: number | null;
   salaryMax: number | null;
+  deadline: Date | null;
+  archivedAt: Date | null;
 }
 
 @Injectable()
@@ -25,6 +27,8 @@ export class JobContractService {
         companyId: true,
         salaryMin: true,
         salaryMax: true,
+        deadline: true,
+        archivedAt: true,
       },
     });
   }
@@ -39,6 +43,8 @@ export class JobContractService {
         companyId: true,
         salaryMin: true,
         salaryMax: true,
+        deadline: true,
+        archivedAt: true,
       },
     });
   }
@@ -50,10 +56,31 @@ export class JobContractService {
     });
   }
 
-  async activateJob(id: string, deadline: Date): Promise<void> {
+  async activateJob(
+    id: string,
+    activation: {
+      deadline: Date;
+      durationDays: number;
+      boostLevel: number;
+      featuredUntil?: Date | null;
+      paymentId: string;
+      activationId?: string | null;
+    },
+  ): Promise<void> {
     await this.prisma.job.update({
       where: { id },
-      data: { status: 'ACTIVE' as JobStatus, deadline },
+      data: {
+        status: 'ACTIVE' as JobStatus,
+        deadline: activation.deadline,
+        publishedAt: new Date(),
+        closedAt: null,
+        closeReason: null,
+        durationDays: activation.durationDays,
+        boostLevel: activation.boostLevel,
+        featuredUntil: activation.featuredUntil,
+        currentPaymentId: activation.paymentId,
+        activationId: activation.activationId,
+      },
     });
   }
 

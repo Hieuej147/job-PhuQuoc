@@ -13,7 +13,7 @@ import { ApplicationsService } from './applications.service';
 import { CloudinaryService } from '../upload/cloudinary.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { CreateApplicationDto, UpdateApplicationStatusDto } from './dto/application.dto';
+import { CreateApplicationDto, CreateApplicationMessageDto, UpdateApplicationStatusDto } from './dto/application.dto';
 import { ApplicationQueryDto } from './dto/application-query.dto';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 
@@ -49,6 +49,17 @@ export class ApplicationsController {
     return this.applicationsService.findByUser(user.user.id, query);
   }
 
+  @Get('check/:jobId')
+  @Roles('CANDIDATE')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Kiểm tra đã ứng tuyển job chưa', description: 'Candidate kiểm tra trạng thái ứng tuyển cho một job.' })
+  @ApiParam({ name: 'jobId', description: 'ID của job' })
+  @ApiResponse({ status: 200, description: '{ applied, applicationId, status }' })
+  @ApiResponse({ status: 403, description: 'Không phải CANDIDATE' })
+  checkApplied(@Param('jobId') jobId: string, @CurrentUser() user: UserSession) {
+    return this.applicationsService.checkApplied(user.user.id, jobId);
+  }
+
   @Get('employer')
   @Roles('EMPLOYER')
   @ApiBearerAuth('better-auth.session_token')
@@ -73,6 +84,60 @@ export class ApplicationsController {
   @ApiResponse({ status: 404, description: 'Không tìm thấy job' })
   findByJob(@Param('jobId') jobId: string, @CurrentUser() user: UserSession, @Query() query: ApplicationQueryDto) {
     return this.applicationsService.findByJob(jobId, user.user.id, query);
+  }
+
+  @Get(':id/messages')
+  @Roles('CANDIDATE', 'EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Danh sách tin nhắn application', description: 'Candidate/employer xem thread chat của một đơn ứng tuyển.' })
+  @ApiParam({ name: 'id', description: 'ID của application' })
+  @ApiResponse({ status: 200, description: 'Danh sách tin nhắn theo thời gian' })
+  @ApiResponse({ status: 403, description: 'Không có quyền xem thread này' })
+  findMessages(@Param('id') id: string, @CurrentUser() user: UserSession) {
+    return this.applicationsService.findMessages(id, user.user.id);
+  }
+
+  @Post(':id/messages')
+  @Roles('CANDIDATE', 'EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Gửi tin nhắn application', description: 'Candidate/employer gửi tin nhắn trong thread của một đơn ứng tuyển.' })
+  @ApiParam({ name: 'id', description: 'ID của application' })
+  @ApiResponse({ status: 201, description: 'Tin nhắn đã được lưu' })
+  @ApiResponse({ status: 403, description: 'Không có quyền gửi vào thread này' })
+  sendMessage(@Param('id') id: string, @CurrentUser() user: UserSession, @Body() body: CreateApplicationMessageDto) {
+    return this.applicationsService.sendMessage(id, user.user.id, body.body);
+  }
+
+  @Patch(':id/messages/read')
+  @Roles('CANDIDATE', 'EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Đánh dấu đã đọc tin nhắn application' })
+  @ApiParam({ name: 'id', description: 'ID của application' })
+  markMessagesRead(@Param('id') id: string, @CurrentUser() user: UserSession) {
+    return this.applicationsService.markMessagesRead(id, user.user.id);
+  }
+
+  @Patch(':id/chat/close')
+  @Roles('EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Đóng cuộc trò chuyện application', description: 'Employer khóa chat sau khi quy trình trao đổi đã hoàn tất. Lịch sử tin nhắn vẫn xem được.' })
+  @ApiParam({ name: 'id', description: 'ID của application' })
+  @ApiResponse({ status: 200, description: 'Cuộc trò chuyện đã đóng hoặc đã ở trạng thái đóng' })
+  @ApiResponse({ status: 403, description: 'Không phải owner của job' })
+  closeChat(@Param('id') id: string, @CurrentUser() user: UserSession) {
+    return this.applicationsService.closeChat(id, user.user.id);
+  }
+
+  @Get(':id/job')
+  @Roles('CANDIDATE', 'EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Xem lịch sử tin tuyển dụng theo application', description: 'Candidate/employer liên quan xem được job snapshot kể cả khi job đã đóng, hết hạn hoặc lưu trữ.' })
+  @ApiParam({ name: 'id', description: 'ID của application' })
+  @ApiResponse({ status: 200, description: 'Job snapshot của application' })
+  @ApiResponse({ status: 403, description: 'Không có quyền xem application này' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy application' })
+  getApplicationJobHistory(@Param('id') id: string, @CurrentUser() user: UserSession) {
+    return this.applicationsService.getJobHistoryForApplication(id, user.user.id);
   }
 
   @Get(':id/resume')
@@ -127,7 +192,7 @@ export class ApplicationsController {
   @ApiResponse({ status: 403, description: 'Không phải owner của công ty' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy application' })
   updateStatus(@Param('id') id: string, @CurrentUser() user: UserSession, @Body() body: UpdateApplicationStatusDto) {
-    return this.applicationsService.updateStatus(id, user.user.id, body.status);
+    return this.applicationsService.updateStatus(id, user.user.id, body.status, body.employerMessage);
   }
 
   @Patch(':id/bookmark')
@@ -144,12 +209,30 @@ export class ApplicationsController {
   @Delete(':id')
   @Roles('CANDIDATE')
   @ApiBearerAuth('better-auth.session_token')
-  @ApiOperation({ summary: 'Rút đơn ứng tuyển', description: 'Candidate rút đơn đã nộp.' })
+  @ApiOperation({
+    summary: 'Xóa đơn ứng tuyển khỏi workspace candidate',
+    description: 'Candidate ẩn đơn khỏi danh sách của mình. Record vẫn được giữ để admin/support đối soát lịch sử.',
+  })
   @ApiParam({ name: 'id', description: 'ID của application' })
-  @ApiResponse({ status: 200, description: 'Rút đơn thành công' })
+  @ApiResponse({ status: 200, description: 'Đã xóa khỏi danh sách candidate' })
   @ApiResponse({ status: 403, description: 'Không phải owner' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy application' })
   remove(@Param('id') id: string, @CurrentUser() user: UserSession) {
     return this.applicationsService.remove(id, user.user.id);
+  }
+
+  @Delete(':id/employer')
+  @Roles('EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({
+    summary: 'Xóa đơn ứng tuyển khỏi workspace employer',
+    description: 'Employer ẩn đơn khỏi danh sách của mình. Record vẫn được giữ để admin/support đối soát lịch sử.',
+  })
+  @ApiParam({ name: 'id', description: 'ID của application' })
+  @ApiResponse({ status: 200, description: 'Đã xóa khỏi danh sách employer' })
+  @ApiResponse({ status: 403, description: 'Không phải owner' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy application' })
+  removeForEmployer(@Param('id') id: string, @CurrentUser() user: UserSession) {
+    return this.applicationsService.removeForEmployer(id, user.user.id);
   }
 }

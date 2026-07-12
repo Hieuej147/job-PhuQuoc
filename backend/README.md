@@ -8,7 +8,7 @@ Backend API cho website tìm việc làm tại Phú Quốc, xây dựng với Ne
 |-----------|-----------|---------|
 | Framework | NestJS | 11 |
 | Language | TypeScript | 5.7 |
-| ORM | Prisma | 6 |
+| ORM | Prisma | 7 |
 | Database | PostgreSQL | 16 |
 | Cache/Session | Redis (ioredis) | 5.4 |
 | Auth | better-auth | 1.5 |
@@ -19,6 +19,20 @@ Backend API cho website tìm việc làm tại Phú Quốc, xây dựng với Ne
 | Testing | Vitest + Supertest | 3.0 |
 
 ---
+
+## Cập nhật quan trọng 09/07/2026
+
+- Prisma đang dùng **Prisma 7** và `prisma.config.ts`; datasource URL không đặt trong `schema.prisma`.
+- Quota đã tách theo NestJS DI:
+  - `common/quota/quota.service.ts`: application service dùng trong request flow, inject `PrismaService` + `InngestService`.
+  - `common/quota/quota-expiry.service.ts`: helper cho Inngest expiry/repair, dùng Prisma trực tiếp, không giả lập Nest DI.
+  - `common/quota/storage-quota.ts` đã xoá; không import lại file này.
+- `QuotaModule` export `QuotaService`; module nào check quota phải import `QuotaModule`, không tự `new QuotaService()`.
+- Job user-facing delete của employer là **archive mềm**, không hard delete. Dữ liệu job/payment/application/quota purchase giữ lại cho admin/support.
+- Application user-facing delete chỉ set `candidateDeletedAt` hoặc `employerDeletedAt`, không xoá vật lý.
+- `Job.deadline` chỉ set từ checkout/payment duration. Create/update job DTO không nhận deadline.
+- Job embedding chỉ sync sau khi payment completion kích hoạt job thành `ACTIVE`, hoặc khi employer sửa một job đang `ACTIVE`, chưa hết hạn và chưa archive. Tạo job `DRAFT` không chạy embedding.
+- Chat application chỉ gửi được khi application `ACCEPTED` và chưa đóng; `REJECTED` chỉ xem lời nhắn read-only.
 
 ## Kiến trúc tổng quan
 
@@ -38,8 +52,10 @@ Backend hiện là **Modular Monolith theo bounded context**. Không tách micro
 Ví dụ đã áp dụng:
 
 - `applications/infrastructure/application-events.publisher.ts`: publish application events ra Inngest, không để `ApplicationsService` gọi event bus trực tiếp.
-- `jobs/background/job-background.service.ts`: sync embedding chạy nền, không block create/update job response.
-- `payments/application/payment-completion.service.ts`: use case hoàn tất payment -> active job -> emit event -> audit log.
+- `jobs/background/job-background.service.ts`: sync embedding chạy nền sau paid activation hoặc active-job edit, không block request response.
+- `payments/application/payment-completion.service.ts`: use case hoàn tất payment; DB transaction cập nhật payment + active job trước, sau đó emit event, audit best-effort và sync embedding.
+- `common/quota/quota.service.ts`: quota application service trong Nest request flow.
+- `common/quota/quota-expiry.service.ts`: quota expiry/repair helper cho Inngest, không phụ thuộc `InngestService`.
 
 Quy tắc maintain:
 
@@ -163,7 +179,7 @@ Quy tắc maintain:
 │  │          │ │          │ │          │ │          │ │          ││
 │  │ Primary  │ │ Session  │ │ Events   │ │ Payments │ │ Email    ││
 │  │ Database │ │ Cache    │ │ Async    │ │ Gateway  │ │ OTP      ││
-│  │ 23 tables│ │ TTL 5min │ │ 10 funcs │ │ Webhook  │ │ Verify   ││
+│  │ 27 tables│ │ TTL 5min │ │ 12 funcs │ │ Webhook  │ │ Verify   ││
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘│
 │                                                                     │
 │  ┌──────────┐ ┌──────────┐                                        │
@@ -525,15 +541,17 @@ Client Response
 │       │                                                          │
 │       │ deadline reached                                        │
 │       ▼                                                          │
-│  ┌──────────┐                                                   │
-│  │  CLOSED  │ ◄── Job no longer accepting applications         │
-│  └──────────┘                                                   │
+│  ┌──────────┐      ┌──────────┐                                │
+│  │ EXPIRED  │      │  CLOSED  │ ◄── employer close/archive     │
+│  └──────────┘      └──────────┘                                │
 │                                                                  │
 │ Transitions:                                                     │
 │ - DRAFT → PENDING (via checkout)                                │
 │ - PENDING → ACTIVE (via payment webhook)                        │
-│ - ACTIVE → CLOSED (via deadline or manual)                      │
-│ - CLOSED → (terminal)                                           │
+│ - ACTIVE → EXPIRED (via deadline/Inngest)                       │
+│ - ACTIVE → CLOSED (manual close/archive)                        │
+│ - CLOSED/EXPIRED → terminal for public listing; republish must go through private checkout flow │
+│ - archivedAt != null hides job from public/default workspace    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -544,7 +562,7 @@ Client Response
 ```
 backend/
 ├── prisma/
-│   ├── schema.prisma          # Database schema (22 tables, 10 enums)
+│   ├── schema.prisma          # Database schema (27 tables, 12 enums)
 │   ├── seed.ts                # Seed data (categories, templates, pricing)
 │   └── migrations/
 ├── src/
@@ -589,7 +607,6 @@ backend/
 │   │   ├── events.types.ts    # 16 event type definitions
 │   │   ├── inngest.module.ts  # @Global()
 │   │   ├── inngest.service.ts # send() / sendBatch()
-│   │   ├── inngest.controller.ts # POST /inngest webhook
 │   │   └── functions/
 │   │       ├── notification.functions.ts  # 4 notification handlers
 │   │       ├── user.functions.ts          # Welcome notification
@@ -785,7 +802,7 @@ Payment ── N:1 ──► PricingPackage (packageId)
 
 **Error** (GlobalExceptionFilter):
 ```json
-{ "statusCode": 400, "message": "Error message", "timestamp": "...", "path": "/api/v1/jobs" }
+{ "statusCode": 400, "message": "Error message", "error": "...?", "code": "...?", "details": { "...": "..." }, "timestamp": "...", "path": "/api/v1/jobs" }
 ```
 
 ---
@@ -851,12 +868,17 @@ Payment ── N:1 ──► PricingPackage (packageId)
 
 | Method | Path | Auth | Mô tả |
 |--------|------|------|-------|
-| GET | /api/v1/jobs | PUBLIC | Tìm kiếm (?search, ?categoryId, ?type, ?experience, ?level, ?salaryMin, ?salaryMax, ?wardId, ?status, ?page, ?limit). Mặc định: ACTIVE |
-| GET | /api/v1/jobs/slug/:slug | PUBLIC | Chi tiết theo slug |
-| GET | /api/v1/jobs/my | EMPLOYER | Jobs của employer (tất cả status) |
-| GET | /api/v1/jobs/:id | PUBLIC | Chi tiết |
-| POST | /api/v1/jobs | EMPLOYER | Tạo job (status: DRAFT) |
-| PATCH | /api/v1/jobs/:id | OWNER | Cập nhật |
+| GET | /api/v1/jobs | PUBLIC | Public search. Bỏ qua `status` từ client, chỉ trả `ACTIVE`, chưa hết hạn, `archivedAt = null` |
+| GET | /api/v1/jobs/slug/:slug | PUBLIC | Chi tiết theo slug, chỉ job đang public |
+| GET | /api/v1/jobs/my | EMPLOYER | Jobs của employer. Mặc định ẩn archived; FE employer không expose chế độ xem archived |
+| GET | /api/v1/jobs/my/stats | EMPLOYER | Thống kê jobs theo status/archive |
+| GET | /api/v1/jobs/manage/:id | EMPLOYER | Detail nội bộ cho owner: sửa, checkout, clone, xem lịch sử |
+| GET | /api/v1/jobs/:id | PUBLIC | Chi tiết theo ID, chỉ job đang public |
+| POST | /api/v1/jobs | EMPLOYER | Tạo job DRAFT. Không nhận deadline; content lưu Markdown |
+| PATCH | /api/v1/jobs/:id | OWNER | Cập nhật nội dung. Nếu job ACTIVE thì không reset payment/deadline/Inngest expiry |
+| PATCH | /api/v1/jobs/:id/close | OWNER | Đóng tin sớm, public ẩn nhưng dashboard giữ lịch sử |
+| DELETE | /api/v1/jobs/:id/employer | OWNER | Employer lưu trữ mềm job, không hard delete |
+| PATCH | /api/v1/jobs/:id/restore | OWNER | Route kỹ thuật giữ lại, không expose trong FE employer v1 |
 | DELETE | /api/v1/jobs/:id | ADMIN | Xóa |
 
 ### Applications
@@ -865,13 +887,20 @@ Payment ── N:1 ──► PricingPackage (packageId)
 |--------|------|------|-------|
 | POST | /api/v1/applications | CANDIDATE | Ứng tuyển (jobId, cvUrl, resumeId, coverLetter) |
 | GET | /api/v1/applications/my | CANDIDATE | Đơn của tôi (?page, ?limit) |
+| GET | /api/v1/applications/check/:jobId | CANDIDATE | Kiểm tra đã ứng tuyển job chưa |
 | GET | /api/v1/applications/employer | EMPLOYER | Tất cả đơn cho jobs của employer |
 | GET | /api/v1/applications/job/:jobId | EMPLOYER | Đơn theo job |
+| GET | /api/v1/applications/:id/job | CANDIDATE/EMPLOYER | Xem lịch sử job theo application kể cả job đã closed/expired/archived |
+| GET | /api/v1/applications/:id/messages | CANDIDATE/EMPLOYER | Xem chat thread application |
+| POST | /api/v1/applications/:id/messages | CANDIDATE/EMPLOYER | Gửi chat, chỉ khi application ACCEPTED và chat chưa đóng |
+| PATCH | /api/v1/applications/:id/messages/read | CANDIDATE/EMPLOYER | Mark read + refresh Redis presence |
+| PATCH | /api/v1/applications/:id/chat/close | EMPLOYER | Đóng chat, giữ lịch sử |
 | PATCH | /api/v1/applications/:id/status | EMPLOYER | Duyệt/từ chối (REVIEWING/ACCEPTED/REJECTED) |
 | GET | /api/v1/applications/:id/resume | EMPLOYER | Lấy CV theo application ownership |
 | GET | /api/v1/applications/:id/resume-file | EMPLOYER | Stream PDF upload inline qua backend proxy |
 | PATCH | /api/v1/applications/:id/bookmark | EMPLOYER | Toggle bookmark |
-| DELETE | /api/v1/applications/:id | CANDIDATE | Rút đơn |
+| DELETE | /api/v1/applications/:id | CANDIDATE | Xoá khỏi workspace candidate, không hủy/rút đơn, không hard delete |
+| DELETE | /api/v1/applications/:id/employer | EMPLOYER | Xoá khỏi workspace employer, không hard delete |
 
 ### Resumes
 
@@ -893,13 +922,12 @@ Payment ── N:1 ──► PricingPackage (packageId)
 
 **Luồng lưu CV từ AI agent**
 
-1. Agent tạo draft template gồm `name`, `htmlTemplate`, `cssTemplate`, `isPublic`.
-2. Agent review/repair draft để tránh backend validator reject các pattern không an toàn như `script`, event handler, `@import`, `url(...)`.
-3. Agent gọi `POST /api/v1/resumes/templates`.
-4. Backend validate HTML/CSS; nếu không hợp lệ thì trả `400` và không tạo record.
-5. Prisma/DB sinh `ResumeTemplate.id`; agent chỉ được dùng id backend trả về.
-6. Agent gọi `POST /api/v1/resumes` với `templateId` đó.
-7. Export PDF dùng FE print route `/resumes/:id/print`; backend chỉ trả dữ liệu CV và kiểm quyền.
+1. Agent/FE render draft CV bằng HTML/CSS ở frontend preview đã sanitize.
+2. Nếu cần tạo template, agent chỉ gửi metadata `name`, `description?`, `previewUrl?`, `isPublic?` tới `POST /api/v1/resumes/templates`.
+3. `ResumeTemplate` schema hiện không lưu `htmlTemplate/cssTemplate`; template record chỉ là metadata + owner/public state.
+4. Prisma/DB sinh `ResumeTemplate.id`; agent chỉ được dùng id backend trả về.
+5. Agent gọi `POST /api/v1/resumes` với `templateId` đó.
+6. Export PDF dùng FE print route `/resumes/:id/print`; backend chỉ trả dữ liệu CV và kiểm quyền.
 
 `templateId` là DB-generated. FE/agent không được tự tạo hoặc dùng id giả.
 
@@ -944,10 +972,12 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | Method | Path | Auth | Mô tả |
 |--------|------|------|-------|
 | GET | /api/v1/blogs | PUBLIC | Danh sách (chỉ published) |
-| GET | /api/v1/blogs/slug/:slug | PUBLIC | Chi tiết |
-| POST | /api/v1/blogs | ADMIN | Tạo bài |
-| PATCH | /api/v1/blogs/:id | ADMIN | Sửa bài |
-| DELETE | /api/v1/blogs/:id | ADMIN | Xóa |
+| GET | /api/v1/blogs/slug/:slug | PUBLIC | Chi tiết, không tự tăng view |
+| POST | /api/v1/blogs/slug/:slug/view | PUBLIC | Tăng lượt xem sau khi FE xác nhận người dùng đã đọc |
+| GET | /api/v1/blogs/my | CANDIDATE/EMPLOYER/ADMIN | Danh sách bài của tác giả hiện tại |
+| POST | /api/v1/blogs | CANDIDATE/EMPLOYER/ADMIN | Tạo bài, content là Tiptap JSON |
+| PATCH | /api/v1/blogs/:id | CANDIDATE/EMPLOYER/ADMIN | Sửa bài, chỉ tác giả hoặc ADMIN |
+| DELETE | /api/v1/blogs/:id | CANDIDATE/EMPLOYER/ADMIN | Xóa bài, chỉ tác giả hoặc ADMIN |
 
 ### Blog Categories
 
@@ -968,15 +998,31 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | PATCH | /api/v1/pricing/:id | ADMIN | Sửa gói |
 | DELETE | /api/v1/pricing/:id | ADMIN | Xóa gói |
 
-### Payments (Stripe)
+### Payments (Stripe + Mock)
 
 | Method | Path | Auth | Mô tả |
 |--------|------|------|-------|
-| POST | /api/v1/payments/checkout | EMPLOYER | Tạo Stripe checkout session |
-| POST | /api/v1/payments/webhook | PUBLIC | Stripe webhook callback |
+| POST | /api/v1/payments/checkout | EMPLOYER | Tạo checkout session. Gateway là `stripe` nếu `STRIPE_SECRET_KEY` khả dụng, nếu không là `mock` |
+| POST | /api/v1/payments/webhook | PUBLIC | Stripe webhook callback; mock webhook có thể dùng header `x-payment-gateway: mock` |
 | POST | /api/v1/payments/mock-complete | EMPLOYER | Mock complete (dev only) |
 | GET | /api/v1/payments/my | EMPLOYER | Lịch sử thanh toán |
 | GET | /api/v1/payments/:id | EMPLOYER,ADMIN | Chi tiết payment |
+
+### Quota
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|-------|
+| GET | /api/v1/quota/me | AUTH | Snapshot gói hiện tại, hạn gói, usage/limit theo resource |
+| GET | /api/v1/quota/packages | AUTH | Danh sách package quota active: Candidate Plus / Employer Pro theo 1/3/12 tháng |
+| POST | /api/v1/quota/checkout | AUTH | Tạo quota checkout mock `{ packageId }` |
+| POST | /api/v1/quota/mock-complete | AUTH | Hoàn tất quota checkout mock `{ sessionId }`, set plan expiry và emit `quota.plan.activated` |
+| POST | /api/v1/quota/upgrade | AUTH | Legacy demo upgrade trực tiếp, giữ để tương thích |
+
+Quota module hiện tại:
+
+- `QuotaService` chỉ được tạo bởi NestJS DI, dùng cho request flow.
+- `QuotaExpiryService` là helper riêng cho Inngest worker, đọc/ghi Prisma trực tiếp để downgrade/repair plan hết hạn.
+- Quota lỗi dùng HTTP `403` với `code: QUOTA_EXCEEDED` và `details`/payload gồm `resource`, `used`, `limit`, `currentPlan`, `upgradePlan` nếu có.
 
 ### Audit (ADMIN)
 
@@ -1001,15 +1047,16 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | Event | Trigger | Handler |
 |-------|---------|---------|
 | application.created | Candidate nộp CV | Notification cho employer |
-| application.accepted | Employer chấp nhận | Notification cho candidate + schedule cleanup 30 ngày |
-| application.rejected | Employer từ chối | Notification cho candidate + schedule cleanup 14 ngày |
+| application.accepted | Employer chấp nhận | Notification cho candidate |
+| application.rejected | Employer từ chối | Notification cho candidate |
 | user.registered | User đăng ký | Welcome notification |
 | job.activated | Payment thành công | Notification + schedule expiry |
 | job.expiring-soon | 3 ngày trước deadline | Notify users đã lưu job |
 | job.expired | Đến deadline | Đóng job + notify owner |
+| quota.plan.activated | Mock quota purchase hoàn tất | Schedule quota downgrade theo `expiresAt` |
 | weekly-employer-summary | Cron Thu+Sat 9AM | Tổng hợp CV cho employer |
 
-### Functions (11)
+### Functions (13)
 
 | Function ID | Trigger | Hành động |
 |-------------|---------|-----------|
@@ -1018,12 +1065,29 @@ Payment ── N:1 ──► PricingPackage (packageId)
 | on-application-created | application.created | APPLICATION_RECEIVED notification |
 | on-application-accepted | application.accepted | APPLICATION_ACCEPTED notification |
 | on-application-rejected | application.rejected | APPLICATION_REJECTED notification |
-| cleanup-accepted-application | application.accepted | Xoá application sau 30 ngày nếu vẫn ACCEPTED |
-| cleanup-rejected-application | application.rejected | Xoá application sau 14 ngày nếu vẫn REJECTED |
 | schedule-job-expiry | job.activated | Schedule job.expiring-soon + job.expired |
 | on-job-expiring-soon | job.expiring-soon | Notify saved-job users |
 | on-job-expired | job.expired | Close job + notify owner |
+| close-expired-active-jobs | Cron repair | Quét job ACTIVE quá deadline và đóng lại nếu event deadline bị miss |
+| quota-plan-expiry | quota.plan.activated | Đợi tới expiry rồi downgrade nếu plan vẫn còn đúng hạn đó |
+| repair-expired-quota-plans | Cron repair | Downgrade quota đã hết hạn nếu event bị miss |
+| cleanup-notifications | Cron 0 3 * * * | Xoá notification hết hạn hoặc đã đọc quá 90 ngày |
 | weekly-employer-summary | Cron 0 9 * * 4,6 | Summary notifications |
+
+### Job Edit vs Inngest Expiry
+
+- Employer sửa job ACTIVE qua `PATCH /api/v1/jobs/:id` chỉ cập nhật content fields trong DB, invalidate Redis cache và sync embedding nếu job vẫn public-visible.
+- API update job luôn bỏ qua `deadline`; deadline chỉ sinh từ checkout duration khi payment complete.
+- Edit job không emit lại `job.activated`, không tạo payment mới, không clone job và không restart Inngest expiry.
+- Event `job.expired` đã schedule từ lúc thanh toán vẫn dùng `jobId` để đọc lại DB. Function chỉ đóng job nếu job vẫn `ACTIVE` và deadline trong event còn khớp deadline hiện tại.
+- `close-expired-active-jobs` là cron repair chung, không thuộc riêng job nào; nó chỉ đóng các job ACTIVE đã quá deadline nếu còn sót.
+
+### Inngest Serve Source of Truth
+
+- Runtime endpoint hiện dùng `main.ts` mount `serve()` tại `/api/inngest`.
+- `InngestModule` chỉ export `InngestService`; không đăng ký controller serve riêng để tránh hai handler cùng phục vụ event.
+- Controller Inngest cũ đã xoá; không thêm lại handler thứ hai trong module.
+- Khi deploy, cấu hình Inngest trỏ về `POST /api/inngest`.
 
 ---
 
@@ -1077,9 +1141,11 @@ Payment ── N:1 ──► PricingPackage (packageId)
 
 ### Cloudinary Uploads
 
-- Logo công ty được upload qua `POST /api/v1/upload/company-logo`.
+- Logo công ty được crop trên FE rồi upload qua `POST /api/v1/upload/company-logo`.
 - DB lưu URL hiển thị ở `Company.logo` và Cloudinary public id ở `Company.logoPublicId`.
 - Khi employer đổi logo, backend upload ảnh mới, cập nhật DB thành công rồi mới xoá logo cũ bằng `logoPublicId`.
+- Ảnh bìa công ty được crop 1600x500 trên FE rồi upload qua `POST /api/v1/upload/company-cover`; DB lưu `Company.coverImage` và `Company.coverImagePublicId`.
+- Avatar candidate được crop vuông trên FE rồi upload qua `POST /api/v1/upload/candidate-avatar`; backend sync `user.image/user.imagePublicId` và profile resume `CandidateResume.avatar/avatarPublicId`.
 - CV PDF ứng tuyển được upload qua `POST /api/v1/upload/candidate-cv`, form-data field `file`, chỉ nhận PDF tối đa 10MB.
 - CV PDF được lưu trên Cloudinary `image/upload` trong folder `job-phuquoc/candidate-cvs/{userId}`; employer xem qua `GET /api/v1/applications/:id/resume-file`, không mở URL Cloudinary trực tiếp.
 - Nếu gặp CV cũ ở `image/upload` bị Cloudinary chặn public delivery, backend tạo signed download URL nội bộ rồi stream PDF inline.
@@ -1133,3 +1199,23 @@ npx tsc --noEmit
 | Event-Driven | Inngest functions | Async cross-module communication |
 | Cache-Aside | CacheService | Redis caching + manual invalidation |
 | State Machine | Job/Application status | Validated transitions |
+
+## Realtime Socket.IO
+
+- Backend dùng `RealtimeModule` với Socket.IO namespace `/realtime`; chưa tách microservice riêng.
+- Socket auth dùng session cookie `better-auth.session_token`, cùng nguồn xác thực với REST.
+- Rooms chính:
+  - `user:{userId}` cho notification và dashboard invalidate.
+  - `application:{applicationId}` cho chat theo đơn ứng tuyển.
+  - `employer:{userId}` / `candidate:{userId}` cho mở rộng theo role.
+- REST vẫn là source of truth. Socket chỉ emit sau khi DB ghi thành công.
+- Redis adapter dùng `REDIS_URL` để scale nhiều backend instance; nếu Redis lỗi ở local, gateway vẫn chạy single instance và log warning.
+- Inngest vẫn xử lý workflow nền; helper tạo notification sẽ emit Socket.IO event sau khi upsert notification.
+- Event server emit:
+  - `application.message.created`
+  - `application.messages.read`
+  - `notification.created`
+  - `notification.read`
+  - `notification.all_read`
+  - `notification.unread_count.changed`
+  - `dashboard.invalidate`

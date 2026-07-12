@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Briefcase, MapPin, DollarSign, Clock } from "lucide-react";
+import { MapPin, DollarSign } from "lucide-react";
+import { jobTypeLabel } from "@/lib/utils/format";
 
 interface Job {
   id: string;
@@ -17,15 +18,6 @@ interface JobListCardProps {
   jobs: Job[];
   total: number;
 }
-
-const TYPE_LABELS: Record<string, string> = {
-  FULL_TIME: "Full-time",
-  PART_TIME: "Part-time",
-  REMOTE: "Remote",
-  CONTRACT: "Hợp đồng",
-  INTERNSHIP: "Thực tập",
-  FREELANCE: "Freelance",
-};
 
 export function JobListCard({ jobs, total }: JobListCardProps) {
   if (!jobs || jobs.length === 0) {
@@ -44,7 +36,7 @@ export function JobListCard({ jobs, total }: JobListCardProps) {
       {jobs.map((job) => (
         <Link
           key={job.id}
-          href={`/jobs/${job.slug || job.id}`}
+          href={job.slug ? `/jobs/${job.slug}` : "/jobs"}
           target="_blank"
           rel="noopener noreferrer"
           className="block p-3 rounded-xl border bg-card hover:bg-accent/50 transition-colors"
@@ -56,7 +48,7 @@ export function JobListCard({ jobs, total }: JobListCardProps) {
             </div>
             {job.type && (
               <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                {TYPE_LABELS[job.type] || job.type}
+                {jobTypeLabel(job.type)}
               </span>
             )}
           </div>

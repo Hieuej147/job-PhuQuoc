@@ -3,6 +3,9 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Spinner } from "@/components/ui/spinner";
+import { timeAgo } from "@/lib/utils/date";
+import { companyInitials } from "@/lib/utils/format";
+import { deleteSavedCompany, getSavedCompanies } from "@/features/saved-companies/api";
 
 interface SavedCompany {
     id: string;
@@ -28,15 +31,6 @@ const SIZE_LABELS: Record<string, string> = {
     SIZE_500_PLUS: "500+",
 };
 
-function getInitials(name: string) {
-    return name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-}
-
-function timeAgo(dateStr: string) {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("vi-VN");
-}
-
 const GRADIENTS = [
     "linear-gradient(135deg,#0E7490,#0D9488)",
     "linear-gradient(135deg,#0D9488,#006a61)",
@@ -54,12 +48,8 @@ export default function SavedCompaniesPage() {
     const [activeFilter, setActiveFilter] = useState("all");
 
     useEffect(() => {
-        fetch("/api/v1/saved/companies", { credentials: "include" })
-            .then((r) => r.ok ? r.json() : null)
-            .then((d) => {
-                if (!d) return;
-                setItems(d.data?.items ?? d.data ?? []);
-            })
+        getSavedCompanies(500)
+            .then((d) => setItems(d.items ?? d ?? []))
             .catch(() => { })
             .finally(() => setLoading(false));
     }, []);
@@ -67,17 +57,8 @@ export default function SavedCompaniesPage() {
     const handleUnfollow = async (companyId: string, companyName: string) => {
         if (!confirm(`Bỏ theo dõi "${companyName}"?`)) return;
         try {
-            const res = await fetch(`/api/v1/saved/companies/${companyId}`, {
-                method: "POST",
-                credentials: "include",
-            });
-            if (res.ok) {
-                setItems((prev) => prev.filter((s) => s.companyId !== companyId));
-                // Cập nhật sessionStorage
-                const cached = sessionStorage.getItem("savedCompanyIds");
-                const ids: string[] = cached ? JSON.parse(cached) : [];
-                sessionStorage.setItem("savedCompanyIds", JSON.stringify(ids.filter((id) => id !== companyId)));
-            }
+            await deleteSavedCompany(companyId);
+            setItems((prev) => prev.filter((s) => s.companyId !== companyId));
         } catch (e) {
             console.error(e);
         }
@@ -253,7 +234,7 @@ export default function SavedCompaniesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     {filtered.map((s, index) => {
                         const c = s.company;
-                        const initials = getInitials(c.name);
+                        const initials = companyInitials(c.name);
                         const gradient = GRADIENTS[index % GRADIENTS.length];
                         const jobCount = c._count?.jobs || 0;
                         const location = c.ward?.name ? `${c.ward.name}, Phú Quốc` : c.addressDetail || "Phú Quốc";

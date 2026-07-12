@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import BlogHero from "@/components/blog/BlogHero";
 import BlogFilterBar from "@/components/blog/BlogFilterBar";
 import BlogList from "@/components/blog/BlogList";
 import { Blog, BlogCategory } from "@/types/blog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export interface MappedBlog extends Blog {
   categoryName: string;
@@ -108,6 +109,8 @@ export default function BlogPageClient({
     Number(initialSearchParams.page),
   );
 
+  const [isPending, startTransition] = useTransition();
+
   const updateURL = (updates: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
@@ -122,7 +125,9 @@ export default function BlogPageClient({
         params.set(key, value);
       }
     });
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    });
   };
 
   useEffect(() => {
@@ -219,12 +224,48 @@ export default function BlogPageClient({
 
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           {/* LEFT: Blog Cards */}
-          <BlogList
-            paginatedBlogs={paginatedBlogs}
-            totalPages={totalPages}
-            currentPage={currentPage}
-            updateURL={updateURL}
-          />
+          {isPending ? (
+            <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="bg-white dark:bg-[#0F3347] rounded-2xl border border-[#E0F5FB] dark:border-[#1E5F74] shadow-sm p-5 space-y-4 overflow-hidden flex flex-col h-full"
+                >
+                  {/* Thumbnail area skeleton */}
+                  <div className="-mx-5 -mt-5 h-48 relative bg-slate-200/50 dark:bg-slate-800/50 animate-pulse" />
+                  
+                  {/* Content */}
+                  <div className="space-y-3 flex-grow">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-5 w-5/6" />
+                    <div className="space-y-1 pt-2">
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-5/6" />
+                    </div>
+                  </div>
+
+                  {/* Meta bottom */}
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="w-7 h-7 rounded-full" />
+                      <div className="space-y-1">
+                        <Skeleton className="h-3 w-16" />
+                        <Skeleton className="h-2 w-12" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-3 w-10" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <BlogList
+              paginatedBlogs={paginatedBlogs}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              updateURL={updateURL}
+            />
+          )}
 
           {/* RIGHT: Sidebar */}
           <aside className="w-full lg:w-72 shrink-0 space-y-6 lg:sticky lg:top-20">

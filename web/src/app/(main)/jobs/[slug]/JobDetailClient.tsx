@@ -11,6 +11,9 @@ import { Briefcase, Loader2, X, CheckCircle2 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
+import { unwrapApiPayload } from "@/lib/api-client";
+import { companyInitials, formatSalary, jobTypeLabel } from "@/lib/utils/format";
+import { checkApplication, getSavedJobIds, saveJob, unsaveJob } from "@/features/job-detail/api";
 
 import JobDetailHero from "@/components/jobs/JobDetailHero";
 import {
@@ -64,6 +67,7 @@ interface JobData {
     district?: { id: string; name: string; slug: string; province?: { name: string } | null } | null;
   } | null;
   applications?: { id: string }[];
+  _count?: { applications?: number };
 }
 
 interface RelatedJob {
@@ -98,15 +102,6 @@ function extractResumeList(payload: any): any[] {
   return list.filter((resume: any) => resume?.id && resume?.title !== "PROFILE_MASTER");
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  FULL_TIME: "Full-time",
-  PART_TIME: "Part-time",
-  REMOTE: "Remote",
-  CONTRACT: "Hợp đồng",
-  INTERNSHIP: "Thực tập",
-  FREELANCE: "Freelance",
-};
-
 const EXP_LABELS: Record<string, string> = {
   NO_EXPERIENCE: "Không yêu cầu",
   UNDER_1_YEAR: "Dưới 1 năm",
@@ -126,14 +121,6 @@ const LEVEL_LABELS: Record<string, string> = {
   DIRECTOR: "Director",
 };
 
-function formatSalary(min?: number | null, max?: number | null): string {
-  if (!min && !max) return "Thỏa thuận";
-  const fmt = (n: number) => (n / 1000000).toFixed(0) + " triệu";
-  if (min && max) return `${fmt(min)} - ${fmt(max)}`;
-  if (min) return `Từ ${fmt(min)}`;
-  return `Đến ${fmt(max!)}`;
-}
-
 function getLocation(job: JobData): string {
   if (job.ward) {
     const parts = [job.ward.name];
@@ -144,35 +131,31 @@ function getLocation(job: JobData): string {
   return job.addressDetail || "Phú Quốc, Kiên Giang";
 }
 
-function getCompanyInitials(name: string): string {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
 export default function JobDetailClient({ job, relatedJobs }: JobDetailClientProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
+  const [isApplied, setIsApplied] = useState(false);
 
   useEffect(() => {
     if (!user) {
       setIsSaved(false);
+      setIsApplied(false);
       return;
     }
     let active = true;
     (async () => {
       try {
-        const res = await fetch("/api/v1/saved/jobs?limit=200", { credentials: "include" });
-        if (!res.ok) return;
-        const data = await res.json();
-        const items = data.data?.items || data.items || [];
+        const savedIds = await getSavedJobIds();
         if (active) {
-          setIsSaved(items.some((item: any) => item.jobId === job.id));
+          setIsSaved(savedIds.has(job.id));
+        }
+      } catch {}
+
+      try {
+        const applied = await checkApplication(job.id);
+        if (active) {
+          setIsApplied(applied);
         }
       } catch {}
     })();
@@ -185,13 +168,11 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       return;
     }
     try {
-      const res = await fetch(`/api/v1/saved/jobs/${job.id}`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (res.ok) setIsSaved((prev) => !prev);
+      if (isSaved) await unsaveJob(job.id);
+      else await saveJob(job.id);
+      setIsSaved((prev) => !prev);
     } catch {}
-  }, [user, router, job.id, job.slug]);
+  }, [user, router, job.id, job.slug, isSaved]);
 
   const deadlinePercent = useMemo(() => {
     if (!job.deadline) return 0;
@@ -211,10 +192,10 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
 
   const salary = formatSalary(job.salaryMin, job.salaryMax);
   const location = getLocation(job);
-  const companyInitials = getCompanyInitials(job.company.name);
+  const companyInitialsText = companyInitials(job.company.name);
 
   const overviewItems: OverviewItem[] = [
-    { icon: "work", iconColor: "text-[#005a71]", bgColor: "bg-[#005a71]/10", label: "Loại hình", value: TYPE_LABELS[job.type] || job.type },
+    { icon: "work", iconColor: "text-[#005a71]", bgColor: "bg-[#005a71]/10", label: "Loại hình", value: jobTypeLabel(job.type) },
     { icon: "payments", iconColor: "text-[#0d9488]", bgColor: "bg-[#0d9488]/10", label: "Mức lương", value: salary },
     { icon: "timeline", iconColor: "text-[#D97706]", bgColor: "bg-[#F59E0B]/10", label: "Kinh nghiệm", value: EXP_LABELS[job.experience || ""] || "Không yêu cầu" },
     { icon: "leaderboard", iconColor: "text-[#8b5cf6]", bgColor: "bg-[#8b5cf6]/10", label: "Cấp bậc", value: LEVEL_LABELS[job.level || ""] || "Chưa cập nhật" },
@@ -229,19 +210,19 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
     ...job,
     company: job.company.name,
     companyLogo: job.company.logo,
-    contractType: TYPE_LABELS[job.type] || job.type,
+    contractType: jobTypeLabel(job.type),
     salary,
     experience: EXP_LABELS[job.experience || ""] || "Không yêu cầu",
     level: LEVEL_LABELS[job.level || ""] || "",
     location,
-    companyInitials,
+    companyInitials: companyInitialsText,
     logoColor: "#0E7490",
     textColor: "#ffffff",
     isFeatured: false,
     isUrgent: false,
     daysLeft,
     postedDate: job.createdAt,
-    tags: [TYPE_LABELS[job.type] || job.type, salary, EXP_LABELS[job.experience || ""] || ""],
+    tags: [jobTypeLabel(job.type), salary, EXP_LABELS[job.experience || ""] || ""],
     startDate: job.createdAt,
     totalSlots: job.quantity || 1,
     companySize: job.company.size || "",
@@ -249,7 +230,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
     companyIndustry: job.company.industry || "",
     companyAddress: location,
     views: 0,
-    applicants: job.applications?.length || 0,
+    applicants: job._count?.applications ?? job.applications?.length ?? 0,
     industry: job.company.industry || "",
     required: job.requirements ? [job.requirements] : [],
     preferred: [],
@@ -262,10 +243,10 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
     id: r.id,
     slug: r.slug,
     logoTextColor: "#ffffff",
-    companyInitials: getCompanyInitials(r.company.name),
+    companyInitials: companyInitials(r.company.name),
     title: r.title,
     company: r.company.name,
-    contractType: TYPE_LABELS[r.type] || r.type,
+    contractType: jobTypeLabel(r.type),
     salary: formatSalary(r.salaryMin, r.salaryMax),
     location: r.ward?.name || "Phú Quốc",
   }));
@@ -285,6 +266,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       router.push(`/auth/login?redirect=/jobs/${job.slug}`);
       return;
     }
+    if (isApplied) return;
     setShowApplyModal(true);
     setApplyError(null);
     // Fetch user's resumes
@@ -343,6 +325,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         throw new Error(data.message || `HTTP ${res.status}`);
       }
       setApplySuccess(true);
+      setIsApplied(true);
       setShowApplyModal(false);
       setCoverLetter("");
       setUploadedFile(null);
@@ -368,7 +351,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
           </div>
 
           <div className="space-y-5">
-            <JobApplySidebar onApply={openApplyModal} onSave={toggleSave} isSaved={isSaved} />
+            <JobApplySidebar onApply={openApplyModal} onSave={toggleSave} isSaved={isSaved} isApplied={isApplied} />
             <JobOverviewSidebar items={overviewItems} />
             <JobCompanySidebar
               companyLogo={job.company.logo}
@@ -386,7 +369,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         <RelatedJobs jobs={mappedRelated} />
       </div>
 
-      <JobStickyBarMobile onApply={() => setShowApplyModal(true)} onBookmark={toggleSave} isBookmarked={isSaved} />
+      <JobStickyBarMobile onApply={openApplyModal} onBookmark={toggleSave} isBookmarked={isSaved} isApplied={isApplied} />
 
       {/* Apply Modal */}
       {showApplyModal && (

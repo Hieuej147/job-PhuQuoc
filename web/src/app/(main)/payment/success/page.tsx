@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { apiPost } from "@/lib/api-client";
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
@@ -19,25 +20,12 @@ function PaymentSuccessContent() {
   useEffect(() => {
     const completePayment = async () => {
       try {
-        const res = await fetch("/api/v1/payments/mock-complete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ jobId, sessionId }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setStatus("success");
-          setMessage(data.message || "Thanh toán thành công! Tin tuyển dụng đã được kích hoạt.");
-        } else {
-          const data = await res.json();
-          setStatus("error");
-          setMessage(data.message || "Có lỗi xảy ra khi xác nhận thanh toán.");
-        }
-      } catch {
+        const data = await apiPost<{ message?: string }>("/api/v1/payments/mock-complete", { jobId, sessionId });
+        setStatus("success");
+        setMessage(data.message || "Thanh toán thành công! Tin tuyển dụng đã được kích hoạt.");
+      } catch (error) {
         setStatus("error");
-        setMessage("Không thể kết nối server.");
+        setMessage(error instanceof Error ? error.message : "Không thể kết nối server.");
       }
     };
 

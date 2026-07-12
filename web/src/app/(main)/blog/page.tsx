@@ -54,7 +54,10 @@ async function fetchBlogCategories() {
     } catch { return []; }
 }
 
-export default async function BlogPage({
+import { Suspense } from "react";
+import Loading from "./loading";
+
+async function BlogPageContent({
   searchParams,
 }: {
   searchParams: Promise<{ search?: string; category?: string; sort?: string; page?: string }>;
@@ -120,4 +123,16 @@ export default async function BlogPage({
             />
         </>
     );
+}
+
+export default function BlogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string; category?: string; sort?: string; page?: string }>;
+}) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <BlogPageContent searchParams={searchParams} />
+    </Suspense>
+  );
 }

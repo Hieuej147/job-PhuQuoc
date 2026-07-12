@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEmployerDashboardSummary } from "@/lib/dashboard-api";
+import { useEmployerDashboardSummary } from "@/features/dashboard/queries";
+import { useUnreadNotifications } from "@/features/notifications/queries";
 
 interface WardData {
   name?: string;
@@ -23,10 +24,11 @@ interface CompanyData {
 export function EmployerSidebar() {
   const pathname = usePathname();
   const { data: summary } = useEmployerDashboardSummary();
+  const { data: unreadNotifications } = useUnreadNotifications();
   const company = summary?.company as CompanyData | null | undefined;
   const jobsCount = summary?.jobs.total || 0;
   const applicantsCount = summary?.applications.total || 0;
-  const unreadCount = summary?.notifications.unreadCount || 0;
+  const unreadCount = unreadNotifications?.count ?? summary?.notifications.unreadCount ?? 0;
 
   const companyName = company?.name || "Công ty";
   const initials = companyName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -62,6 +64,7 @@ export function EmployerSidebar() {
         { icon: "post_add", label: "Đăng tin mới", href: "/employer/jobs/create" },
         { icon: "work", label: "Quản lý tin đăng", href: "/employer/jobs", badge: jobsCount, badgeClass: "bg-[#005a71] text-white" },
         { icon: "group", label: "Hồ sơ ứng viên", href: "/employer/applications", badge: applicantsCount, badgeClass: "bg-[#F59E0B] text-white" },
+        { icon: "article", label: "Bài viết của tôi", href: "/employer/blogs" },
       ],
     },
     {
@@ -75,9 +78,18 @@ export function EmployerSidebar() {
 
   const handleLogout = () => {
     fetch("/api/auth/sign-out", { method: "POST", credentials: "include" }).then(() => {
-      sessionStorage.removeItem("savedCompanyIds");
       window.location.href = "/auth/login";
     });
+  };
+
+  const isNavItemActive = (href: string) => {
+    if (href === "/employer/jobs/create") {
+      return pathname === href;
+    }
+    if (href === "/employer/jobs") {
+      return pathname === href || /^\/employer\/jobs\/[^/]+\/(edit|checkout)$/.test(pathname);
+    }
+    return pathname === href || pathname.startsWith(href + "/");
   };
 
   return (
@@ -126,7 +138,7 @@ export function EmployerSidebar() {
               {group.label}
             </p>
             {group.items.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isActive = isNavItemActive(item.href);
               return (
                 <Link
                   key={item.label}

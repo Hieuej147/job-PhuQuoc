@@ -1,8 +1,10 @@
 import { inngest } from '../client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { TypedInngestContext } from '../inngest.types';
+import { createNotificationInboxItem } from './notification-inbox.helper';
+import type { RealtimeService } from '../../realtime/realtime.service';
 
-export function createUserFunctions(prisma: PrismaService) {
+export function createUserFunctions(prisma: PrismaService, realtime?: RealtimeService) {
   const onUserRegistered = inngest.createFunction(
     { id: 'on-user-registered', triggers: [{ event: 'user.registered' }] },
     async ({ event, step }: TypedInngestContext<'user.registered'>) => {
@@ -14,14 +16,13 @@ export function createUserFunctions(prisma: PrismaService) {
       });
 
       await step.run('create-welcome-notification', async () => {
-        await prisma.notification.create({
-          data: {
-            userId,
-            type: 'SYSTEM',
-            title: 'Chào mừng bạn đến với Phú Quốc Jobs!',
-            content: `Xin chào ${name}, cảm ơn bạn đã đăng ký tài khoản. Hãy hoàn thiện hồ sơ để bắt đầu.`,
-          },
-        });
+        await createNotificationInboxItem(prisma, {
+          userId,
+          type: 'SYSTEM',
+          title: 'Chào mừng bạn đến với Phú Quốc Jobs!',
+          content: `Xin chào ${name}, cảm ơn bạn đã đăng ký tài khoản. Hãy hoàn thiện hồ sơ để bắt đầu.`,
+          dedupeKey: `user.registered:${userId}`,
+        }, realtime);
       });
     },
   );

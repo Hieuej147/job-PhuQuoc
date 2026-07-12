@@ -5,14 +5,15 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 interface RichContentProps {
-  // Tên prop giữ là `html` để không phải đổi toàn bộ callsite cũ.
-  // Giá trị truyền vào hiện được xem là Markdown, không render raw HTML.
-  html: string;
+  markdown?: string;
+  // Backward compatible cho callsite cũ; giá trị này vẫn được render như Markdown.
+  html?: string;
   className?: string;
 }
 
-export function RichContent({ html, className }: RichContentProps) {
-  if (!html) return null;
+export function RichContent({ markdown, html, className }: RichContentProps) {
+  const content = markdown ?? html ?? "";
+  if (!content) return null;
 
   return (
     <div
@@ -27,7 +28,7 @@ export function RichContent({ html, className }: RichContentProps) {
       )}
     >
       {/* Không dùng rehypeRaw/dangerouslySetInnerHTML: nội dung job/blog là Markdown thuần. */}
-      <ReactMarkdown>{html}</ReactMarkdown>
+      <ReactMarkdown>{content}</ReactMarkdown>
     </div>
   );
 }

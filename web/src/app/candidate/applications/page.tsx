@@ -3,9 +3,19 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ApplicationChatDialog } from "@/components/applications/application-chat-dialog";
 import { 
   FileText, 
   Briefcase, 
@@ -16,18 +26,39 @@ import {
   AlertCircle, 
   XCircle, 
   Search,
-  ArrowRight
+  ArrowRight,
+  MessageCircle,
+  Trash2
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
+import { apiDelete, unwrapApiPayload } from "@/lib/api-client";
+
+interface ApplicationMessage {
+  id: string;
+  body: string;
+  senderId: string;
+  senderRole: "CANDIDATE" | "EMPLOYER";
+  createdAt: string;
+  readAt?: string | null;
+}
 
 interface Application {
   id: string;
   status: string;
   createdAt: string;
+  employerMessage?: string | null;
+  chatClosedAt?: string | null;
+  chatClosedBy?: string | null;
+  chatCloseReason?: string | null;
+  messages?: ApplicationMessage[];
   job: { 
     id: string; 
     title: string; 
     slug: string; 
+    status?: string;
+    deadline?: string | null;
+    archivedAt?: string | null;
     company: { name: string; logo?: string | null } 
   };
 }
@@ -66,12 +97,15 @@ export default function ApplicationsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [chatApplication, setChatApplication] = useState<Application | null>(null);
+  const [deleteApplication, setDeleteApplication] = useState<Application | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetch("/api/v1/applications/my?limit=100", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
-        const payload = d.data?.data ?? d.data ?? d;
+        const payload = unwrapApiPayload<any>(d);
         const list = Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : [];
         setItems(list);
       })
@@ -109,6 +143,36 @@ export default function ApplicationsPage() {
       return matchesStatus && matchesSearch;
     });
   }, [items, statusFilter, searchQuery]);
+
+  const updateLatestMessage = (applicationId: string, message: ApplicationMessage) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === applicationId
+          ? { ...item, messages: [message], employerMessage: item.employerMessage || message.body }
+          : item,
+      ),
+    );
+    setChatApplication((prev) =>
+      prev && prev.id === applicationId
+        ? { ...prev, messages: [message], employerMessage: prev.employerMessage || message.body }
+        : prev,
+    );
+  };
+
+  const confirmDeleteApplication = async () => {
+    if (!deleteApplication) return;
+    setDeleting(true);
+    try {
+      await apiDelete(`/api/v1/applications/${deleteApplication.id}`);
+      setItems((prev) => prev.filter((item) => item.id !== deleteApplication.id));
+      toast.success("Đã xoá đơn khỏi danh sách của bạn.");
+      setDeleteApplication(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể xoá đơn ứng tuyển");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -198,6 +262,14 @@ export default function ApplicationsPage() {
           {filteredItems.map((a) => {
             const StatusIcon = statusMap[a.status]?.icon || AlertCircle;
             const statusConfig = statusMap[a.status];
+            const hasMessage = Boolean(a.messages?.[0]?.body || a.employerMessage);
+            const canOpenChat = a.status === "ACCEPTED" || (a.status === "REJECTED" && hasMessage) || Boolean(a.chatClosedAt && hasMessage);
+            const chatReadOnly = a.status !== "ACCEPTED" || Boolean(a.chatClosedAt);
+            const chatButtonLabel = a.status === "REJECTED" || chatReadOnly ? "Xem lời nhắn" : "Tin nhắn";
+            const jobStillPublic =
+              a.job.status === "ACTIVE" &&
+              !a.job.archivedAt &&
+              (!a.job.deadline || new Date(a.job.deadline).getTime() >= Date.now());
 
             return (
               <Card 
@@ -213,13 +285,22 @@ export default function ApplicationsPage() {
                       {a.job.company.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="space-y-1">
-                      <Link 
-                        href={`/jobs/${a.job.slug}`}
-                        className="font-semibold text-gray-900 dark:text-gray-100 hover:text-[#005a71] transition-colors flex items-center gap-1"
-                      >
-                        {a.job.title}
-                        <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-[#005a71]" />
-                      </Link>
+                      {jobStillPublic ? (
+                        <Link
+                          href={`/jobs/${a.job.slug}`}
+                          className="font-semibold text-gray-900 dark:text-gray-100 hover:text-[#005a71] transition-colors flex items-center gap-1"
+                        >
+                          {a.job.title}
+                          <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-[#005a71]" />
+                        </Link>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">{a.job.title}</span>
+                          <Badge variant="outline" className="text-[10px]">
+                            Không còn tuyển
+                          </Badge>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
                           <Building2 className="w-3.5 h-3.5" />
@@ -231,6 +312,11 @@ export default function ApplicationsPage() {
                           Nộp ngày {new Date(a.createdAt).toLocaleDateString("vi-VN")}
                         </span>
                       </div>
+                      {(a.messages?.[0]?.body || a.employerMessage) && (
+                        <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                          {a.messages?.[0]?.body || a.employerMessage}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -242,6 +328,28 @@ export default function ApplicationsPage() {
                         {statusConfig?.label || a.status}
                       </div>
                     </div>
+                    {canOpenChat && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => setChatApplication(a)}
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        {chatButtonLabel}
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-rose-600 hover:text-rose-700"
+                      onClick={() => setDeleteApplication(a)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Xoá
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -249,6 +357,36 @@ export default function ApplicationsPage() {
           })}
         </div>
       )}
+      <ApplicationChatDialog
+        open={Boolean(chatApplication)}
+        onOpenChange={(open) => !open && setChatApplication(null)}
+        applicationId={chatApplication?.id ?? null}
+        currentRole="CANDIDATE"
+        applicationStatus={chatApplication?.status ?? null}
+        chatClosedAt={chatApplication?.chatClosedAt ?? null}
+        readOnly={Boolean(chatApplication && (chatApplication.status !== "ACCEPTED" || chatApplication.chatClosedAt))}
+        title="Tin nhắn tuyển dụng"
+        description={chatApplication ? `${chatApplication.job.title} - ${chatApplication.job.company.name}` : undefined}
+        onMessageSent={(message) => chatApplication && updateLatestMessage(chatApplication.id, message)}
+      />
+      <Dialog open={Boolean(deleteApplication)} onOpenChange={(open) => !open && setDeleteApplication(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xoá đơn ứng tuyển?</DialogTitle>
+            <DialogDescription>
+              Đơn sẽ biến mất khỏi danh sách của bạn và giải phóng quota. Nếu nhà tuyển dụng chưa xoá, bạn vẫn không thể nộp lại job này.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteApplication(null)} disabled={deleting}>
+              Hủy
+            </Button>
+            <Button type="button" variant="destructive" onClick={confirmDeleteApplication} disabled={deleting}>
+              {deleting ? "Đang xoá..." : "Xoá đơn"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

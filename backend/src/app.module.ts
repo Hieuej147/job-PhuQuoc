@@ -10,6 +10,7 @@ import { SharedModule } from "./modules/shared/shared.module";
 import { CustomAuthModule } from "./auth/auth.module";
 import { auth } from "./auth/auth";
 import { InngestModule } from "./inngest/inngest.module";
+import { RealtimeModule } from "./realtime/realtime.module";
 
 import { UsersModule } from "./modules/users/users.module";
 import { CompaniesModule } from "./modules/companies/companies.module";
@@ -27,6 +28,7 @@ import { PaymentsModule } from "./modules/payments/payments.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { UploadModule } from "./modules/upload/upload.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
+import { QuotaModule } from "./common/quota/quota.module";
 
 @Module({
   imports: [
@@ -46,6 +48,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module";
     LoggerModule,
     SharedModule,
     InngestModule,
+    RealtimeModule,
     CustomAuthModule,
     UsersModule,
     CompaniesModule,
@@ -63,6 +66,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module";
     AuditModule,
     UploadModule,
     DashboardModule,
+    QuotaModule,
   ],
   providers: [
     {

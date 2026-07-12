@@ -1,105 +1,361 @@
 /**
  * TÊN TRANG: Quản lý Tin Tuyển Dụng (Employer Jobs List)
- * MÔ TẢ: Hiển thị toàn bộ danh sách các tin tuyển dụng (Job) mà nhà tuyển dụng này đã đăng, kèm theo trạng thái và số lượng ứng viên nộp hồ sơ.
- * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
- * - Fetch `/api/v1/jobs/my`: Lấy danh sách việc làm liên kết với tài khoản nhà tuyển dụng hiện tại từ bảng `Job`, bao gồm tính toán gộp (aggregation) count của `Application` liên quan.
+ * MÔ TẢ: Hiển thị toàn bộ tin tuyển dụng của employer, kèm thống kê, lọc trạng thái, tìm kiếm và sắp xếp.
  */
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import type { LucideIcon } from "lucide-react";
+import {
+  Ban,
+  Briefcase,
+  Calendar,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Copy,
+  Edit,
+  Eye,
+  FilePenLine,
+  Hourglass,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Trash2,
+  Users,
+  XCircle,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Briefcase, Plus, Edit, Eye } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { formatSalary, jobTypeLabel } from "@/lib/utils/format";
+import { STATUS_FILTERS } from "@/features/employer-jobs/constants";
+import { useEmployerJobs } from "@/features/employer-jobs/hooks/use-employer-jobs";
+import type { EmployerJob, JobSort, JobStatus } from "@/features/employer-jobs/types";
 
-interface Job {
-  id: string;
-  title: string;
-  slug: string;
-  status: string;
-  salaryMin: number | null;
-  salaryMax: number | null;
-  type: string;
-  createdAt: string;
-  _count?: { applications: number };
-}
-
-const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  ACTIVE: { label: "Đang tuyển", variant: "default" },
-  PENDING: { label: "Chờ duyệt", variant: "secondary" },
-  DRAFT: { label: "Bản nháp", variant: "outline" },
-  CLOSED: { label: "Đã đóng", variant: "destructive" },
+const statusMap: Record<Exclude<JobStatus, "ALL">, { label: string; icon: LucideIcon; className: string; accentClass: string }> = {
+  ACTIVE: {
+    label: "Đang tuyển",
+    icon: CheckCircle2,
+    className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
+    accentClass: "text-emerald-600 dark:text-emerald-300",
+  },
+  PENDING: {
+    label: "Chờ duyệt",
+    icon: Hourglass,
+    className: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-300",
+    accentClass: "text-amber-600 dark:text-amber-300",
+  },
+  DRAFT: {
+    label: "Bản nháp",
+    icon: FilePenLine,
+    className: "border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-300",
+    accentClass: "text-violet-600 dark:text-violet-300",
+  },
+  CLOSED: {
+    label: "Đã đóng",
+    icon: XCircle,
+    className: "border-slate-500/20 bg-slate-500/10 text-slate-600 dark:text-slate-300",
+    accentClass: "text-slate-600 dark:text-slate-300",
+  },
+  EXPIRED: {
+    label: "Hết hạn",
+    icon: Clock3,
+    className: "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300",
+    accentClass: "text-rose-600 dark:text-rose-300",
+  },
 };
 
-function formatSalary(min: number | null, max: number | null) {
-  if (!min && !max) return "Thỏa thuận";
-  const fmt = (n: number) => (n / 1000000).toFixed(0) + " triệu";
-  if (min && max) return `${fmt(min)} - ${fmt(max)}`;
-  if (min) return `Từ ${fmt(min)}`;
-  return `Đến ${fmt(max!)}`;
+function getLocation(job: EmployerJob) {
+  if (!job.ward) return "Chưa cập nhật địa điểm";
+  return [job.ward.name, job.ward.district?.name].filter(Boolean).join(", ");
+}
+
+function getStatusConfig(status: string) {
+  return statusMap[status as Exclude<JobStatus, "ALL">] || statusMap.CLOSED;
+}
+
+function StatCard({ status, label, count, active, onClick }: { status: JobStatus; label: string; count: number; active: boolean; onClick: (status: JobStatus) => void }) {
+  const config = status === "ALL" ? null : statusMap[status];
+  const Icon = config?.icon || Briefcase;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(status)}
+      className={`rounded-xl border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-primary ring-2 ring-primary/15" : "border-border"}`}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className={`text-xl font-bold ${config?.accentClass || "text-foreground"}`}>{count}</span>
+        <Icon className={`size-4 ${config?.accentClass || "text-muted-foreground"}`} />
+      </div>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+    </button>
+  );
 }
 
 export default function EmployerJobsPage() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/v1/jobs/my?limit=100", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setJobs(d.data?.items ?? []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
+  const {
+    jobs,
+    stats,
+    loading,
+    filterStatus,
+    setFilterStatus,
+    searchQuery,
+    setSearchQuery,
+    sortBy,
+    setSortBy,
+    closingJob,
+    setClosingJob,
+    deletingJob,
+    setDeletingJob,
+    rememberCloseConfirm,
+    setRememberCloseConfirm,
+    requestCloseJob,
+    confirmCloseJob,
+    confirmDeleteJob,
+    totalApplications,
+  } = useEmployerJobs();
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Quản lý tin đăng</h1>
-        <Link href="/employer/jobs/create">
-          <Button><Plus className="size-4 mr-1.5" /> Đăng tin mới</Button>
-        </Link>
+    <div className="mx-auto max-w-6xl space-y-6 p-6">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Link href="/employer/dashboard" className="hover:text-primary">Dashboard</Link>
+          <ChevronRight className="size-3.5" />
+          <span className="font-semibold text-primary">Quản lý tin đăng</span>
+        </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+              <Briefcase className="size-6 text-primary" />
+              Quản lý tin đăng
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">Theo dõi trạng thái, số hồ sơ và thao tác nhanh với các tin tuyển dụng.</p>
+          </div>
+          <Link href="/employer/jobs/create">
+            <Button className="gap-2">
+              <Plus className="size-4" />
+              Đăng tin mới
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {jobs.length === 0 ? (
-        <EmptyState icon={Briefcase} title="Chưa có tin tuyển dụng" description="Đăng tin mới để bắt đầu tuyển dụng." />
-      ) : (
-        <div className="space-y-3">
-          {jobs.map((job) => (
-            <Card key={job.id}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Link href={`/jobs/${job.slug}`} className="font-medium hover:text-primary transition-colors truncate">
-                      {job.title}
-                    </Link>
-                    <Badge variant={statusMap[job.status]?.variant ?? "secondary"} className="text-xs shrink-0">
-                      {statusMap[job.status]?.label ?? job.status}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                    <span>{job.type}</span>
-                    <span>{formatSalary(job.salaryMin, job.salaryMax)}</span>
-                    <span>{job._count?.applications ?? 0} ứng viên</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Link href={`/employer/jobs/create?edit=${job.id}`}>
-                    <Button size="sm" variant="outline"><Edit className="size-3.5" /></Button>
-                  </Link>
-                  <Link href={`/jobs/${job.slug}`}>
-                    <Button size="sm" variant="ghost"><Eye className="size-3.5" /></Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {STATUS_FILTERS.map((item) => (
+          <StatCard
+            key={item.value}
+            status={item.value}
+            label={item.label}
+            count={stats[item.value] || 0}
+            active={filterStatus === item.value}
+            onClick={setFilterStatus}
+          />
+        ))}
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="h-10 w-full rounded-xl border border-input bg-background pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary"
+              placeholder="Tìm theo tiêu đề tin tuyển dụng..."
+            />
+          </div>
+          <select
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as JobSort)}
+            className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-primary"
+          >
+            <option value="newest">Mới nhất</option>
+            <option value="most-apps">Nhiều hồ sơ nhất</option>
+            <option value="expiring">Sắp hết hạn</option>
+          </select>
+        </div>
+        <div className="mt-3 flex gap-2 overflow-x-auto border-t border-border/60 pt-3">
+          {STATUS_FILTERS.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              onClick={() => setFilterStatus(item.value)}
+              className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${filterStatus === item.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
+            >
+              {item.label} ({stats[item.value] || 0})
+            </button>
           ))}
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
+        Đang hiển thị <span className="font-semibold text-foreground">{jobs.length}</span> tin, tổng <span className="font-semibold text-foreground">{totalApplications}</span> hồ sơ ứng tuyển trong bộ lọc hiện tại.
+      </div>
+
+      {loading ? (
+        <div className="flex h-64 items-center justify-center"><Spinner size="lg" /></div>
+      ) : jobs.length === 0 ? (
+        <EmptyState icon={Briefcase} title="Không có tin tuyển dụng phù hợp" description="Thử đổi bộ lọc hoặc đăng tin mới để bắt đầu tuyển dụng." />
+      ) : (
+        <div className="space-y-4">
+          {jobs.map((job) => {
+            const statusConfig = getStatusConfig(job.status);
+            const StatusIcon = statusConfig.icon;
+            const applicationCount = job._count?.applications ?? 0;
+            const isBoosted = Boolean(job.boostLevel && job.boostLevel > 0 && (!job.featuredUntil || new Date(job.featuredUntil).getTime() >= Date.now()));
+            const boostLabel = isBoosted ? `Top ${4 - Math.min(Math.max(job.boostLevel || 0, 1), 3)}` : null;
+
+            return (
+              <div key={job.id} className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={`/jobs/${job.slug}`} className="truncate text-base font-bold text-foreground transition-colors hover:text-primary">
+                        {job.title}
+                      </Link>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusConfig.className}`}>
+                        <StatusIcon className="size-3.5" />
+                        {statusConfig.label}
+                      </span>
+                      {boostLabel && (
+                        <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-600 dark:text-amber-300">
+                          ⭐ {boostLabel}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5"><Briefcase className="size-4" />{jobTypeLabel(job.type)}{job.level ? ` • ${job.level}` : ""}</span>
+                      <span className="flex items-center gap-1.5">{formatSalary(job.salaryMin, job.salaryMax)}</span>
+                      <span className="flex items-center gap-1.5"><Calendar className="size-4" />{job.deadline ? `Hết hạn: ${new Date(job.deadline).toLocaleDateString("vi-VN")}` : "Chưa có hạn đăng"}</span>
+                      {boostLabel && job.featuredUntil && <span>Top đến: {new Date(job.featuredUntil).toLocaleDateString("vi-VN")}</span>}
+                      <span className="truncate">{getLocation(job)}</span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={`/employer/applications?jobId=${job.id}`}>
+                        <Button size="sm" variant="outline" className="gap-1.5">
+                          <Users className="size-3.5" />
+                          {applicationCount} ứng viên
+                        </Button>
+                      </Link>
+                      {job.status !== "ACTIVE" && (
+                        <Link href={`/employer/jobs/${job.id}/checkout`}>
+                          <Button size="sm">Đăng lại</Button>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="icon" variant="ghost" className="shrink-0">
+                        <MoreHorizontal className="size-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      <DropdownMenuItem asChild>
+                        <Link href={`/employer/applications?jobId=${job.id}`} className="gap-2">
+                          <Users className="size-4" /> Xem ứng viên
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/employer/jobs/${job.id}/edit`} className="gap-2">
+                          <Edit className="size-4" /> Sửa tin
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/jobs/${job.slug}`} className="gap-2">
+                          <Eye className="size-4" /> Xem public
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/employer/jobs/create?cloneJobId=${job.id}`} className="gap-2">
+                          <Copy className="size-4" /> Nhân bản tin
+                        </Link>
+                      </DropdownMenuItem>
+                      {job.status !== "ACTIVE" && (
+                        <DropdownMenuItem asChild>
+                          <Link href={`/employer/jobs/${job.id}/checkout`} className="gap-2">
+                            <Clock3 className="size-4" /> Đăng lại/gia hạn
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+                      {job.status === "ACTIVE" ? (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => requestCloseJob(job)} className="gap-2 text-destructive focus:text-destructive">
+                            <Ban className="size-4" /> Đóng tin sớm
+                          </DropdownMenuItem>
+                        </>
+                      ) : (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setDeletingJob(job)} className="gap-2 text-destructive focus:text-destructive">
+                            <Trash2 className="size-4" /> Xóa tin
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
+
+      <Dialog open={Boolean(closingJob)} onOpenChange={(open) => !open && setClosingJob(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Đóng tin tuyển dụng?</DialogTitle>
+            <DialogDescription>
+              Tin "{closingJob?.title}" sẽ ẩn khỏi public nhưng vẫn giữ trong dashboard cùng lịch sử ứng viên.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={rememberCloseConfirm}
+              onCheckedChange={(checked) => setRememberCloseConfirm(Boolean(checked))}
+            />
+            Không hỏi lại cho thao tác đóng tin sớm
+          </label>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClosingJob(null)}>Hủy</Button>
+            <Button variant="destructive" onClick={confirmCloseJob}>Đóng tin</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(deletingJob)} onOpenChange={(open) => !open && setDeletingJob(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa tin khỏi danh sách?</DialogTitle>
+            <DialogDescription>
+              Tin "{deletingJob?.title}" sẽ biến khỏi trang quản lý tin đăng của bạn. Dữ liệu tuyển dụng,
+              ứng viên và thanh toán vẫn được lưu trong hệ thống để admin/support đối soát khi cần.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingJob(null)}>Hủy</Button>
+            <Button variant="destructive" onClick={confirmDeleteJob}>
+              Xóa tin
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

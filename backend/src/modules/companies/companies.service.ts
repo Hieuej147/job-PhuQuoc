@@ -115,6 +115,14 @@ export class CompaniesService {
   }
 
   async create(ownerId: string, data: CreateCompanyDto) {
+    const existingOwnerCompany = await this.prisma.company.findUnique({
+      where: { ownerId },
+      select: { id: true },
+    });
+    if (existingOwnerCompany) {
+      throw new ConflictException('Employer already has a company');
+    }
+
     let company: Awaited<ReturnType<typeof this.prisma.company.create>> | null = null;
 
     for (let attempt = 0; attempt < 5; attempt += 1) {

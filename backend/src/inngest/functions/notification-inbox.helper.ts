@@ -1,5 +1,6 @@
 import { NotificationType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { RealtimeService } from '../../realtime/realtime.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -17,13 +18,14 @@ export interface NotificationInboxInput {
 export async function createNotificationInboxItem(
   prisma: PrismaService,
   input: NotificationInboxInput,
+  realtime?: RealtimeService,
 ) {
   if (!input.userId) return null;
 
   const expiresInDays = input.expiresInDays ?? 90;
   const expiresAt = new Date(Date.now() + expiresInDays * DAY_MS);
 
-  return prisma.notification.upsert({
+  const notification = await prisma.notification.upsert({
     where: {
       userId_dedupeKey: {
         userId: input.userId,
@@ -42,4 +44,12 @@ export async function createNotificationInboxItem(
       expiresAt,
     },
   });
+  if (realtime) {
+    const unread = await prisma.notification.count({ where: { userId: input.userId, isRead: false } });
+    realtime.emitNotificationCreated(input.userId, notification);
+    realtime.emitUnreadCountChanged(input.userId, unread);
+    realtime.emitDashboardInvalidate(input.userId, 'candidate', 'notification-created');
+    realtime.emitDashboardInvalidate(input.userId, 'employer', 'notification-created');
+  }
+  return notification;
 }

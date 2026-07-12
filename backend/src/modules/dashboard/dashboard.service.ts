@@ -1,16 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { QuotaService } from '../../common/quota/quota.service';
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly quotaService: QuotaService,
+  ) {}
 
   async getCandidateSummary(userId: string) {
     const [applicationsTotal, applicationsRecent, savedJobsTotal, savedJobsRecent, savedCompaniesTotal, resumesTotal, resumesRecent, unreadCount, notificationsRecent] =
       await Promise.all([
-        this.prisma.jobApplication.count({ where: { userId } }),
+        this.prisma.jobApplication.count({ where: { userId, candidateDeletedAt: null } }),
         this.prisma.jobApplication.findMany({
-          where: { userId },
+          where: { userId, candidateDeletedAt: null },
           take: 5,
           orderBy: { createdAt: 'desc' },
           include: { job: { include: { company: { select: { name: true, logo: true } }, ward: { select: { name: true } } } } },
@@ -23,9 +27,9 @@ export class DashboardService {
           include: { job: { include: { company: { select: { name: true } } } } },
         }),
         this.prisma.savedCompany.count({ where: { userId } }),
-        this.prisma.candidateResume.count({ where: { userId } }),
+        this.prisma.candidateResume.count({ where: { userId, isProfile: false } }),
         this.prisma.candidateResume.findMany({
-          where: { userId },
+          where: { userId, isProfile: false },
           take: 3,
           orderBy: { updatedAt: 'desc' },
         }),
@@ -37,12 +41,27 @@ export class DashboardService {
         }),
       ]);
 
+    const quota = await this.quotaService.getUserQuotaSnapshot(userId, {
+      candidateApplications: applicationsTotal,
+      candidateResumes: resumesTotal,
+      savedJobs: savedJobsTotal,
+      savedCompanies: savedCompaniesTotal,
+    });
+
     return {
       applications: { total: applicationsTotal, recent: applicationsRecent },
       savedJobs: { total: savedJobsTotal, recent: savedJobsRecent },
       savedCompanies: { total: savedCompaniesTotal },
       resumes: { total: resumesTotal, recent: resumesRecent },
       notifications: { unreadCount, recent: notificationsRecent },
+      quota: {
+        plan: quota.plans.candidatePlan,
+        expiresAt: quota.plans.candidatePlanExpiresAt,
+        applications: quota.limits.candidateApplications,
+        resumes: quota.limits.candidateResumes,
+        savedJobs: quota.limits.savedJobs,
+        savedCompanies: quota.limits.savedCompanies,
+      },
     };
   }
 
@@ -52,22 +71,35 @@ export class DashboardService {
       include: { ward: { include: { district: { include: { province: true } } } } },
     });
 
-    const [jobsTotal, jobsActive, jobsPending, jobsDraft, jobsRecent, applicationsTotal, applicationsPending, applicationsRecent, unreadCount, notificationsRecent] =
+    const visibleJobWhere = { company: { ownerId: userId }, archivedAt: null };
+    const jobUsageWhere = {
+      company: { ownerId: userId },
+      OR: [
+        { archivedAt: null },
+        { publishedAt: { not: null } },
+        { currentPaymentId: { not: null } },
+        { payments: { some: { status: 'COMPLETED' as const } } },
+      ],
+    };
+
+    const [jobsTotal, jobsUsageTotal, jobsActive, jobsPending, jobsDraft, jobsArchived, jobsRecent, applicationsTotal, applicationsPending, applicationsRecent, unreadCount, notificationsRecent] =
       await Promise.all([
-        this.prisma.job.count({ where: { company: { ownerId: userId } } }),
-        this.prisma.job.count({ where: { company: { ownerId: userId }, status: 'ACTIVE' } }),
-        this.prisma.job.count({ where: { company: { ownerId: userId }, status: 'PENDING' } }),
-        this.prisma.job.count({ where: { company: { ownerId: userId }, status: 'DRAFT' } }),
+        this.prisma.job.count({ where: visibleJobWhere }),
+        this.prisma.job.count({ where: jobUsageWhere }),
+        this.prisma.job.count({ where: { ...visibleJobWhere, status: 'ACTIVE' } }),
+        this.prisma.job.count({ where: { ...visibleJobWhere, status: 'PENDING' } }),
+        this.prisma.job.count({ where: { ...visibleJobWhere, status: 'DRAFT' } }),
+        this.prisma.job.count({ where: { company: { ownerId: userId }, archivedAt: { not: null } } }),
         this.prisma.job.findMany({
-          where: { company: { ownerId: userId } },
+          where: visibleJobWhere,
           take: 5,
           orderBy: { createdAt: 'desc' },
           include: { _count: { select: { applications: true } } },
         }),
-        this.prisma.jobApplication.count({ where: { job: { company: { ownerId: userId } } } }),
-        this.prisma.jobApplication.count({ where: { job: { company: { ownerId: userId } }, status: 'PENDING' } }),
+        this.prisma.jobApplication.count({ where: { job: { company: { ownerId: userId } }, employerDeletedAt: null } }),
+        this.prisma.jobApplication.count({ where: { job: { company: { ownerId: userId } }, status: 'PENDING', employerDeletedAt: null } }),
         this.prisma.jobApplication.findMany({
-          where: { job: { company: { ownerId: userId } } },
+          where: { job: { company: { ownerId: userId } }, employerDeletedAt: null },
           take: 10,
           orderBy: { createdAt: 'desc' },
           include: {
@@ -84,11 +116,32 @@ export class DashboardService {
         }),
       ]);
 
+    const quota = await this.quotaService.getUserQuotaSnapshot(userId, {
+      employerJobs: jobsUsageTotal,
+      employerActiveJobs: jobsActive,
+      employerDurationDaysMax: 0,
+      employerBoostLevelMax: 0,
+    });
+
     return {
       company,
-      jobs: { total: jobsTotal, active: jobsActive, pending: jobsPending, draft: jobsDraft, recent: jobsRecent },
+      jobs: { total: jobsTotal, usageTotal: jobsUsageTotal, active: jobsActive, pending: jobsPending, draft: jobsDraft, archived: jobsArchived, recent: jobsRecent },
       applications: { total: applicationsTotal, pending: applicationsPending, recent: applicationsRecent },
       notifications: { unreadCount, recent: notificationsRecent },
+      quota: {
+        plan: quota.plans.employerPlan,
+        expiresAt: quota.plans.employerPlanExpiresAt,
+        jobs: quota.limits.employerJobs,
+        activeJobs: quota.limits.employerActiveJobs,
+        durationDaysMax: {
+          used: quota.limits.employerDurationDaysMax.limit,
+          limit: quota.limits.employerDurationDaysMax.limit,
+        },
+        boostLevelMax: {
+          used: quota.limits.employerBoostLevelMax.limit,
+          limit: quota.limits.employerBoostLevelMax.limit,
+        },
+      },
     };
   }
 }

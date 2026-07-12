@@ -503,6 +503,26 @@ html {
   }
 }
 
+.blog-image {
+  margin: 1.5rem auto;
+  text-align: center;
+}
+
+.blog-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 0.75rem;
+}
+
+.blog-image-caption {
+  margin-top: 0.5rem;
+  color: rgb(100 116 139);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -539,4 +559,89 @@ html {
    riêng đảm nhiệm việc báo hiệu AI đang xử lý, tránh hiển thị trùng lặp. */
 [data-testid="copilot-loading-cursor"] {
   display: none !important;
+}
+
+@media print {
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force CV print container to take full width and height of A4 */
+  .resume-print-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .resume-print-page>div {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 297mm !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Force CV sheet to cover the whole A4 page without white borders */
+  .resume-print-page>div>div {
+    max-width: 100% !important;
+    width: 100% !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 12mm !important;
+    /* Nice inner margins for text safety */
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Force custom print layout for Futuristic Template (Tech Developer Pro) */
+  .resume-print-page .futuristic-cv-header {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    text-align: left !important;
+    display: flex !important;
+  }
+
+  .resume-print-page .futuristic-cv-header .flex-grow {
+    text-align: left !important;
+  }
+
+  .resume-print-page .futuristic-cv-header input {
+    text-align: left !important;
+  }
+
+  .resume-print-page .futuristic-cv-header .justify-center {
+    justify-content: flex-start !important;
+  }
+
+  .resume-print-page .futuristic-cv-grid {
+    grid-template-columns: 1fr 260px !important;
+    display: grid !important;
+  }
+
+  .resume-print-page .futuristic-cv-grid>div:first-child {
+    grid-column: span 1 !important;
+  }
+
+  .resume-print-page .futuristic-cv-grid>aside {
+    grid-column: span 1 !important;
+  }
+}
+
+/* Screen mode only: make template background transparent inside the dashboard viewer */
+@media screen {
+  .readonly-cv-view .min-h-screen {
+    background: transparent !important;
+    min-height: auto !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
 }

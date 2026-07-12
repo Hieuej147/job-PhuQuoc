@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { TEMPLATE_MAP } from "@/template";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
+import { toNewTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
 
 function NewCvContent() {
   const router = useRouter();
@@ -12,6 +13,7 @@ function NewCvContent() {
   const templateId = searchParams.get("templateId");
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [resumeDraft, setResumeDraft] = useState<any>(null);
 
   useEffect(() => {
     if (!templateId) {
@@ -20,21 +22,25 @@ function NewCvContent() {
     }
     const loadProfile = async () => {
       try {
-        const response = await fetch("/api/v1/auth/me", { credentials: "include" });
-        if (!response.ok) throw new Error("Failed to load user profile");
-        const json = await response.json();
-        const u = json.user;
+        const [authResponse, profileResponse] = await Promise.all([
+          fetch("/api/v1/auth/me", { credentials: "include" }),
+          fetch("/api/v1/resumes/profile", { credentials: "include" }),
+        ]);
 
-        if (u) {
-          setUserProfile({
-            name: u.name || "Họ và Tên",
-            email: u.email || "",
-            phone: u.phone || "",
-            avatar: u.image || "https://i.pravatar.cc/150?img=12",
-          });
-        }
+        if (!authResponse.ok) throw new Error("Failed to load user profile");
+
+        const authJson = await authResponse.json();
+        const profileJson = profileResponse.ok ? await profileResponse.json() : {};
+        const authUser = authJson.user || {};
+        const profile = profileJson.data?.data ?? profileJson.data ?? profileJson;
+        const mergedProfile = { ...authUser, ...profile };
+
+        setUserProfile(toTemplateUser(mergedProfile));
+        setResumeDraft(toNewTemplateResume(profile));
       } catch (err) {
         toast.error("Không thể tải thông tin tài khoản");
+        setUserProfile(toTemplateUser());
+        setResumeDraft(toNewTemplateResume());
       } finally {
         setLoading(false);
       }
@@ -63,31 +69,10 @@ function NewCvContent() {
     );
   }
 
-  const defaultResume = {
-    title: "Hồ sơ mới tạo",
-    address: "Phú Quốc, Kiên Giang",
-    degree: "Cử nhân / Vị trí ứng tuyển",
-    summary: "Bản tóm tắt nghề nghiệp giới thiệu năng lực bản thân bạn...",
-    languages: "Tiếng Việt, Tiếng Anh",
-    skills: "Lập trình, Giao tiếp",
-    socialLinks: [],
-    education: [],
-    experience: [
-      {
-        company: "Tên công ty",
-        position: "Chức vụ",
-        startYear: "2023",
-        endYear: "Hiện tại",
-        description: "Mô tả công việc và thành tựu..."
-      }
-    ],
-    projects: [],
-  };
-
   return (
     <div className="min-h-screen bg-[#f7f9ff] flex flex-col">
       <main className="grow">
-        <TemplateComponent user={userProfile || {}} resume={defaultResume} />
+        <TemplateComponent user={userProfile || {}} resume={resumeDraft || toNewTemplateResume()} />
       </main>
     </div>
   );

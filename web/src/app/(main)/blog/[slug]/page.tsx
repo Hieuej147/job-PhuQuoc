@@ -9,7 +9,8 @@ import { Eye, Calendar, ArrowLeft, User } from "lucide-react";
 import { Metadata } from "next";
 import { LandingPageIframe } from "@/components/blog/LandingPageIframe";
 import BlogDetailClient from "@/components/blog/BlogDetailClient";
-import { articleJsonLd, breadcrumbJsonLd } from "@/lib/structured-data";
+import { BlogViewTracker } from "@/components/blog/BlogViewTracker";
+import { articleJsonLd, breadcrumbJsonLd } from "@/features/seo/structured-data";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
 
@@ -32,9 +33,13 @@ async function fetchBlog(slug: string) {
 
 async function fetchRelatedBlogs(categorySlug: string, currentId: string) {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/v1/blogs?limit=4&category=${categorySlug}`, {
-      next: { revalidate: 60 },
-    });
+    await new Promise((r) => setTimeout(r, 5000));
+    const res = await fetch(
+      `${BACKEND_URL}/api/v1/blogs?limit=4&category=${categorySlug}`,
+      {
+        next: { revalidate: 60 },
+      },
+    );
     if (!res.ok) return [];
     const data = await res.json();
     return (data.data?.items || [])
@@ -47,9 +52,13 @@ async function fetchRelatedBlogs(categorySlug: string, currentId: string) {
 
 async function fetchPopularBlogs() {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/v1/blogs?limit=3&orderBy=views`, {
-      next: { revalidate: 60 },
-    });
+    await new Promise((r) => setTimeout(r, 5000));
+    const res = await fetch(
+      `${BACKEND_URL}/api/v1/blogs?limit=3&orderBy=views`,
+      {
+        next: { revalidate: 60 },
+      },
+    );
     if (!res.ok) return [];
     const data = await res.json();
     return data.data?.items || [];
@@ -90,7 +99,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function BlogDetailPage({ params }: RouteProps) {
+import { Suspense } from "react";
+import Loading from "./loading";
+
+async function BlogDetailPageContent({ params }: RouteProps) {
   const { slug } = await params;
   const blog = await fetchBlog(slug);
 
@@ -103,13 +115,6 @@ export default async function BlogDetailPage({ params }: RouteProps) {
     blog.category?.slug ? fetchRelatedBlogs(blog.category.slug, blog.id) : [],
     fetchPopularBlogs(),
   ]);
-
-  // Extract h2 headings for TOC
-  const headings = (() => {
-    if (!blog.content) return [];
-    const matches = Array.from(blog.content.matchAll(/<h2[^>]*>(.*?)<\/h2>/g));
-    return matches.map((match: any) => match[1].replace(/^\d+\.\s*/, ""));
-  })();
 
   const formattedDate = new Date(blog.createdAt).toLocaleDateString("vi-VN", {
     day: "2-digit",
@@ -161,6 +166,7 @@ export default async function BlogDetailPage({ params }: RouteProps) {
           if (isFullHtml && blog.landingContent) {
             return (
               <div className="w-screen h-screen overflow-hidden">
+                <BlogViewTracker slug={blog.slug} />
                 <LandingPageIframe
                   css={blog.landingContent.css}
                   html={blog.landingContent.html}
@@ -172,6 +178,7 @@ export default async function BlogDetailPage({ params }: RouteProps) {
           }
           return (
             <>
+              <BlogViewTracker slug={blog.slug} />
               <main className="flex-grow max-w-7xl w-full mx-auto px-4 py-8">
                 <Link
                   href="/blog"
@@ -221,5 +228,13 @@ export default async function BlogDetailPage({ params }: RouteProps) {
         />
       )}
     </div>
+  );
+}
+
+export default function BlogDetailPage({ params }: RouteProps) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <BlogDetailPageContent params={params} />
+    </Suspense>
   );
 }

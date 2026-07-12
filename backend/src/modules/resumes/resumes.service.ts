@@ -2,21 +2,84 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../../prisma/prisma.service';
 import { PinoLoggerService } from '../../common/logger/pino-logger.service';
 import { Prisma } from '@prisma/client';
+import { QuotaService } from '../../common/quota/quota.service';
 
 @Injectable()
 export class ResumesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: PinoLoggerService,
+    private readonly quotaService: QuotaService,
   ) {}
 
   // ===== Resume CRUD =====
 
   async findByUser(userId: string) {
     return this.prisma.candidateResume.findMany({
-      where: { userId },
+      where: { userId, isProfile: false },
       include: { template: { select: { id: true, name: true, previewUrl: true, isPublic: true } } },
       orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }],
+    });
+  }
+
+  async getProfile(userId: string) {
+    let profile = await this.prisma.candidateResume.findFirst({
+      where: { userId, isProfile: true },
+      include: {
+        template: { select: { id: true, name: true, description: true, previewUrl: true, isPublic: true } },
+        user: { select: { id: true, name: true, email: true, phone: true, image: true } }
+      },
+    });
+
+    if (!profile) {
+      const defaultTemplate = await this.prisma.resumeTemplate.findFirst({ where: { isActive: true } });
+      const templateId = defaultTemplate?.id || 'tpl-minimal-03';
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+      profile = await this.prisma.candidateResume.create({
+        data: {
+          userId,
+          templateId,
+          isProfile: true,
+          title: 'Hồ sơ gốc',
+          name: user?.name,
+          email: user?.email,
+          phone: user?.phone,
+          avatar: user?.image,
+        },
+        include: {
+          template: { select: { id: true, name: true, description: true, previewUrl: true, isPublic: true } },
+          user: { select: { id: true, name: true, email: true, phone: true, image: true } }
+        },
+      });
+    }
+
+    return profile;
+  }
+
+  async updateProfile(userId: string, data: Record<string, unknown>) {
+    const profile = await this.getProfile(userId);
+    const { id: _, userId: __, isProfile: ___, templateId: ____, createdAt: _____, updatedAt: ______, ...updateData } = data;
+
+    const userUpdates: Record<string, any> = {};
+    if (typeof updateData.name === 'string') userUpdates.name = updateData.name;
+    if (typeof updateData.phone === 'string') userUpdates.phone = updateData.phone;
+    if (typeof updateData.avatar === 'string') userUpdates.image = updateData.avatar;
+    
+    if (Object.keys(userUpdates).length > 0) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: userUpdates,
+      });
+    }
+
+    return this.prisma.candidateResume.update({
+      where: { id: profile.id },
+      data: updateData as Prisma.CandidateResumeUpdateInput,
+      include: {
+        template: { select: { id: true, name: true, description: true, previewUrl: true, isPublic: true } },
+        user: { select: { id: true, name: true, email: true, phone: true, image: true } }
+      },
     });
   }
 
@@ -44,6 +107,8 @@ export class ResumesService {
     if (!template) throw new NotFoundException('Template not found');
 
     const isDefault = data.isDefault === true;
+    const usedResumes = await this.prisma.candidateResume.count({ where: { userId, isProfile: false } });
+    await this.quotaService.assertWithinForUser(userId, 'candidateResumes', usedResumes);
 
     if (isDefault) {
       await this.prisma.candidateResume.updateMany({
@@ -82,9 +147,16 @@ export class ResumesService {
   }
 
   async remove(id: string, userId: string) {
-    const resume = await this.prisma.candidateResume.findUnique({ where: { id } });
+    const resume = await this.prisma.candidateResume.findUnique({
+      where: { id },
+      include: { _count: { select: { applications: true } } },
+    });
     if (!resume) throw new NotFoundException('Resume not found');
     if (resume.userId !== userId) throw new ForbiddenException('Not your resume');
+    if (resume.isProfile) throw new BadRequestException('Hồ sơ gốc không thể xóa.');
+    if (resume._count.applications > 0) {
+      throw new BadRequestException('CV đã dùng để ứng tuyển nên không thể xóa để giữ lịch sử tuyển dụng.');
+    }
     await this.prisma.candidateResume.delete({ where: { id } });
     return { message: 'Resume deleted' };
   }

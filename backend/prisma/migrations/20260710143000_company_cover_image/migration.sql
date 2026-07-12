@@ -1,0 +1,3 @@
+ALTER TABLE "company"
+  ADD COLUMN IF NOT EXISTS "coverImage" TEXT,
+  ADD COLUMN IF NOT EXISTS "coverImagePublicId" TEXT;

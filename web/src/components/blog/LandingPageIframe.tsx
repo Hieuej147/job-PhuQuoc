@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { sanitizePreviewCss } from '@/lib/html-safety';
 
 interface LandingPageIframeProps {
     css: string;
@@ -20,11 +21,13 @@ export function LandingPageIframe({ css, html, js, fullScreen }: LandingPageIfra
         if (html.trim().startsWith('<!DOCTYPE html>') || html.includes('<html') || html.includes('<HTML')) {
             iframe.srcdoc = html;
         } else {
-            iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif}${css}</style></head><body>${html}<script>function notifyH(){window.parent.postMessage({type:'pqjobs-h',h:document.body.scrollHeight},'*')}window.addEventListener('load',notifyH);new ResizeObserver(notifyH).observe(document.body);<\/script><script>${js}<\/script></body></html>`;
+            iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif}${sanitizePreviewCss(css)}</style></head><body>${html}<script>function notifyH(){window.parent.postMessage({type:'pqjobs-h',h:document.body.scrollHeight},'*')}window.addEventListener('load',notifyH);new ResizeObserver(notifyH).observe(document.body);<\/script><script>${js}<\/script></body></html>`;
         }
 
         const onMsg = (e: MessageEvent) => {
-            if (e.data?.type === 'pqjobs-h') setIframeHeight(e.data.h + 20);
+            if (e.source !== iframe.contentWindow || e.data?.type !== 'pqjobs-h') return;
+            const height = Number(e.data.h);
+            if (Number.isFinite(height)) setIframeHeight(Math.min(Math.max(height + 20, 320), 12000));
         };
         window.addEventListener('message', onMsg);
         return () => window.removeEventListener('message', onMsg);
@@ -36,6 +39,7 @@ export function LandingPageIframe({ css, html, js, fullScreen }: LandingPageIfra
                 ref={iframeRef}
                 className="w-full h-full border-0 block m-0 p-0"
                 style={{ height: '100vh', width: '100vw' }}
+                sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
                 title="Landing Page"
             />
         );
@@ -43,7 +47,13 @@ export function LandingPageIframe({ css, html, js, fullScreen }: LandingPageIfra
 
     return (
         <div className="border border-slate-200 rounded-xl overflow-hidden shadow-inner">
-            <iframe ref={iframeRef} className="w-full border-0 block" style={{ height: iframeHeight }} title="Landing Page" />
+            <iframe
+                ref={iframeRef}
+                className="w-full border-0 block"
+                style={{ height: iframeHeight }}
+                sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+                title="Landing Page"
+            />
         </div>
     );
 }

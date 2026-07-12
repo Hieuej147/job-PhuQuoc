@@ -1,9 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
-import { useCandidateDashboardSummary } from "@/lib/dashboard-api";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useCandidateDashboardSummary } from "@/features/dashboard/queries";
+import { useUnreadNotifications } from "@/features/notifications/queries";
+import { computeProfileCompletion } from "@/lib/profile-completion";
 
 export function CandidateSidebar() {
   const pathname = usePathname();
@@ -13,19 +17,27 @@ export function CandidateSidebar() {
   const initials = userName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
   const { data: summary } = useCandidateDashboardSummary(!!user);
+  const { data: unreadNotifications } = useUnreadNotifications(!!user);
   const applicationsCount = summary?.applications.total || 0;
-  const unreadCount = summary?.notifications.unreadCount || 0;
+  const unreadCount = unreadNotifications?.count ?? summary?.notifications.unreadCount ?? 0;
 
-  // Profile completion
-  const checklist = [
-    { done: Boolean(u?.name && u?.phone) },
-    { done: Boolean(u?.image) },
-    { done: Boolean(u?.experience && Array.isArray(u.experience) && u.experience.length > 0) },
-    { done: Boolean(u?.education && Array.isArray(u.education) && u.education.length > 0) },
-    { done: Boolean(u?.summary) },
-    { done: Boolean(u?.socialLinks && String(u.socialLinks).length > 0) },
-  ];
-  const completionPct = Math.round((checklist.filter(c => c.done).length / checklist.length) * 100);
+  // Fetch full profile data for accurate completion calculation
+  const [profile, setProfile] = useState<Record<string, any> | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/v1/resumes/profile", { credentials: "include" })
+      .then(res => res.ok ? res.json() : null)
+      .then(payload => {
+        if (payload) {
+          const p = payload?.data?.data || payload?.data || {};
+          setProfile(p);
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const { completionPct } = computeProfileCompletion(profile || u);
+  const avatarUrl = typeof profile?.avatar === "string" && profile.avatar ? profile.avatar : u?.image || "";
 
   const navGroups = [
     {
@@ -41,6 +53,7 @@ export function CandidateSidebar() {
         { icon: "work_history", label: "Đơn ứng tuyển", href: "/candidate/applications", badge: applicationsCount, badgeClass: "bg-[#005a71] text-white" },
         { icon: "bookmark", label: "Việc làm đã lưu", href: "/candidate/saved" },
         { icon: "apartment", label: "Công ty theo dõi", href: "/candidate/saved-companies" },
+        { icon: "article", label: "Bài viết của tôi", href: "/candidate/blogs" },
       ],
     },
     {
@@ -61,7 +74,6 @@ export function CandidateSidebar() {
   const handleLogout = () => {
     fetch("/api/auth/sign-out", { method: "POST", credentials: "include" })
       .then(() => {
-        sessionStorage.removeItem("savedCompanyIds");
         window.location.href = "/auth/login";
       });
   };
@@ -71,9 +83,12 @@ export function CandidateSidebar() {
 
       {/* Profile Summary */}
       <div className="flex flex-col items-center text-center mb-6 pb-6 border-b border-[#e1efff] dark:border-[#1E5F74]/50">
-        <div className="w-20 h-20 rounded-full border-[3px] border-[#005a71] bg-[#e1efff] text-[#005a71] font-bold text-2xl flex items-center justify-center mb-3">
-          {initials}
-        </div>
+        <Avatar className="mb-3 size-20 border-[3px] border-[#005a71] bg-[#e1efff]">
+          <AvatarImage src={avatarUrl || undefined} alt={userName} className="object-cover" />
+          <AvatarFallback className="bg-[#e1efff] text-2xl font-bold text-[#005a71]">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
         <p className="font-bold text-[#001e30] dark:text-[#E0F2FE] text-sm">{userName}</p>
         <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Candidate • Phú Quốc</p>
         <div className="w-full mt-3">

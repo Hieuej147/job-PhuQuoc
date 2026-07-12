@@ -38,18 +38,24 @@ interface JobApplySidebarProps {
   onApply: () => void; // Hàm callback nộp hồ sơ ứng tuyển
   onSave: () => void; // Hàm callback lưu việc làm
   isSaved: boolean; // Trạng thái tin đã được lưu hay chưa
+  isApplied?: boolean; // Trạng thái đã ứng tuyển hay chưa
 }
 
-export function JobApplySidebar({ onApply, onSave, isSaved }: JobApplySidebarProps) {
+export function JobApplySidebar({ onApply, onSave, isSaved, isApplied }: JobApplySidebarProps) {
   return (
     <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] p-6 shadow-sm transition-colors duration-200">
-      {/* Nút ứng tuyển lớn với hiệu ứng nhấp nháy thu hút sự chú ý */}
+      {/* Nút ứng tuyển lớn */}
       <button
-        onClick={onApply}
+        onClick={isApplied ? undefined : onApply}
+        disabled={isApplied}
         id="btn-apply"
-        className="btn-apply-pulse w-full bg-gradient-to-r from-[#005a71] to-[#0e7490] dark:from-[#0d9488] dark:to-[#0e7490] hover:opacity-95 text-white font-bold py-4 rounded-xl transition-all shadow-lg text-sm mb-3 cursor-pointer"
+        className={`w-full font-bold py-4 rounded-xl transition-all shadow-lg text-sm mb-3 cursor-pointer ${
+          isApplied
+            ? "bg-emerald-600 text-white dark:bg-emerald-700 opacity-90 cursor-not-allowed"
+            : "btn-apply-pulse bg-gradient-to-r from-[#005a71] to-[#0e7490] dark:from-[#0d9488] dark:to-[#0e7490] hover:opacity-95 text-white"
+        }`}
       >
-        Ứng tuyển ngay
+        {isApplied ? "✓ Đã ứng tuyển" : "Ứng tuyển ngay"}
       </button>
 
       {/* Nút lưu việc làm nhanh */}

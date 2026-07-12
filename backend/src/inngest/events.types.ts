@@ -9,12 +9,20 @@ export interface ApplicationEventData {
 export interface JobEventData {
   jobId: string;
   deadline?: string;
+  activationId?: string;
 }
 
 export interface UserRegisteredData {
   userId: string;
   email: string;
   name: string;
+}
+
+export interface QuotaPlanActivatedData {
+  userId: string;
+  targetPlan: string;
+  expiresAt: string;
+  purchaseId: string;
 }
 
 export interface InngestEventMap {
@@ -25,6 +33,7 @@ export interface InngestEventMap {
   'job.activated': JobEventData;
   'job.expiring-soon': JobEventData;
   'job.expired': JobEventData;
+  'quota.plan.activated': QuotaPlanActivatedData;
 }
 
 export type EventName = keyof InngestEventMap;

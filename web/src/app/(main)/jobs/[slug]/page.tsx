@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Briefcase } from "lucide-react";
-import { jobPostingJsonLd, breadcrumbJsonLd } from "@/lib/structured-data";
+import { jobPostingJsonLd, breadcrumbJsonLd } from "@/features/seo/structured-data";
 import JobDetailClient from "./JobDetailClient";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";

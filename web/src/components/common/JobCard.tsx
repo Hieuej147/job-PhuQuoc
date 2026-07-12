@@ -22,6 +22,8 @@ export interface HomeJobItem {
   uiTagText: string;
   uiTagStyle: string;
   uiLogoBg: string;
+  isFeatured?: boolean;
+  featuredLabel?: string;
   labels: string[];
   CreateAt?: string;
 }
@@ -30,28 +32,18 @@ export interface JobCardProps {
   job: HomeJobItem;
 }
 
-const savedJobIdsPromiseByUser = new Map<string, Promise<string[]>>();
-
 async function fetchSavedJobIds(userId: string): Promise<string[]> {
-  const cached = savedJobIdsPromiseByUser.get(userId);
-  if (cached) return cached;
-
-  const promise = (async () => {
-    try {
-      const res = await fetch("/api/v1/saved/jobs?limit=100", {
-        credentials: "include",
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      const items = data.data?.items || data.items || [];
-      return items.map((item: any) => item.jobId);
-    } catch {
-      return [];
-    }
-  })();
-
-  savedJobIdsPromiseByUser.set(userId, promise);
-  return promise;
+  try {
+    const res = await fetch("/api/v1/saved/jobs?limit=100", {
+      credentials: "include",
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = data.data?.items || data.items || [];
+    return items.map((item: any) => item.jobId);
+  } catch {
+    return [];
+  }
 }
 
 export default function JobCard({ job }: JobCardProps) {
@@ -90,9 +82,11 @@ export default function JobCard({ job }: JobCardProps) {
         credentials: "include",
       });
       if (saveRes.ok) {
-        setIsSaved(!isSaved);
+        const body = await saveRes.json().catch(() => ({}));
+        const nextSaved = Boolean(body?.data?.saved ?? body?.saved);
+        setIsSaved(nextSaved);
         toast.success(
-          !isSaved ? "Đã lưu công việc thành công!" : "Đã bỏ lưu công việc!",
+          nextSaved ? "Đã lưu công việc thành công!" : "Đã bỏ lưu công việc!",
         );
       } else {
         toast.error("Không thể lưu công việc. Vui lòng thử lại!");
@@ -122,8 +116,13 @@ export default function JobCard({ job }: JobCardProps) {
       href={`/jobs/${job.slug}`}
       className="bg-primary-foreground p-5 rounded-xl border border-slate-200/80 hover:border-[#0891b2]/40 shadow-sm hover:shadow-md transition-all relative flex flex-col justify-between group overflow-hidden"
     >
+      {job.isFeatured && (
+        <div className="absolute left-0 top-0 z-10 rounded-br-xl bg-[#F59E0B] px-3 py-1 text-[10px] font-bold text-white">
+          ⭐ {job.featuredLabel || "NỔI BẬT"}
+        </div>
+      )}
       <div>
-        <div className="flex justify-between items-center">
+        <div className={`flex justify-between items-center ${job.isFeatured ? "pt-3" : ""}`}>
           <div
             className={`w-9 h-9 rounded-lg ${job.uiLogoBg} flex items-center justify-center text-[12px] font-bold`}
           >

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import CompanyDetailClient from "./CompanyDetailClient"
-import { organizationJsonLd, breadcrumbJsonLd } from "@/lib/structured-data"
+import { organizationJsonLd, breadcrumbJsonLd } from "@/features/seo/structured-data"
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000"
 
@@ -46,7 +46,10 @@ export async function generateMetadata(
   }
 }
 
-export default async function CompanyDetailPage({
+import { Suspense } from "react"
+import Loading from "./loading"
+
+async function CompanyDetailPageContent({
   params,
 }: {
   params: Promise<{ slug: string }>
@@ -55,7 +58,7 @@ export default async function CompanyDetailPage({
   const company = await fetchCompany(slug)
   if (!company) notFound()
 
-  const jobs = await fetchCompanyJobs(company.id)
+  const jobsPromise = fetchCompanyJobs(company.id)
 
   const orgJson = organizationJsonLd()
   const breadcrumbs = breadcrumbJsonLd([
@@ -68,7 +71,19 @@ export default async function CompanyDetailPage({
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJson) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
-      <CompanyDetailClient company={company} jobs={jobs} />
+      <CompanyDetailClient company={company} jobsPromise={jobsPromise} />
     </>
+  )
+}
+
+export default function CompanyDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <CompanyDetailPageContent params={params} />
+    </Suspense>
   )
 }

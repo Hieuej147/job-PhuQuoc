@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { CacheService } from '../../common/cache/cache.service';
@@ -6,6 +6,7 @@ import { CompanyContractService } from '../shared/contracts/company.contract';
 import { Prisma, JobStatus, JobType, ExperienceLevel, JobLevel } from '@prisma/client';
 import { CreateJobDto, JobQueryDto, MyJobsQueryDto, UpdateJobDto } from './dto/job.dto';
 import { JobBackgroundService } from './background/job-background.service';
+import { QuotaService } from '../../common/quota/quota.service';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -14,9 +15,14 @@ function slugify(text: string): string {
 const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   DRAFT: ['PENDING'],
   PENDING: ['ACTIVE'],
-  ACTIVE: ['CLOSED'],
+  ACTIVE: ['CLOSED', 'EXPIRED'],
   CLOSED: [],
+  EXPIRED: [],
 };
+
+function isArchivedQuery(value?: string) {
+  return value === 'true' || value === '1' || value === 'ARCHIVED';
+}
 
 @Injectable()
 export class JobsService {
@@ -29,10 +35,11 @@ export class JobsService {
     private readonly cache: CacheService,
     private readonly companyContract: CompanyContractService,
     private readonly jobBackground: JobBackgroundService,
+    private readonly quotaService: QuotaService,
   ) { }
 
   async findAll(query: JobQueryDto) {
-    const { search, category, type, experience, level, status, salaryMin, salaryMax, salaryRange, ward, companyId, sort } = query;
+    const { search, category, type, experience, level, salaryMin, salaryMax, salaryRange, ward, companyId, sort } = query;
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
 
@@ -40,7 +47,7 @@ export class JobsService {
     const cacheKey = this.cache.generateKey(
       this.CACHE_PREFIX, 'list',
       String(page), String(limit), search || '', category || '',
-      type || '', experience || '', level || '', status || 'ACTIVE',
+      type || '', experience || '', level || '', 'ACTIVE',
       String(salaryMin || ''), String(salaryMax || ''), salaryRange || '', ward || '', companyId || '', sort || ''
     );
 
@@ -49,8 +56,8 @@ export class JobsService {
 
     const where: Prisma.JobWhereInput = {};
     if (companyId) where.companyId = companyId;
-    if (status) where.status = status as JobStatus;
-    else where.status = JobStatus.ACTIVE; // Default: chỉ trả job ACTIVE cho public queries
+    where.status = JobStatus.ACTIVE; // Public queries never expose DRAFT/PENDING/CLOSED/EXPIRED jobs.
+    where.archivedAt = null;
 
     if (category) {
       const slugs = category.split(',');
@@ -138,8 +145,13 @@ export class JobsService {
       });
     }
 
-    // Xác định orderBy dựa trên sort param
-    let orderBy: Prisma.JobOrderByWithRelationInput | Prisma.JobOrderByWithRelationInput[] = { createdAt: 'desc' };
+    // Mặc định ưu tiên tin đã trả phí Top; sort cụ thể từ user sẽ override thứ tự này.
+    let orderBy: Prisma.JobOrderByWithRelationInput | Prisma.JobOrderByWithRelationInput[] = [
+      { boostLevel: 'desc' },
+      { featuredUntil: 'desc' },
+      { publishedAt: 'desc' },
+      { createdAt: 'desc' },
+    ];
     if (sort === 'salary_asc') {
       orderBy = [{ salaryMin: 'asc' }, { salaryMax: 'asc' }, { createdAt: 'desc' }];
     } else if (sort === 'salary_desc') {
@@ -151,7 +163,12 @@ export class JobsService {
     const [items, total] = await Promise.all([
       this.prisma.job.findMany({
         where, skip: (Number(page) - 1) * Number(limit), take: Number(limit),
-        include: { category: true, company: { select: { id: true, name: true, slug: true, logo: true } }, ward: { include: { district: true } } },
+        include: {
+          category: true,
+          company: { select: { id: true, name: true, slug: true, logo: true } },
+          ward: { include: { district: true } },
+          _count: { select: { applications: true } },
+        },
         orderBy,
       }),
       this.prisma.job.count({ where }),
@@ -163,35 +180,100 @@ export class JobsService {
   }
 
   async findById(id: string) {
-    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, id);
+    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, 'public-id', id);
     const cached = await this.cache.get(cacheKey);
     if (cached) return cached;
 
     const job = await this.prisma.job.findUnique({
       where: { id },
-      include: { category: true, company: true, ward: { include: { district: { include: { province: true } } } }, applications: { select: { id: true, status: true, createdAt: true } } },
+      include: {
+        category: true,
+        company: true,
+        ward: { include: { district: { include: { province: true } } } },
+        applications: { select: { id: true, status: true, createdAt: true } },
+        _count: { select: { applications: true } },
+      },
     });
     if (!job) throw new NotFoundException('Job not found');
+    if (
+      job.archivedAt ||
+      job.status !== JobStatus.ACTIVE ||
+      (job.deadline && job.deadline.getTime() < Date.now())
+    ) {
+      throw new NotFoundException('Job not found');
+    }
 
     await this.cache.set(cacheKey, job, this.CACHE_TTL);
+    return job;
+  }
+
+  async findManagedById(id: string, ownerId: string) {
+    const job = await this.prisma.job.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        company: true,
+        ward: { include: { district: { include: { province: true } } } },
+        applications: { select: { id: true, status: true, createdAt: true } },
+        payments: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          include: { package: true },
+        },
+        _count: { select: { applications: true, payments: true } },
+      },
+    });
+    if (!job) throw new NotFoundException('Job not found');
+    if (job.company.ownerId !== ownerId) throw new ForbiddenException('Not company owner');
     return job;
   }
 
   async findByOwner(ownerId: string, query: MyJobsQueryDto) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
-    const where: Prisma.JobWhereInput = { company: { ownerId } };
-    if (query.status && query.status !== 'ALL') where.status = query.status as JobStatus;
+    const showArchived = isArchivedQuery(query.archived) || query.status === 'ARCHIVED';
+    const where: Prisma.JobWhereInput = {
+      company: { ownerId },
+      archivedAt: showArchived ? { not: null } : null,
+    };
+    if (query.status && query.status !== 'ALL' && query.status !== 'ARCHIVED') where.status = query.status as JobStatus;
+    if (query.search?.trim()) {
+      where.title = { contains: query.search.trim(), mode: 'insensitive' };
+    }
+
+    let orderBy: Prisma.JobOrderByWithRelationInput | Prisma.JobOrderByWithRelationInput[] = { createdAt: 'desc' };
+    if (query.sort === 'most-apps') {
+      orderBy = { applications: { _count: 'desc' } };
+    } else if (query.sort === 'expiring') {
+      orderBy = [{ deadline: 'asc' }, { createdAt: 'desc' }];
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.job.findMany({
         where, skip: (page - 1) * limit, take: limit,
         include: { category: true, company: { select: { id: true, name: true, slug: true, logo: true } }, ward: { include: { district: true } }, _count: { select: { applications: true } } },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
       }),
       this.prisma.job.count({ where }),
     ]);
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async getOwnerJobStats(ownerId: string) {
+    const counts = await this.prisma.job.groupBy({
+      by: ['status'],
+      where: { company: { ownerId }, archivedAt: null },
+      _count: { id: true },
+    });
+
+    const stats = { ALL: 0, ACTIVE: 0, PENDING: 0, DRAFT: 0, CLOSED: 0, EXPIRED: 0, ARCHIVED: 0 };
+    for (const item of counts) {
+      stats[item.status] = item._count.id;
+      stats.ALL += item._count.id;
+    }
+    stats.ARCHIVED = await this.prisma.job.count({ where: { company: { ownerId }, archivedAt: { not: null } } });
+
+    return stats;
   }
 
   async findBySlug(slug: string) {
@@ -201,9 +283,21 @@ export class JobsService {
 
     const job = await this.prisma.job.findUnique({
       where: { slug },
-      include: { category: true, company: true, ward: { include: { district: { include: { province: true } } } } },
+      include: {
+        category: true,
+        company: true,
+        ward: { include: { district: { include: { province: true } } } },
+        _count: { select: { applications: true } },
+      },
     });
     if (!job) throw new NotFoundException('Job not found');
+    if (
+      job.archivedAt ||
+      job.status !== JobStatus.ACTIVE ||
+      (job.deadline && job.deadline.getTime() < Date.now())
+    ) {
+      throw new NotFoundException('Job not found');
+    }
 
     await this.cache.set(cacheKey, job, this.CACHE_TTL);
     return job;
@@ -212,18 +306,17 @@ export class JobsService {
   async create(userId: string, data: CreateJobDto) {
     const company = await this.companyContract.findByOwnerId(userId);
     if (!company) throw new NotFoundException('You need a company to post jobs');
+    const usedJobs = await this.countEmployerJobQuotaUsage(userId);
+    await this.quotaService.assertWithinForUser(userId, 'employerJobs', usedJobs);
     const slug = slugify(data.title) + '-' + Date.now().toString(36);
     const job = await this.prisma.job.create({
       data: {
         ...data, slug, companyId: company.id,
         type: data.type as JobType, experience: data.experience as ExperienceLevel, level: data.level as JobLevel,
-        deadline: data.deadline ? new Date(data.deadline) : undefined,
         status: 'DRAFT',
       },
     });
     await this.invalidateCache();
-
-    this.jobBackground.syncEmbedding(job);
 
     return job;
   }
@@ -232,14 +325,50 @@ export class JobsService {
     const job = await this.prisma.job.findUnique({ where: { id }, include: { company: true } });
     if (!job) throw new NotFoundException('Job not found');
     if (job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
-    // Reserved for a future "edit draft before checkout" flow.
-    // Paid/ACTIVE jobs should not be edited through this path because payment,
-    // public listing, Inngest expiry events, and applications are already tied to the activated job.
+    if (job.archivedAt) throw new ConflictException('Archived jobs must be restored before editing');
     const updated = await this.prisma.job.update({ where: { id }, data: data as Prisma.JobUpdateInput });
     await this.invalidateCache();
 
-    this.jobBackground.syncEmbedding(updated);
+    if (
+      updated.status === JobStatus.ACTIVE &&
+      !updated.archivedAt &&
+      (!updated.deadline || updated.deadline.getTime() >= Date.now())
+    ) {
+      this.jobBackground.syncEmbedding(updated);
+    }
 
+    return updated;
+  }
+
+  async closeEarly(id: string, userId: string) {
+    const job = await this.prisma.job.findUnique({ where: { id }, include: { company: true } });
+    if (!job) throw new NotFoundException('Job not found');
+    if (job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
+    if (job.archivedAt) throw new ConflictException('Archived jobs are already hidden');
+    if (job.status !== JobStatus.ACTIVE) {
+      throw new ForbiddenException('Only active jobs can be closed early');
+    }
+
+    const updated = await this.prisma.job.update({
+      where: { id },
+      data: {
+        status: JobStatus.CLOSED,
+        closedAt: new Date(),
+        closeReason: 'EMPLOYER_CLOSED',
+      },
+      include: { _count: { select: { applications: true } } },
+    });
+
+    await this.auditWriteContract.log({
+      action: 'job.closed.early',
+      entityType: 'Job',
+      entityId: id,
+      actorId: userId,
+      oldValue: JobStatus.ACTIVE,
+      newValue: JobStatus.CLOSED,
+    });
+
+    await this.invalidateCache();
     return updated;
   }
 
@@ -273,9 +402,89 @@ export class JobsService {
     return { message: 'Job deleted' };
   }
 
+  async removeForEmployer(id: string, userId: string) {
+    const job = await this.prisma.job.findUnique({
+      where: { id },
+      include: { company: true },
+    });
+    if (!job) throw new NotFoundException('Job not found');
+    if (job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
+
+    if (job.archivedAt) {
+      return { mode: 'archived', message: 'Job already archived', job };
+    }
+
+    const now = new Date();
+    const updated = await this.prisma.job.update({
+      where: { id },
+      data: {
+        archivedAt: now,
+        archivedBy: userId,
+        archiveReason: job.status === JobStatus.ACTIVE ? 'EMPLOYER_ARCHIVED_ACTIVE_JOB' : 'EMPLOYER_ARCHIVED',
+        ...(job.status === JobStatus.ACTIVE
+          ? { status: JobStatus.CLOSED, closedAt: now, closeReason: 'EMPLOYER_ARCHIVED' as any }
+          : {}),
+      },
+    });
+
+    await this.auditWriteContract.log({
+      action: 'job.archived.employer',
+      entityType: 'Job',
+      entityId: id,
+      actorId: userId,
+      oldValue: job.status,
+      newValue: updated.status,
+      metadata: { reason: updated.archiveReason },
+    });
+    await this.invalidateCache();
+    return { mode: 'archived', message: 'Job archived', job: updated };
+  }
+
+  async restoreForEmployer(id: string, userId: string) {
+    const job = await this.prisma.job.findUnique({ where: { id }, include: { company: true } });
+    if (!job) throw new NotFoundException('Job not found');
+    if (job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
+    if (!job.archivedAt) return job;
+
+    const updated = await this.prisma.job.update({
+      where: { id },
+      data: {
+        archivedAt: null,
+        archivedBy: null,
+        archiveReason: null,
+      },
+    });
+
+    await this.auditWriteContract.log({
+      action: 'job.restored.employer',
+      entityType: 'Job',
+      entityId: id,
+      actorId: userId,
+      oldValue: 'ARCHIVED',
+      newValue: updated.status,
+    });
+    await this.invalidateCache();
+    return updated;
+  }
+
+  private countEmployerJobQuotaUsage(userId: string) {
+    return this.prisma.job.count({
+      where: {
+        company: { ownerId: userId },
+        OR: [
+          { archivedAt: null },
+          { publishedAt: { not: null } },
+          { currentPaymentId: { not: null } },
+          { payments: { some: { status: 'COMPLETED' } } },
+        ],
+      },
+    });
+  }
+
   async getFilterStats() {
     const activeJobsWhere: Prisma.JobWhereInput = {
       status: JobStatus.ACTIVE,
+      archivedAt: null,
       AND: [
         {
           OR: [
@@ -430,6 +639,8 @@ export class JobsService {
       JOIN "job_embedding" je ON j.id = je."jobId"
       JOIN "company" c ON j."companyId" = c.id
       WHERE j.status = 'ACTIVE'
+        AND j."archivedAt" IS NULL
+        AND (j.deadline IS NULL OR j.deadline >= NOW())
       ORDER BY je.embedding <=> ${vectorString}::vector
       LIMIT ${limit}
     `;

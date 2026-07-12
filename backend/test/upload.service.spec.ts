@@ -17,9 +17,21 @@ describe('UploadService', () => {
 
   beforeEach(() => {
     prismaMock = {
+      user: {
+        findUnique: vi.fn(),
+        update: vi.fn(),
+      },
       company: {
         findUnique: vi.fn(),
         update: vi.fn(),
+      },
+      candidateResume: {
+        findFirst: vi.fn(),
+        update: vi.fn(),
+        create: vi.fn(),
+      },
+      resumeTemplate: {
+        findFirst: vi.fn(),
       },
     };
     cloudinaryMock = {
@@ -101,5 +113,94 @@ describe('UploadService', () => {
         logo: 'https://res.cloudinary.com/demo/logo.webp',
       },
     });
+  });
+
+  it('uploads candidate avatar and does not delete OAuth avatar without public id', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({ id: 'user-1', name: 'User 1', email: 'u@example.com', phone: null, imagePublicId: null });
+    prismaMock.candidateResume.findFirst.mockResolvedValue({ id: 'profile-1', avatarPublicId: null });
+    cloudinaryMock.uploadImage.mockResolvedValue({
+      secure_url: 'https://res.cloudinary.com/demo/avatar.webp',
+      public_id: 'job-phuquoc/candidate-avatars/user-1/avatar-new',
+    });
+    prismaMock.user.update.mockResolvedValue({});
+    prismaMock.candidateResume.update.mockResolvedValue({});
+
+    const result = await service.uploadCandidateAvatar('user-1', createFile());
+
+    expect(cloudinaryMock.uploadImage).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        folder: 'job-phuquoc/candidate-avatars/user-1',
+        resource_type: 'image',
+      }),
+    );
+    expect(prismaMock.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: {
+        image: 'https://res.cloudinary.com/demo/avatar.webp',
+        imagePublicId: 'job-phuquoc/candidate-avatars/user-1/avatar-new',
+      },
+    });
+    expect(prismaMock.candidateResume.update).toHaveBeenCalledWith({
+      where: { id: 'profile-1' },
+      data: {
+        avatar: 'https://res.cloudinary.com/demo/avatar.webp',
+        avatarPublicId: 'job-phuquoc/candidate-avatars/user-1/avatar-new',
+      },
+    });
+    expect(cloudinaryMock.deleteFile).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      message: 'Upload avatar thành công',
+      data: {
+        avatar: 'https://res.cloudinary.com/demo/avatar.webp',
+        publicId: 'job-phuquoc/candidate-avatars/user-1/avatar-new',
+      },
+    });
+  });
+
+  it('deletes previous app-owned candidate avatar after successful update', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      name: 'User 1',
+      email: 'u@example.com',
+      phone: null,
+      imagePublicId: 'job-phuquoc/candidate-avatars/user-1/avatar-old-user',
+    });
+    prismaMock.candidateResume.findFirst.mockResolvedValue({
+      id: 'profile-1',
+      avatarPublicId: 'job-phuquoc/candidate-avatars/user-1/avatar-old-profile',
+    });
+    cloudinaryMock.uploadImage.mockResolvedValue({
+      secure_url: 'https://res.cloudinary.com/demo/avatar-new.webp',
+      public_id: 'job-phuquoc/candidate-avatars/user-1/avatar-new',
+    });
+    prismaMock.user.update.mockResolvedValue({});
+    prismaMock.candidateResume.update.mockResolvedValue({});
+
+    await service.uploadCandidateAvatar('user-1', createFile());
+
+    expect(cloudinaryMock.deleteFile).toHaveBeenCalledWith('job-phuquoc/candidate-avatars/user-1/avatar-old-profile');
+  });
+
+  it('does not delete candidate avatar public id outside current user folder', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      name: 'User 1',
+      email: 'u@example.com',
+      phone: null,
+      imagePublicId: 'job-phuquoc/candidate-avatars/other-user/avatar-old',
+    });
+    prismaMock.candidateResume.findFirst.mockResolvedValue(null);
+    prismaMock.resumeTemplate.findFirst.mockResolvedValue({ id: 'tpl-minimal-03' });
+    cloudinaryMock.uploadImage.mockResolvedValue({
+      secure_url: 'https://res.cloudinary.com/demo/avatar-new.webp',
+      public_id: 'job-phuquoc/candidate-avatars/user-1/avatar-new',
+    });
+    prismaMock.user.update.mockResolvedValue({});
+    prismaMock.candidateResume.create.mockResolvedValue({});
+
+    await service.uploadCandidateAvatar('user-1', createFile());
+
+    expect(cloudinaryMock.deleteFile).not.toHaveBeenCalled();
   });
 });

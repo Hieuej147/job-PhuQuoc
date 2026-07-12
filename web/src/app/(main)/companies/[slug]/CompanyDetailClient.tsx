@@ -1,17 +1,16 @@
 "use client"
 
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, use, Suspense } from "react"
 import Link from "next/link"
 import { Share2 } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
 import { CompanyLogo } from "@/components/company/company-logo"
-
-const TYPE_MAP: Record<string, string> = {
-  FULL_TIME: "Full-time", PART_TIME: "Part-time", REMOTE: "Remote",
-  CONTRACT: "Hợp đồng", INTERNSHIP: "Thực tập", FREELANCE: "Freelance",
-}
+import { Skeleton } from "@/components/ui/skeleton"
+import { QuotaUpgradeDialog } from "@/components/quota/quota-upgrade-dialog"
+import { timeAgo } from "@/lib/utils/date"
+import { formatSalary, jobTypeLabel } from "@/lib/utils/format"
 
 const SIZE_LABELS: Record<string, string> = {
   SIZE_1_50: "1-50 nhân viên",
@@ -20,26 +19,9 @@ const SIZE_LABELS: Record<string, string> = {
   SIZE_500_PLUS: "500+ nhân viên",
 }
 
-function formatSalary(min?: number | null, max?: number | null): string {
-  if (!min && !max) return "Thỏa thuận"
-  const fmt = (n: number) => `${(n / 1000000).toFixed(0)}tr`
-  if (min && max) return `${fmt(min)}-${fmt(max)}`
-  if (min) return `Từ ${fmt(min)}`
-  return `Đến ${fmt(max!)}`
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const days = Math.floor(diff / 86400000)
-  if (days === 0) return "Hôm nay"
-  if (days === 1) return "Hôm qua"
-  if (days < 7) return `${days} ngày trước`
-  if (days < 30) return `${Math.floor(days / 7)} tuần trước`
-  return new Date(dateStr).toLocaleDateString("vi-VN")
-}
-
 interface CompanyData {
   id: string; name: string; slug: string; logo?: string | null;
+  coverImage?: string | null;
   website?: string | null; description?: string | null;
   size?: string | null; industry?: string | null;
   addressDetail?: string | null; ward?: { name: string; district?: { name: string } } | null;
@@ -53,15 +35,16 @@ interface JobData {
   deadline?: string | null; createdAt: string;
 }
 
-interface Props { company: CompanyData; jobs?: JobData[] }
+interface Props { company: CompanyData; jobsPromise: Promise<JobData[]> }
 
-export default function CompanyDetailClient({ company, jobs = [] }: Props) {
+export default function CompanyDetailClient({ company, jobsPromise }: Props) {
   useScrollAnimation()
   const { user } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("overview")
   const [following, setFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
+  const [quota, setQuota] = useState<{ resource?: string; used?: number; limit?: number } | null>(null)
 
   useEffect(() => {
     if (!user) {
@@ -69,7 +52,7 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
       return;
     }
 
-    fetch("/api/v1/saved/companies", { credentials: "include" })
+    fetch("/api/v1/saved/companies?limit=500", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!d) return;
@@ -93,7 +76,18 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
         method: "POST",
         credentials: "include",
       });
-      if (res.ok) setFollowing(prev => !prev);
+      if (res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const nextFollowing = Boolean(body?.data?.saved ?? body?.saved);
+        setFollowing(nextFollowing);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        const payload = typeof body?.message === "object" ? body.message : body;
+        const details = payload?.details ?? payload;
+        if (payload?.code === "QUOTA_EXCEEDED") {
+          setQuota({ resource: details.resource, used: details.used, limit: details.limit });
+        }
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -101,23 +95,14 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
     }
   };
 
-  const mappedJobs = useMemo(() => jobs.map(j => ({
-    id: j.id, slug: j.slug, title: j.title,
-    type: TYPE_MAP[j.type] || j.type,
-    salary: formatSalary(j.salaryMin, j.salaryMax),
-    location: j.ward?.name || j.addressDetail || "Phú Quốc",
-    daysAgo: timeAgo(j.createdAt),
-    deadline: j.deadline ? new Date(j.deadline).toLocaleDateString("vi-VN") : "—",
-  })), [jobs])
-
   const location = company.ward
     ? `${company.ward.name}, ${company.ward.district?.name || "Phú Quốc"}`
     : company.addressDetail || "Phú Quốc"
-  const jobCount = company._count?.jobs || mappedJobs.length
+  const jobCount = company._count?.jobs ?? 0
 
   const tabs = [
     { key: "overview", label: "Tổng quan" },
-    { key: "jobs", label: `Việc làm (${mappedJobs.length})` },
+    { key: "jobs", label: `Việc làm (${jobCount})` },
     { key: "reviews", label: "Đánh giá" },
   ]
 
@@ -126,7 +111,12 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
       {/* HERO */}
       <div>
         <div className="h-52 md:h-64 relative overflow-hidden" style={{ background: "linear-gradient(135deg,#0E7490,#0D9488)" }}>
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 50%,#67e8f9 0%,transparent 50%),radial-gradient(circle at 80% 20%,#fcd34d 0%,transparent 40%)" }} />
+          {company.coverImage ? (
+            <img src={company.coverImage} alt="Ảnh bìa công ty" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 50%,#67e8f9 0%,transparent 50%),radial-gradient(circle at 80% 20%,#fcd34d 0%,transparent 40%)" }} />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#005a71]/70 via-[#0E7490]/35 to-[#0D9488]/45" />
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#f7f9ff] dark:from-[#0a1929] to-transparent" />
           <div className="absolute top-4 left-4 md:left-8 flex items-center gap-2 text-xs text-white/70">
             <Link href="/" className="hover:text-white">Trang chủ</Link><span>›</span>
@@ -209,27 +199,25 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
             )}
 
             {activeTab === "jobs" && (
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-[#001e30] dark:text-white">{mappedJobs.length} vị trí đang tuyển dụng</p>
-                {mappedJobs.length === 0 && <p className="text-sm text-gray-500 text-center py-8">Chưa có vị trí tuyển dụng nào.</p>}
-                {mappedJobs.map((job) => (
-                  <Link key={job.id} href={`/jobs/${job.slug}`}
-                    className="flex items-center justify-between gap-4 bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-xl px-5 py-4 hover:shadow-md hover:translate-x-1 transition-all group">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-[#001e30] dark:text-white group-hover:text-[#005a71] transition-colors">{job.title}</p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.type}</span>
-                        <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.salary}</span>
-                        <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.location}</span>
+              <Suspense fallback={
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-[#001e30] dark:text-white">Đang tải vị trí tuyển dụng...</p>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between gap-4 bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-xl px-5 py-4">
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <Skeleton className="h-5 w-48" />
+                        <div className="flex gap-2 mt-2">
+                          <Skeleton className="h-5 w-16" />
+                          <Skeleton className="h-5 w-20" />
+                          <Skeleton className="h-5 w-24" />
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-xs text-[#3f484c] dark:text-gray-400">{job.daysAgo}</p>
-                      <p className="text-xs text-red-400 mt-1 font-semibold">HN: {job.deadline}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                  ))}
+                </div>
+              }>
+                <JobsTabContent jobsPromise={jobsPromise} />
+              </Suspense>
             )}
 
             {activeTab === "reviews" && (
@@ -272,6 +260,50 @@ export default function CompanyDetailClient({ company, jobs = [] }: Props) {
           </div>
         </div>
       </div>
+      <QuotaUpgradeDialog
+        open={Boolean(quota)}
+        onOpenChange={(nextOpen) => !nextOpen && setQuota(null)}
+        resource={quota?.resource}
+        used={quota?.used}
+        limit={quota?.limit}
+      />
+    </div>
+  )
+}
+
+function JobsTabContent({ jobsPromise }: { jobsPromise: Promise<JobData[]> }) {
+  const jobs = use(jobsPromise)
+
+  const mappedJobs = useMemo(() => jobs.map(j => ({
+    id: j.id, slug: j.slug, title: j.title,
+    type: jobTypeLabel(j.type),
+    salary: formatSalary(j.salaryMin, j.salaryMax),
+    location: j.ward?.name || j.addressDetail || "Phú Quốc",
+    daysAgo: timeAgo(j.createdAt),
+    deadline: j.deadline ? new Date(j.deadline).toLocaleDateString("vi-VN") : "—",
+  })), [jobs])
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-semibold text-[#001e30] dark:text-white">{mappedJobs.length} vị trí đang tuyển dụng</p>
+      {mappedJobs.length === 0 && <p className="text-sm text-gray-500 text-center py-8">Chưa có vị trí tuyển dụng nào.</p>}
+      {mappedJobs.map((job) => (
+        <Link key={job.id} href={`/jobs/${job.slug}`}
+          className="flex items-center justify-between gap-4 bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-xl px-5 py-4 hover:shadow-md hover:translate-x-1 transition-all group">
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm text-[#001e30] dark:text-white group-hover:text-[#005a71] transition-colors">{job.title}</p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.type}</span>
+              <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.salary}</span>
+              <span className="bg-[#0D9488]/10 text-[#0d9488] text-xs font-semibold px-2.5 py-0.5 rounded-md">{job.location}</span>
+            </div>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className="text-xs text-[#3f484c] dark:text-gray-400">{job.daysAgo}</p>
+            <p className="text-xs text-red-400 mt-1 font-semibold">HN: {job.deadline}</p>
+          </div>
+        </Link>
+      ))}
     </div>
   )
 }

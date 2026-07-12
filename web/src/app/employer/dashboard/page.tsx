@@ -1,246 +1,96 @@
 /**
  * TÊN TRANG: Tổng quan Nhà tuyển dụng (Employer Dashboard)
- * MÔ TẢ: Hiển thị các chỉ số thống kê, trạng thái tin tuyển dụng, danh sách hồ sơ ứng viên mới nhất và thông báo cho nhà tuyển dụng.
- * TƯƠNG TÁC DỮ LIỆU (FE-BE-DB):
- * - Fetch `/api/v1/jobs/my`: Lấy danh sách tin tuyển dụng của công ty (kèm số lượng hồ sơ) từ bảng `Job`.
- * - Fetch `/api/v1/applications/employer`: Lấy hồ sơ ứng viên mới nộp từ bảng `Application` và `User`.
- * - Fetch `/api/v1/notifications`: Lấy thông báo hệ thống từ bảng `Notification`.
+ * MÔ TẢ: Hiển thị thống kê, trạng thái tin tuyển dụng, hồ sơ mới nhất và thông báo.
  */
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
-import {
-  Briefcase,
-  FileText,
-  Clock,
-  Eye,
-  Plus,
-  Users,
-  Building2,
-  BarChart3,
-  ArrowRight,
-  CheckCircle2,
-  XCircle,
-  UserPlus,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployerDashboardAiTab } from "@/components/ai/dashboard-ai-tab";
-import { useEmployerDashboardSummary } from "@/lib/dashboard-api";
-
-// ── Types ──
-
-interface Job {
-  id: string;
-  title: string;
-  status: string;
-  jobType?: string;
-  level?: string;
-  applicationCount?: number;
-  newApplicationCount?: number;
-  deadline?: string;
-}
-
-interface Applicant {
-  id: string;
-  name: string;
-  initials: string;
-  jobTitle: string;
-  timeAgo: string;
-  status: "PENDING" | "REVIEWING" | "ACCEPTED" | "REJECTED";
-  coverPreview?: string;
-  gradientFrom: string;
-  gradientTo: string;
-}
-
-interface Notification {
-  id: string;
-  type: "APPLICATION_RECEIVED" | "JOB_APPROVED" | "JOB_DEADLINE" | "COMPANY_APPROVED";
-  title: string;
-  message: string;
-  timeAgo: string;
-}
-
-// ── Helpers ──
-
-function timeAgo(dateStr: string) {
-  const now = new Date();
-  const d = new Date(dateStr);
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return "Hôm nay";
-  if (diffDays === 1) return "Hôm qua";
-  if (diffDays < 7) return `${diffDays} ngày trước`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} tuần trước`;
-  return d.toLocaleDateString("vi-VN");
-}
-
-function getJobTypeLabel(type?: string) {
-  const map: Record<string, string> = {
-    FULL_TIME: "Full-time",
-    PART_TIME: "Part-time",
-    REMOTE: "Remote",
-    CONTRACT: "Hợp đồng",
-    INTERNSHIP: "Thực tập",
-    FREELANCE: "Freelance",
-  };
-  return map[type || ""] || type || "—";
-}
-
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "ACTIVE":
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#D1FAE5] text-[#059669] dark:bg-[#059669]/20 dark:text-[#34D399]">
-          <CheckCircle2 className="w-3 h-3" /> Đang tuyển
-        </span>
-      );
-    case "PENDING":
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#FEF3C7] text-[#D97706] dark:bg-[#D97706]/20 dark:text-[#FCD34D]">
-          <Clock className="w-3 h-3" /> Chờ duyệt
-        </span>
-      );
-    case "DRAFT":
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F3F4F6] text-[#6B7280] dark:bg-[#6B7280]/20 dark:text-[#9CA3AF]">
-          Bản nháp
-        </span>
-      );
-    case "CLOSED":
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F3F4F6] text-[#6B7280] dark:bg-[#6B7280]/20 dark:text-[#9CA3AF]">
-          Đã đóng
-        </span>
-      );
-    case "REJECTED":
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#FEE2E2] text-[#DC2626] dark:bg-[#DC2626]/20 dark:text-[#FCA5A5]">
-          <XCircle className="w-3 h-3" /> Bị từ chối
-        </span>
-      );
-    default:
-      return null;
-  }
-}
-
-function getApplicantStatusBadge(status: Applicant["status"]) {
-  switch (status) {
-    case "PENDING":
-      return <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#FEF3C7] text-[#D97706] dark:bg-[#D97706]/20 dark:text-[#FCD34D]">Mới</span>;
-    case "REVIEWING":
-      return <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#DBEAFE] text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#93C5FD]">Đang xem</span>;
-    case "ACCEPTED":
-      return <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#D1FAE5] text-[#059669] dark:bg-[#059669]/20 dark:text-[#34D399]">Đã duyệt</span>;
-    case "REJECTED":
-      return <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#FEE2E2] text-[#DC2626] dark:bg-[#DC2626]/20 dark:text-[#FCA5A5]">Từ chối</span>;
-  }
-}
-
-function getNotificationIcon(type: Notification["type"]) {
-  switch (type) {
-    case "APPLICATION_RECEIVED":
-      return (
-        <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-          <UserPlus className="w-4 h-4 text-blue-600" />
-        </div>
-      );
-    case "JOB_APPROVED":
-      return (
-        <div className="w-8 h-8 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
-          <ShieldCheck className="w-4 h-4 text-green-600" />
-        </div>
-      );
-    case "JOB_DEADLINE":
-      return (
-        <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-          <Clock className="w-4 h-4 text-amber-600" />
-        </div>
-      );
-    case "COMPANY_APPROVED":
-      return (
-        <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-          <Building2 className="w-4 h-4 text-gray-500" />
-        </div>
-      );
-  }
-}
-
-function getNotificationBg(type: Notification["type"]) {
-  switch (type) {
-    case "APPLICATION_RECEIVED":
-      return "bg-blue-50 dark:bg-blue-900/10";
-    case "JOB_APPROVED":
-      return "bg-green-50 dark:bg-green-900/10";
-    case "JOB_DEADLINE":
-      return "bg-amber-50 dark:bg-amber-900/10";
-    case "COMPANY_APPROVED":
-      return "";
-  }
-}
-
-// ── Main Component ──
+import { QuotaUsageCard } from "@/components/quota/quota-usage-card";
+import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { DashboardHeader } from "@/features/employer-dashboard/components/dashboard-header";
+import { DashboardStatCards } from "@/features/employer-dashboard/components/dashboard-stat-cards";
+import { HiringSummaryCard } from "@/features/employer-dashboard/components/hiring-summary-card";
+import { NotificationsPanel } from "@/features/employer-dashboard/components/notifications-panel";
+import { QuickActionsCard } from "@/features/employer-dashboard/components/quick-actions-card";
+import { RecentApplicantsPanel } from "@/features/employer-dashboard/components/recent-applicants-panel";
+import { RecentJobsTable } from "@/features/employer-dashboard/components/recent-jobs-table";
+import type {
+  DashboardApplicant,
+  DashboardJob,
+  DashboardNotification,
+} from "@/features/employer-dashboard/types";
+import { timeAgo } from "@/features/employer-dashboard/utils";
+import { useEmployerDashboardSummary } from "@/features/dashboard/queries";
 
 export default function EmployerDashboard() {
   const { data: summary, isLoading: loading, error, refetch } = useEmployerDashboardSummary();
 
-  const jobs = useMemo<Job[]>(() => (summary?.jobs.recent || []).map((j: Record<string, unknown>) => ({
-    id: j.id as string,
-    title: j.title as string,
-    status: j.status as string,
-    jobType: j.type as string,
-    level: j.level as string,
-    applicationCount: (j._count as { applications?: number })?.applications ?? 0,
-    deadline: j.deadline as string | undefined,
+  const jobs = useMemo<DashboardJob[]>(() => (summary?.jobs.recent || []).map((job: Record<string, unknown>) => ({
+    id: job.id as string,
+    title: job.title as string,
+    status: job.status as string,
+    jobType: job.type as string,
+    level: job.level as string,
+    applicationCount: (job._count as { applications?: number })?.applications ?? 0,
+    deadline: job.deadline as string | undefined,
   })), [summary?.jobs.recent]);
 
-  const applicants = useMemo<Applicant[]>(() => {
+  const applicants = useMemo<DashboardApplicant[]>(() => {
     const colors = [
       { gradientFrom: "from-[#0e7490]", gradientTo: "to-[#0d9488]" },
       { gradientFrom: "from-[#F59E0B]", gradientTo: "to-[#D97706]" },
       { gradientFrom: "from-[#059669]", gradientTo: "to-[#0d9488]" },
       { gradientFrom: "from-[#6366f1]", gradientTo: "to-[#4f46e5]" },
     ];
-    return (summary?.applications.recent || []).map((a: Record<string, unknown>, i: number) => {
-      const user = a.user as { name?: string; email?: string } | undefined;
-      const job = a.job as { title?: string } | undefined;
+
+    return (summary?.applications.recent || []).map((application: Record<string, unknown>, index: number) => {
+      const user = application.user as { name?: string; email?: string } | undefined;
+      const job = application.job as { title?: string } | undefined;
       const name = user?.name || user?.email || "Ẩn danh";
       return {
-        id: a.id as string,
+        id: application.id as string,
         name,
-        initials: name.split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase(),
+        initials: name.split(" ").filter(Boolean).map((word: string) => word[0]).slice(0, 2).join("").toUpperCase(),
         jobTitle: job?.title || "",
-        timeAgo: timeAgo(a.createdAt as string),
-        status: a.status as Applicant["status"],
-        coverPreview: (a.coverLetter as string)?.slice(0, 80),
-        ...colors[i % colors.length],
+        timeAgo: timeAgo(application.createdAt as string),
+        status: application.status as DashboardApplicant["status"],
+        coverPreview: (application.coverLetter as string)?.slice(0, 80),
+        ...colors[index % colors.length],
       };
     });
   }, [summary?.applications.recent]);
 
-  const notifications = useMemo<Notification[]>(() => (summary?.notifications.recent || []).map((n: Record<string, unknown>) => ({
-    id: n.id as string,
-    type: n.type as Notification["type"],
-    title: n.title as string,
-    message: n.content as string,
-    timeAgo: timeAgo(n.createdAt as string),
+  const notifications = useMemo<DashboardNotification[]>(() => (summary?.notifications.recent || []).map((notification: any) => ({
+    id: notification.id as string,
+    type: notification.type as DashboardNotification["type"],
+    title: notification.title as string,
+    message: notification.content as string,
+    timeAgo: timeAgo(notification.createdAt as string),
   })), [summary?.notifications.recent]);
 
   const company = summary?.company as { name?: string } | null | undefined;
 
   const stats = useMemo(() => {
-    const activeJobs = summary?.jobs.active ?? jobs.filter((j) => j.status === "ACTIVE").length;
-    const totalApplicants = summary?.applications.total ?? jobs.reduce((sum, j) => sum + (j.applicationCount ?? 0), 0);
-    const pendingCount = summary?.applications.pending ?? applicants.filter((a) => a.status === "PENDING").length;
+    const activeJobs = summary?.jobs.active ?? jobs.filter((job) => job.status === "ACTIVE").length;
+    const totalApplicants = summary?.applications.total ?? jobs.reduce((sum, job) => sum + (job.applicationCount ?? 0), 0);
+    const pendingCount = summary?.applications.pending ?? applicants.filter((applicant) => applicant.status === "PENDING").length;
     return { activeJobs, totalApplicants, pendingCount };
   }, [summary?.jobs.active, summary?.applications.total, summary?.applications.pending, jobs, applicants]);
 
+  const quotaItems = summary?.quota
+    ? [
+        { resource: "employerJobs", label: "Tin tuyển dụng", ...summary.quota.jobs },
+        { resource: "employerActiveJobs", label: "Tin đang chạy", ...summary.quota.activeJobs },
+        { resource: "employerDurationDaysMax", label: "Ngày đăng tối đa", ...summary.quota.durationDaysMax },
+        { resource: "employerBoostLevelMax", label: "Mức nổi bật tối đa", ...summary.quota.boostLevelMax },
+      ]
+    : [];
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <Spinner size="lg" />
       </div>
     );
@@ -248,14 +98,15 @@ export default function EmployerDashboard() {
 
   if (error) {
     return (
-      <div className="p-6 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-        <h2 className="text-lg font-bold text-red-700 dark:text-red-400 mb-2">Lỗi tải dữ liệu</h2>
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 dark:border-red-800 dark:bg-red-900/20">
+        <h2 className="mb-2 text-lg font-bold text-red-700 dark:text-red-400">Lỗi tải dữ liệu</h2>
         <p className="text-sm text-red-600 dark:text-red-300">
           {error instanceof Error ? error.message : "Không thể tải dữ liệu dashboard"}
         </p>
         <button
+          type="button"
           onClick={() => refetch()}
-          className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
+          className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
         >
           Thử lại
         </button>
@@ -265,352 +116,25 @@ export default function EmployerDashboard() {
 
   return (
     <Tabs defaultValue="overview" className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">
-            Xin chào, {company?.name || "Công ty"} 👋
-          </h1>
-          <p className="text-sm text-[#3f484c] dark:text-[#94A3B8] mt-1">
-            {new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} • Phú Quốc
-          </p>
-        </div>
-        <TabsList className="w-full md:w-fit">
-          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
-          <TabsTrigger value="ai">
-            <Sparkles className="size-4" />
-            AI Co-worker
-          </TabsTrigger>
-        </TabsList>
-      </div>
+      <DashboardHeader companyName={company?.name} />
 
       <TabsContent value="overview" className="space-y-6">
-        {/* ── Stat Cards ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Active Jobs */}
-          <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-[#F59E0B]/10 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-[#F59E0B]" />
-              </div>
-              {jobs.some(j => j.newApplicationCount) && (
-                <span className="text-xs font-medium text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
-                  Có cập nhật
-                </span>
-              )}
-            </div>
-            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.activeJobs}</p>
-            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Tin đang tuyển</p>
-          </div>
+        <DashboardStatCards stats={stats} jobs={jobs} />
 
-          {/* Total Applicants */}
-          <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-blue-600" />
-              </div>
-              {stats.pendingCount > 0 && (
-                <span className="text-xs font-medium text-[#F59E0B] bg-[#F59E0B]/10 px-2 py-0.5 rounded-full">
-                  {stats.pendingCount} mới
-                </span>
-              )}
-            </div>
-            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.totalApplicants}</p>
-            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Tổng hồ sơ nhận</p>
-          </div>
+        {quotaItems.length > 0 && (
+          <QuotaUsageCard title="Dung lượng gói đăng tuyển" items={quotaItems} />
+        )}
 
-          {/* Pending Review */}
-          <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-amber-600" />
-              </div>
-              <span className="text-xs font-medium text-[#3f484c] dark:text-[#94A3B8] bg-[#e1efff] dark:bg-[#1E5F74]/30 px-2 py-0.5 rounded-full">
-                Chờ duyệt
-              </span>
-            </div>
-            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.pendingCount}</p>
-            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Cần xem xét</p>
-          </div>
-
-          {/* Total Applications */}
-          <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0d9488]/10 flex items-center justify-center">
-                <Eye className="w-5 h-5 text-[#0d9488] dark:text-[#2DD4BF]" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-[#001e30] dark:text-[#E0F2FE]">{stats.totalApplicants}</p>
-            <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Tổng ứng viên</p>
-          </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <HiringSummaryCard stats={stats} jobs={jobs} />
+          <QuickActionsCard pendingCount={stats.pendingCount} />
         </div>
 
-        {/* ── Chart + Quick Actions ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Stats Summary */}
-          <div className="lg:col-span-2 bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
-            <div className="mb-5">
-              <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">Tổng quan tuyển dụng</h2>
-              <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Thống kê từ dữ liệu thực</p>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-4 rounded-lg bg-[#f7f9ff] dark:bg-[#071a2b]">
-                <p className="text-3xl font-bold text-[#0E7490] dark:text-[#67e8f9]">{stats.activeJobs}</p>
-                <p className="text-sm text-gray-500">Tin đang tuyển</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-[#f7f9ff] dark:bg-[#071a2b]">
-                <p className="text-3xl font-bold text-[#F59E0B]">{stats.totalApplicants}</p>
-                <p className="text-sm text-gray-500">Tổng ứng viên</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-[#f7f9ff] dark:bg-[#071a2b]">
-                <p className="text-3xl font-bold text-green-600">{stats.pendingCount}</p>
-                <p className="text-sm text-gray-500">Chờ duyệt</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-6 pt-4 border-t border-[#e1efff]/50 dark:border-[#1E5F74]/50 mt-4">
-              <div>
-                <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">Tổng jobs</p>
-                <p className="font-bold text-[#001e30] dark:text-[#E0F2FE]">{jobs.length} tin</p>
-              </div>
-              <div>
-                <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">Ứng viên/job</p>
-                <p className="font-bold text-[#F59E0B]">{jobs.length > 0 ? (stats.totalApplicants / jobs.length).toFixed(1) : 0}</p>
-              </div>
-            </div>
-          </div>
+        <RecentJobsTable jobs={jobs} />
 
-          {/* Quick Actions */}
-          <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
-            <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE] mb-5">Thao tác nhanh</h2>
-            <div className="flex flex-col gap-3">
-              <Link
-                href="/employer/jobs/create"
-                className="flex items-center gap-3 p-3.5 rounded-[14px] border-[1.5px] border-[#e1efff] dark:border-[#1E5F74] bg-white dark:bg-[#0d2d42] hover:border-[#F59E0B] hover:shadow-md hover:shadow-[#F59E0B]/15 hover:-translate-y-0.5 transition-all duration-200 group"
-              >
-                <div className="w-9 h-9 rounded-xl bg-[#F59E0B]/10 flex items-center justify-center flex-shrink-0">
-                  <Plus className="w-5 h-5 text-[#F59E0B]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">Đăng tin mới</p>
-                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">Tạo tin tuyển dụng</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-[#6f787d] group-hover:text-[#F59E0B] transition-colors" />
-              </Link>
-              <Link
-                href="/employer/applications"
-                className="flex items-center gap-3 p-3.5 rounded-[14px] border-[1.5px] border-[#e1efff] dark:border-[#1E5F74] bg-white dark:bg-[#0d2d42] hover:border-blue-500 hover:shadow-md hover:shadow-blue-500/15 hover:-translate-y-0.5 transition-all duration-200 group"
-              >
-                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
-                  <Users className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">Xem hồ sơ</p>
-                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">{stats.pendingCount} hồ sơ mới chờ</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-[#6f787d] group-hover:text-blue-600 transition-colors" />
-              </Link>
-              <Link
-                href="/employer/company"
-                className="flex items-center gap-3 p-3.5 rounded-[14px] border-[1.5px] border-[#e1efff] dark:border-[#1E5F74] bg-white dark:bg-[#0d2d42] hover:border-[#0d9488] hover:shadow-md hover:shadow-[#0d9488]/15 hover:-translate-y-0.5 transition-all duration-200 group"
-              >
-                <div className="w-9 h-9 rounded-xl bg-[#0d9488]/10 flex items-center justify-center flex-shrink-0">
-                  <Building2 className="w-5 h-5 text-[#0d9488] dark:text-[#2DD4BF]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">Hồ sơ công ty</p>
-                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">Cập nhật thông tin</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-[#6f787d] group-hover:text-[#0d9488] transition-colors" />
-              </Link>
-              <Link
-                href="/employer/jobs"
-                className="flex items-center gap-3 p-3.5 rounded-[14px] border-[1.5px] border-[#e1efff] dark:border-[#1E5F74] bg-white dark:bg-[#0d2d42] hover:border-[#005a71] hover:shadow-md hover:shadow-[#005a71]/15 hover:-translate-y-0.5 transition-all duration-200 group"
-              >
-                <div className="w-9 h-9 rounded-xl bg-[#005a71]/10 flex items-center justify-center flex-shrink-0">
-                  <BarChart3 className="w-5 h-5 text-[#005a71] dark:text-[#67E8F9]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">Quản lý tin đăng</p>
-                  <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">Xem toàn bộ tin</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-[#6f787d] group-hover:text-[#005a71] transition-colors" />
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Jobs Table ── */}
-        <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">Tin tuyển dụng gần đây</h2>
-            <Link href="/employer/jobs" className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-80">
-              Quản lý tất cả →
-            </Link>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[#e1efff]/50 dark:border-[#1E5F74]/50">
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">Vị trí</th>
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">Loại</th>
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">Hồ sơ</th>
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">Hạn nộp</th>
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3 pr-4">Trạng thái</th>
-                  <th className="text-left text-xs font-semibold text-[#6f787d] uppercase tracking-wider pb-3">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e1efff]/30 dark:divide-[#1E5F74]/30">
-                {jobs.slice(0, 5).map((job) => (
-                  <tr
-                    key={job.id}
-                    className={`hover:bg-[#e1efff]/30 dark:hover:bg-[#1E5F74]/10 transition-colors ${job.status === "CLOSED" ? "opacity-60" : ""}`}
-                  >
-                    <td className="py-3 pr-4">
-                      <p className="font-semibold text-[#001e30] dark:text-[#E0F2FE]">{job.title}</p>
-                      {job.level && (
-                        <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">jobs.level: {job.level}</p>
-                      )}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <span className="text-xs bg-[#005a71]/10 text-[#005a71] dark:text-[#67E8F9] px-2 py-0.5 rounded-md font-medium">
-                        {getJobTypeLabel(job.jobType)}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4">
-                      {job.status === "PENDING" || job.status === "DRAFT" ? (
-                        <span className="text-xs text-[#3f484c] dark:text-[#94A3B8]">— chờ duyệt</span>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#F59E0B]">{job.applicationCount ?? 0}</span>
-                          <span className="text-xs text-[#3f484c] dark:text-[#94A3B8]">hồ sơ</span>
-                          {(job.newApplicationCount ?? 0) > 0 && (
-                            <span className="text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-bold">
-                              {job.newApplicationCount} mới
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <span className="text-xs text-[#3f484c] dark:text-[#94A3B8]">{job.deadline ?? "—"}</span>
-                    </td>
-                    <td className="py-3 pr-4">{getStatusBadge(job.status)}</td>
-                    <td className="py-3">
-                      <div className="flex items-center gap-2">
-                        <Link href={`/employer/jobs/${job.id}/edit`} className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-70">
-                          Sửa
-                        </Link>
-                        <span className="text-[#e1efff] dark:text-[#1E5F74]">|</span>
-                        <button className="text-xs text-red-500 font-semibold hover:opacity-70">
-                          {job.status === "ACTIVE" ? "Đóng" : job.status === "PENDING" ? "Xoá" : "Đăng lại"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* ── Recent Applicants + Notifications ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Applicants */}
-          <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">Hồ sơ mới nhất</h2>
-              <Link href="/employer/applications" className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-80">
-                Xem tất cả →
-              </Link>
-            </div>
-            <div className="flex flex-col gap-3">
-              {applicants.map((app) => {
-                const isAccepted = app.status === "ACCEPTED";
-                const isRejected = app.status === "REJECTED";
-                return (
-                  <div
-                    key={app.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${isAccepted
-                      ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30"
-                      : isRejected
-                        ? "bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/20 opacity-75"
-                        : "bg-[#e1efff]/30 dark:bg-[#1E5F74]/10 border-[#e1efff]/20 dark:border-[#1E5F74]/30"
-                      }`}
-                  >
-                    <div
-                      className={`w-10 h-10 rounded-full bg-gradient-to-br ${app.gradientFrom} ${app.gradientTo} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}
-                    >
-                      {app.initials}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-[#001e30] dark:text-[#E0F2FE] truncate">{app.name}</p>
-                      <p className="text-xs text-[#3f484c] dark:text-[#94A3B8]">
-                        {app.jobTitle} • {app.timeAgo}
-                      </p>
-                      {app.coverPreview && (
-                        <p className="text-[11px] text-[#3f484c] dark:text-[#94A3B8] mt-0.5 italic truncate">
-                          &ldquo;{app.coverPreview}&rdquo;
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                      {getApplicantStatusBadge(app.status)}
-                      {app.status === "PENDING" && (
-                        <Link href="/employer/applications" className="text-[10px] font-bold text-white bg-[#0e7490] px-2 py-0.5 rounded-md hover:bg-[#005a71] transition-colors">
-                          Xem CV
-                        </Link>
-                      )}
-                      {app.status === "REVIEWING" && (
-                        <div className="flex gap-1">
-                          <button className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-md hover:bg-green-200 transition-colors">
-                            Duyệt
-                          </button>
-                          <button className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-md hover:bg-red-200 transition-colors">
-                            Từ chối
-                          </button>
-                        </div>
-                      )}
-                      {app.status === "ACCEPTED" && (
-                        <Link href="/employer/applications" className="text-[10px] font-bold text-[#0e7490] dark:text-[#67E8F9] hover:opacity-70">
-                          Liên hệ
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Notifications */}
-          <div className="bg-white dark:bg-[#0d2d42] border border-[#e1efff] dark:border-[#1E5F74] rounded-xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-[#001e30] dark:text-[#E0F2FE]">Thông báo</h2>
-              {notifications.length > 0 && (
-                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{notifications.length} mới</span>
-              )}
-            </div>
-            <div className="flex flex-col gap-3">
-              {notifications.map((notif) => (
-                <div
-                  key={notif.id}
-                  className={`flex items-start gap-3 p-3 rounded-xl ${getNotificationBg(notif.type)}`}
-                >
-                  {getNotificationIcon(notif.type)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#001e30] dark:text-[#E0F2FE]">{notif.title}</p>
-                    <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">{notif.message}</p>
-                    <p className="text-xs text-[#6f787d] mt-1">{notif.timeAgo}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 text-center">
-              <Link href="/employer/notifications" className="text-xs text-[#005a71] dark:text-[#67E8F9] font-semibold hover:opacity-70">
-                Xem tất cả thông báo →
-              </Link>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <RecentApplicantsPanel applicants={applicants} />
+          <NotificationsPanel notifications={notifications} />
         </div>
       </TabsContent>
 

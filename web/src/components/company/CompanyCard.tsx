@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
+import { QuotaUpgradeDialog } from "@/components/quota/quota-upgrade-dialog"
 
 import { Company } from "@/types/company"
 import { CompanyLogo } from "@/components/company/company-logo"
@@ -19,6 +20,7 @@ export default function CompanyCard({ company, index = 0, isFollowed = false }: 
   const { user } = useAuth()
   const router = useRouter()
   const [followed, setFollowed] = useState(isFollowed)
+  const [quota, setQuota] = useState<{ resource?: string; used?: number; limit?: number } | null>(null)
 
   useEffect(() => {
     setFollowed(isFollowed);
@@ -37,7 +39,18 @@ export default function CompanyCard({ company, index = 0, isFollowed = false }: 
         method: "POST",
         credentials: "include",
       });
-      if (res.ok) setFollowed(prev => !prev);
+      if (res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const nextFollowed = Boolean(body?.data?.saved ?? body?.saved);
+        setFollowed(nextFollowed);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        const payload = typeof body?.message === "object" ? body.message : body;
+        const details = payload?.details ?? payload;
+        if (payload?.code === "QUOTA_EXCEEDED") {
+          setQuota({ resource: details.resource, used: details.used, limit: details.limit });
+        }
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -53,10 +66,11 @@ export default function CompanyCard({ company, index = 0, isFollowed = false }: 
   const staggerClass = `stagger-${(index % 8) + 1}`
 
   return (
-    <Link
-      href={`/companies/${company.slug}`}
-      className={`fade-up ${staggerClass} relative bg-white dark:bg-[#0f2436] rounded-2xl border border-[#E0F5FB] dark:border-[#1e3a4f] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block cursor-pointer`}
-    >
+    <>
+      <Link
+        href={`/companies/${company.slug}`}
+        className={`fade-up ${staggerClass} relative bg-white dark:bg-[#0f2436] rounded-2xl border border-[#E0F5FB] dark:border-[#1e3a4f] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block cursor-pointer`}
+      >
       {/* Featured ribbon */}
       {isFeatured && (
         <div
@@ -131,6 +145,14 @@ export default function CompanyCard({ company, index = 0, isFollowed = false }: 
           </div>
         </div>
       </div>
-    </Link>
+      </Link>
+      <QuotaUpgradeDialog
+        open={Boolean(quota)}
+        onOpenChange={(nextOpen) => !nextOpen && setQuota(null)}
+        resource={quota?.resource}
+        used={quota?.used}
+        limit={quota?.limit}
+      />
+    </>
   )
 }

@@ -69,6 +69,53 @@ export class UploadController {
     return this.uploadService.uploadCompanyLogo(user.user.id, file);
   }
 
+  @Post('company-cover')
+  @Roles('EMPLOYER')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Upload ảnh bìa công ty', description: 'Employer upload ảnh bìa/banner công ty lên Cloudinary.' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Upload thành công' })
+  @ApiResponse({ status: 400, description: 'File không hợp lệ hoặc Cloudinary chưa cấu hình' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  @ApiResponse({ status: 403, description: 'Không phải EMPLOYER' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_COMPANY_LOGO_SIZE },
+      fileFilter: (_req, file, callback) => {
+        if (!ALLOWED_COMPANY_LOGO_TYPES.has(file.mimetype)) {
+          callback(new BadRequestException('Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP'), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadCompanyCover(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: UserSession,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Vui lòng chọn một file');
+    }
+    if (!ALLOWED_COMPANY_LOGO_TYPES.has(file.mimetype)) {
+      throw new BadRequestException('Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP');
+    }
+    if (file.size > MAX_COMPANY_LOGO_SIZE) {
+      throw new BadRequestException('File vượt quá giới hạn 5MB');
+    }
+
+    return this.uploadService.uploadCompanyCover(user.user.id, file);
+  }
+
   @Post('candidate-cv')
   @Roles('CANDIDATE')
   @ApiBearerAuth('better-auth.session_token')
@@ -114,5 +161,97 @@ export class UploadController {
     }
 
     return this.uploadService.uploadCandidateCv(user.user.id, file);
+  }
+
+  @Post('candidate-avatar')
+  @Roles('CANDIDATE')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Upload avatar ứng viên', description: 'Candidate upload avatar của mình lên Cloudinary.' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Upload thành công' })
+  @ApiResponse({ status: 400, description: 'File không hợp lệ hoặc Cloudinary chưa cấu hình' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  @ApiResponse({ status: 403, description: 'Không phải CANDIDATE' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_COMPANY_LOGO_SIZE },
+      fileFilter: (_req, file, callback) => {
+        if (!ALLOWED_COMPANY_LOGO_TYPES.has(file.mimetype)) {
+          callback(new BadRequestException('Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP'), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadCandidateAvatar(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: UserSession,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Vui lòng chọn một file');
+    }
+    if (!ALLOWED_COMPANY_LOGO_TYPES.has(file.mimetype)) {
+      throw new BadRequestException('Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP');
+    }
+    if (file.size > MAX_COMPANY_LOGO_SIZE) {
+      throw new BadRequestException('File vượt quá giới hạn 5MB');
+    }
+
+    return this.uploadService.uploadCandidateAvatar(user.user.id, file);
+  }
+
+  @Post('post-image')
+  @Roles('CANDIDATE', 'EMPLOYER', 'ADMIN')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Upload ảnh bài viết blog', description: 'Candidate, Employer hoặc Admin upload ảnh chèn vào bài viết.' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Upload thành công' })
+  @ApiResponse({ status: 400, description: 'File không hợp lệ hoặc Cloudinary chưa cấu hình' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_COMPANY_LOGO_SIZE },
+      fileFilter: (_req, file, callback) => {
+        if (!ALLOWED_COMPANY_LOGO_TYPES.has(file.mimetype)) {
+          callback(new BadRequestException('Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP'), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadPostImage(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: UserSession,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Vui lòng chọn một file');
+    }
+    if (!ALLOWED_COMPANY_LOGO_TYPES.has(file.mimetype)) {
+      throw new BadRequestException('Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP');
+    }
+    if (file.size > MAX_COMPANY_LOGO_SIZE) {
+      throw new BadRequestException('File vượt quá giới hạn 5MB');
+    }
+
+    return this.uploadService.uploadPostImage(user.user.id, file);
   }
 }

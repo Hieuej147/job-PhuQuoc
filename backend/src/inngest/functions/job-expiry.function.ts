@@ -1,13 +1,15 @@
 import { inngest } from '../client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { JobStatus } from '@prisma/client';
 import type { TypedInngestContext, CronInngestContext } from '../inngest.types';
 import { createNotificationInboxItem } from './notification-inbox.helper';
+import type { RealtimeService } from '../../realtime/realtime.service';
 
-export function createJobExpiryFunctions(prisma: PrismaService) {
+export function createJobExpiryFunctions(prisma: PrismaService, realtime?: RealtimeService) {
   const onJobActivated = inngest.createFunction(
     { id: 'schedule-job-expiry', triggers: [{ event: 'job.activated' }] },
     async ({ event, step }: TypedInngestContext<'job.activated'>) => {
-      const { jobId, deadline } = event.data;
+      const { jobId, deadline, activationId } = event.data;
       if (!deadline) return;
       const deadlineTime = new Date(deadline).getTime();
       const threeDaysBefore = deadlineTime - 3 * 24 * 60 * 60 * 1000;
@@ -16,14 +18,14 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
         await step.sendEvent('schedule-expiry-warning', {
           name: 'job.expiring-soon',
           ts: threeDaysBefore,
-          data: { jobId },
+          data: { jobId, activationId },
         });
       }
 
       await step.sendEvent('schedule-expired', {
         name: 'job.expired',
         ts: deadlineTime,
-        data: { jobId },
+        data: { jobId, deadline, activationId },
       });
     },
   );
@@ -35,10 +37,11 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
 
       const job = await prisma.job.findUnique({
         where: { id: jobId },
-        select: { id: true, title: true, status: true },
+        select: { id: true, title: true, status: true, activationId: true },
       });
 
       if (!job || job.status !== 'ACTIVE') return;
+      if (event.data.activationId && job.activationId !== event.data.activationId) return;
 
       const savedJobs = await prisma.savedJob.findMany({
         where: { jobId },
@@ -55,7 +58,7 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
           refType: 'job',
           dedupeKey: `job.expiring-soon:${jobId}:${saved.userId}`,
           expiresInDays: 180,
-        });
+        }, realtime);
       }
     },
   );
@@ -71,10 +74,12 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
       });
 
       if (!job || job.status !== 'ACTIVE') return;
+      if (event.data.activationId && job.activationId !== event.data.activationId) return;
+      if (event.data.deadline && job.deadline?.toISOString() !== new Date(event.data.deadline).toISOString()) return;
 
       await prisma.job.update({
         where: { id: jobId },
-        data: { status: 'CLOSED' },
+        data: { status: JobStatus.EXPIRED, closedAt: new Date(), closeReason: 'EXPIRED' },
       });
 
       await createNotificationInboxItem(prisma, {
@@ -86,9 +91,67 @@ export function createJobExpiryFunctions(prisma: PrismaService) {
         refType: 'job',
         dedupeKey: `job.expired:${jobId}:${job.company.ownerId}`,
         expiresInDays: 180,
-      });
+      }, realtime);
     },
   );
 
-  return [onJobActivated, onJobExpiringSoon, onJobExpired];
+  const closeExpiredActiveJobs = inngest.createFunction(
+    { id: 'close-expired-active-jobs', triggers: [{ cron: '0 * * * *' }] },
+    async ({ step }: CronInngestContext) => {
+      const now = new Date();
+
+      const expiredJobs = await step.run('find-expired-active-jobs', async () => {
+        return prisma.job.findMany({
+          where: {
+            status: JobStatus.ACTIVE,
+            archivedAt: null,
+            deadline: { lte: now },
+          },
+          select: {
+            id: true,
+            title: true,
+            activationId: true,
+            deadline: true,
+            company: { select: { ownerId: true } },
+          },
+          take: 200,
+          orderBy: { deadline: 'asc' },
+        });
+      });
+
+      for (const job of expiredJobs) {
+        const updated = await step.run(`close-expired-job-${job.id}`, async () => {
+          return prisma.job.updateMany({
+            where: {
+              id: job.id,
+              status: JobStatus.ACTIVE,
+              archivedAt: null,
+              activationId: job.activationId,
+              deadline: job.deadline,
+            },
+            data: { status: JobStatus.EXPIRED, closedAt: new Date(), closeReason: 'EXPIRED' },
+          });
+        });
+
+        if (updated.count === 0) continue;
+
+        await step.run(`notify-expired-job-owner-${job.id}`, async () => {
+          await createNotificationInboxItem(prisma, {
+            userId: job.company.ownerId,
+            type: 'SYSTEM',
+            title: 'Tin tuyển dụng đã hết hạn',
+            content: `Tin "${job.title}" đã hết hạn và đã đóng.`,
+            refId: job.id,
+            refType: 'job',
+            dedupeKey: `job.expired:${job.id}:${job.company.ownerId}`,
+            expiresInDays: 180,
+          }, realtime);
+        });
+      }
+
+      return { closed: expiredJobs.length };
+    },
+  );
+
+  return [onJobActivated, onJobExpiringSoon, onJobExpired, closeExpiredActiveJobs];
 }
