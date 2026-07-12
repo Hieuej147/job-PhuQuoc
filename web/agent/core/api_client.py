@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class ApiClient:
     def __init__(self, base_url: Optional[str] = None):
-        self.base_url = base_url or "http://localhost:3001/api/agent"
+        self.base_url = base_url or "http://localhost:3000/api/v1"
         self.timeout = 300
         self._auth_token: Optional[str] = None
         self._cookie: Optional[str] = None

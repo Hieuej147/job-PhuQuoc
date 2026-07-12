@@ -93,11 +93,15 @@ class SearchJobsTool(BaseTool):
                 )
                 response.raise_for_status()
                 embedding = response.json().get("embedding")
+
         except Exception as e:
             return {"error": f"Failed to generate embedding: {str(e)}", "jobs": [], "total": 0}
 
         if not embedding:
             return {"error": "No embedding generated", "jobs": [], "total": 0}
+
+        # Đảm bảo embedding là list Python thuần
+        embedding = list(embedding)
 
         payload = {
             "embedding": embedding,

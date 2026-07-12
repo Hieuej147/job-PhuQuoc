@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional, Dict
 from copilotkit import CopilotKitState
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
@@ -43,6 +43,55 @@ def should_route_to_tool_node(tool_calls: list, fe_tools: list) -> bool:
         if tool_name in fe_tool_names:
             return False
     return True
+
+
+def sanitize_tool_message_order(messages: list) -> list:
+    """
+    Đảm bảo mọi AIMessage có tool_calls luôn được theo NGAY SAU bởi đúng
+    ToolMessage tương ứng (yêu cầu bắt buộc của OpenAI API).
+
+    LangGraph checkpoint đôi khi merge message list không giữ đúng thứ tự
+    append gốc (ToolMessage bị đẩy lùi ra sau các message khác), khiến
+    OpenAI trả lỗi 400 "tool_call_ids did not have response messages" và
+    làm crash cả stream. Hàm này sắp xếp lại để luôn hợp lệ, đồng thời
+    tự tạo ToolMessage rỗng cho các tool_call bị "mồ côi" (không tìm thấy
+    kết quả) để tránh crash trong mọi trường hợp.
+    """
+    tool_messages_by_id = {}
+    for m in messages:
+        if isinstance(m, ToolMessage) and m.tool_call_id:
+            tool_messages_by_id[m.tool_call_id] = m
+
+    result = []
+    consumed_tool_ids = set()
+
+    for m in messages:
+        if isinstance(m, ToolMessage):
+            # ToolMessage sẽ được chèn ngay sau AIMessage tương ứng của nó,
+            # không thêm lại ở vị trí gốc (tránh trùng lặp).
+            continue
+
+        result.append(m)
+
+        if isinstance(m, AIMessage) and m.tool_calls:
+            for tc in m.tool_calls:
+                tc_id = tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", None)
+                if not tc_id or tc_id in consumed_tool_ids:
+                    continue
+                consumed_tool_ids.add(tc_id)
+                if tc_id in tool_messages_by_id:
+                    result.append(tool_messages_by_id[tc_id])
+                else:
+                    tc_name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", "unknown")
+                    result.append(
+                        ToolMessage(
+                            tool_call_id=tc_id,
+                            name=tc_name,
+                            content="Không có kết quả (tool chưa hoàn tất).",
+                        )
+                    )
+
+    return result
 
 
 class BaseAgent(ABC):
@@ -182,6 +231,8 @@ class BaseAgent(ABC):
 {context_info}
 {tools_info}"""
 
+            sanitized_messages = sanitize_tool_message_order(state["messages"])
+
             all_tools = [*fe_tools, *lc_tools_for_binding]
             ainvoke_kwargs = {}
             if self.llm.__class__.__name__ in ["ChatOpenAI"]:
@@ -190,8 +241,9 @@ class BaseAgent(ABC):
             model_with_tools = self.llm.bind_tools(all_tools, **ainvoke_kwargs) if all_tools else self.llm
 
             response = await model_with_tools.ainvoke(
-                [SystemMessage(content=full_prompt), *state["messages"]], config,
+                [SystemMessage(content=full_prompt), *sanitized_messages], config,
             )
+
             return Command(update={"messages": response})
 
         # Build graph

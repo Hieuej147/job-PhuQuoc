@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
@@ -39,6 +40,24 @@ export default function CandidateDashboard() {
   const [profile, setProfile] = useState<Record<string, unknown> | null>(user as Record<string, unknown> | null);
   const { data: summary, isLoading: loading, error, refetch } = useCandidateDashboardSummary(!!user);
 
+  // Lưu tab đang chọn (Tổng quan / AI Co-worker) vào URL query param,
+  // để nút "Quay lại" của trình duyệt khôi phục đúng tab thay vì luôn về Tổng quan.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab") === "ai" ? "ai" : "overview";
+
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === "ai") {
+      params.set("tab", "ai");
+    } else {
+      params.delete("tab");
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+
   useEffect(() => {
     setProfile(user as Record<string, unknown> | null);
   }, [user]);
@@ -64,7 +83,7 @@ export default function CandidateDashboard() {
   const unreadNotifs = summary?.notifications.unreadCount || 0;
 
   return (
-    <Tabs defaultValue="overview" className="space-y-6">
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>

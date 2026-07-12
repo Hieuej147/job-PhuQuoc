@@ -1,12 +1,10 @@
 "use client";
-
 import {
   CopilotChatMessageView,
   useAgent,
 } from "@copilotkit/react-core/v2";
 import { Activity, CheckCircle2, Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";
-
 interface AgentProgressState {
   cv_flow?: string;
   step?: string;
@@ -16,7 +14,6 @@ interface AgentProgressState {
   status?: string;
   toolStatus?: string;
 }
-
 function resetProgressState(state: AgentProgressState) {
   return {
     ...state,
@@ -29,30 +26,23 @@ function resetProgressState(state: AgentProgressState) {
     cv_flow: state.cv_flow === "done" ? "done" : "idle",
   };
 }
-
 function AgentProgressBubble({ agentId, title }: { agentId: string; title?: string }) {
   const { agent } = useAgent({ agentId });
   const wasRunningRef = useRef(false);
   const state = (agent.state || {}) as AgentProgressState;
-
   useEffect(() => {
     if (wasRunningRef.current && !agent.isRunning) {
       agent.setState(resetProgressState((agent.state || {}) as AgentProgressState));
     }
-
     wasRunningRef.current = agent.isRunning;
   }, [agent, agent.isRunning]);
-
   const step = state.currentStep || state.step;
   const progress = Math.max(0, Math.min(100, Number(state.progress || 0)));
   const activeWorker = state.activeWorker;
   const status = state.status || state.toolStatus || state.cv_flow;
   const hasState = Boolean(step || activeWorker || progress > 0);
-
   if (!agent.isRunning || !hasState || status === "idle") return null;
-
   const done = status === "done" || progress >= 100;
-
   return (
     <div className="my-3 flex justify-start px-4">
       <div className="w-full max-w-[82%] rounded-xl border border-[#e1efff] bg-white px-4 py-3 text-sm shadow-sm dark:border-[#1E5F74] dark:bg-[#0d2d42]">
@@ -66,7 +56,6 @@ function AgentProgressBubble({ agentId, title }: { agentId: string; title?: stri
               <Activity className="size-4" />
             )}
           </div>
-
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-3">
               <p className="truncate font-semibold text-foreground">
@@ -92,6 +81,13 @@ function AgentProgressBubble({ agentId, title }: { agentId: string; title?: stri
   );
 }
 
+// Tắt hẳn "loading cursor" mặc định của CopilotKit (data-testid="copilot-loading-cursor")
+// — đây chính là nguồn gốc chấm đen nhấp nháy hiện lạc lõng phía trên tool card,
+// vì AgentProgressBubble đã đảm nhiệm việc báo hiệu "đang xử lý" rồi.
+function NoCursor() {
+  return <></>;
+}
+
 export function createAgentProgressMessageView(agentId: string, title?: string) {
   function AgentProgressMessageView(props: any) {
     return (
@@ -101,8 +97,6 @@ export function createAgentProgressMessageView(agentId: string, title?: string) 
       </>
     );
   }
-
-  AgentProgressMessageView.Cursor = CopilotChatMessageView.Cursor;
-
+  AgentProgressMessageView.Cursor = NoCursor;
   return AgentProgressMessageView as typeof CopilotChatMessageView;
 }

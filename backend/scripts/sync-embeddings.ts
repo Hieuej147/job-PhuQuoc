@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as crypto from 'crypto';
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '../.env' });
 
 const prisma = new PrismaClient();
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';

@@ -1,13 +1,14 @@
 from langchain_core.language_models import BaseChatModel
-
 from agents.base_agent import BaseAgent
 from core.api_client import ApiClient
 from core.context import AgentContext
 from core.prompts import CANDIDATE_SYSTEM_PROMPT
 from schemas.candidate import CandidateState
 from tools.candidate.career_advisor import CareerAdvisorTool
-from tools.candidate.cv_template import CvTemplateTool
 from tools.candidate.search_jobs import SearchJobsTool
+from tools.candidate.list_my_cvs import ListMyCvsTool
+from tools.candidate.get_cv_detail import GetCvDetailTool
+from tools.candidate.save_cv import SaveCvTool
 
 
 class CandidateAgent(BaseAgent):
@@ -19,7 +20,9 @@ class CandidateAgent(BaseAgent):
         return [
             CareerAdvisorTool(),
             SearchJobsTool(api_client=self.api_client),
-            CvTemplateTool(llm=self.llm, system_prompt=self._get_system_prompt()),
+            ListMyCvsTool(api_client=self.api_client),
+            GetCvDetailTool(api_client=self.api_client),
+            SaveCvTool(api_client=self.api_client),
         ]
 
     def _get_system_prompt(self) -> str:
@@ -40,7 +43,9 @@ class CandidateAgent(BaseAgent):
         return {
             "analyze_candidate_dashboard": "career_advisor_node",
             "search_jobs": "job_searcher_node",
-            "generate_cv_template": "cv_template_node",
+            "list_my_cvs": "list_my_cvs_node",
+            "get_cv_detail": "get_cv_detail_node",
+            "save_cv": "save_cv_node",
         }
 
     def _add_custom_nodes(self, workflow):

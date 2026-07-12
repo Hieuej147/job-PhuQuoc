@@ -534,3 +534,9 @@ html {
 .stagger-4 {
   animation-delay: 0.20s;
 }
+
+/* Ẩn "loading cursor" mặc định của CopilotKit — đã có AgentProgressBubble
+   riêng đảm nhiệm việc báo hiệu AI đang xử lý, tránh hiển thị trùng lặp. */
+[data-testid="copilot-loading-cursor"] {
+  display: none !important;
+}

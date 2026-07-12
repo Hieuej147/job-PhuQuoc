@@ -32,7 +32,11 @@ module.exports = {
       name: "agent",
       script: path.join(root, "web", "scripts", "run-agent.js"),
       cwd: root,
-      env: { NODE_ENV: "development" },
+      env: {
+        NODE_ENV: "development",
+        PYTHONIOENCODING: "utf-8",
+        PYTHONUNBUFFERED: "1"
+      },
     },
   ],
 };
