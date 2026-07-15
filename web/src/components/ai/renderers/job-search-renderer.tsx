@@ -1,5 +1,4 @@
 "use client";
-
 import { useRenderTool } from "@copilotkit/react-core/v2";
 import { z } from "zod";
 import { JobListCard } from "./job-list-card";
@@ -15,16 +14,12 @@ export function useJobSearchRenderer() {
       limit: z.number().optional(),
     }),
     render: ({ status, result }) => {
+      // Khi đang chạy → ẩn hoàn toàn (AgentProgressBubble đã handle rồi)
       if (status === "inProgress") {
-        return (
-          <div className="my-3 p-4 bg-muted/50 rounded-xl border animate-pulse">
-            <div className="flex items-center gap-2">
-              <div className="size-4 rounded-full bg-muted-foreground/20 animate-spin border-2 border-muted-foreground/20 border-t-primary" />
-              <span className="text-sm text-muted-foreground">Đang tìm việc làm...</span>
-            </div>
-          </div>
-        );
+        return <></>;
       }
+
+      // Khi xong → hiện JobListCard
       if (status === "complete" && result) {
         try {
           const data = typeof result === "string" ? JSON.parse(result) : result;
@@ -33,6 +28,7 @@ export function useJobSearchRenderer() {
           return <></>;
         }
       }
+
       return <></>;
     },
   });

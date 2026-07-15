@@ -11,14 +11,17 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { RealtimeProvider } from "@/features/realtime/realtime-provider";
+import { AiChatShell } from "@/components/ai/global-ai-chat-widget";
 import type { AuthUser } from "@/lib/auth";
 
 export function Providers({
   children,
   initialUser,
+  header,
 }: {
   children: React.ReactNode;
   initialUser?: AuthUser | null;
+  header?: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [queryClient] = useState(
@@ -49,14 +52,19 @@ export function Providers({
         <TooltipProvider>
           <AuthProvider initialUser={initialUser}>
             <RealtimeProvider>
-              {isPrintRoute ? content : (
+              {isPrintRoute ? (
+                <>
+                  {header}
+                  {content}
+                </>
+              ) : (
                 <CopilotKitProvider
                   runtimeUrl="/api/copilotkit"
                   credentials="include"
                   publicLicenseKey={process.env.NEXT_PUBLIC_COPILOTKIT_LICENSE_KEY}
                   showDevConsole={true}
                 >
-                  {content}
+                  <AiChatShell header={header}>{content}</AiChatShell>
                 </CopilotKitProvider>
               )}
             </RealtimeProvider>

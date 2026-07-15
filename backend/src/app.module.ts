@@ -29,6 +29,7 @@ import { AuditModule } from "./modules/audit/audit.module";
 import { UploadModule } from "./modules/upload/upload.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { QuotaModule } from "./common/quota/quota.module";
+import { ChatThreadsModule } from "./modules/chat-threads/chat-threads.module";
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { QuotaModule } from "./common/quota/quota.module";
     UploadModule,
     DashboardModule,
     QuotaModule,
+    ChatThreadsModule,
   ],
   providers: [
     {
@@ -75,4 +77,4 @@ import { QuotaModule } from "./common/quota/quota.module";
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

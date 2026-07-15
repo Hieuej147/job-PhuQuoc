@@ -1,11 +1,13 @@
 "use client";
-
 import {
   CopilotChatMessageView,
   useAgent,
+  useCopilotChatConfiguration,
 } from "@copilotkit/react-core/v2";
-import { Activity, CheckCircle2, Loader2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Activity, CheckCircle2, Loader2, Copy, Check, ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { fetchThreadHistory, type ThreadHistoryMessage } from "@/features/ai-chat/api";
+import { RichContent } from "@/components/ui/rich-content";
 
 interface AgentProgressState {
   cv_flow?: string;
@@ -39,7 +41,6 @@ function AgentProgressBubble({ agentId, title }: { agentId: string; title?: stri
     if (wasRunningRef.current && !agent.isRunning) {
       agent.setState(resetProgressState((agent.state || {}) as AgentProgressState));
     }
-
     wasRunningRef.current = agent.isRunning;
   }, [agent, agent.isRunning]);
 
@@ -48,9 +49,7 @@ function AgentProgressBubble({ agentId, title }: { agentId: string; title?: stri
   const activeWorker = state.activeWorker;
   const status = state.status || state.toolStatus || state.cv_flow;
   const hasState = Boolean(step || activeWorker || progress > 0);
-
   if (!agent.isRunning || !hasState || status === "idle") return null;
-
   const done = status === "done" || progress >= 100;
 
   return (
@@ -66,7 +65,6 @@ function AgentProgressBubble({ agentId, title }: { agentId: string; title?: stri
               <Activity className="size-4" />
             )}
           </div>
-
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-3">
               <p className="truncate font-semibold text-foreground">
@@ -92,17 +90,232 @@ function AgentProgressBubble({ agentId, title }: { agentId: string; title?: stri
   );
 }
 
-export function createAgentProgressMessageView(agentId: string, title?: string) {
+// Tắt hẳn "loading cursor" mặc định của CopilotKit (data-testid="copilot-loading-cursor")
+// — đây chính là nguồn gốc chấm đen nhấp nháy hiện lạc lõng phía trên tool card,
+// vì AgentProgressBubble đã đảm nhiệm việc báo hiệu "đang xử lý" rồi.
+function NoCursor() {
+  return <></>;
+}
+
+function WelcomeBubble({ text }: { text: string }) {
+  return (
+    <div className="flex h-full min-h-[600px] w-full flex-col items-center justify-center gap-2 px-10 py-10 text-center">
+      <p className="whitespace-pre-line text-xl font-medium leading-relaxed text-foreground">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+function HistoryBubble({ message }: { message: ThreadHistoryMessage }) {
+  const isUser = message.role === "user";
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // bỏ qua nếu trình duyệt chặn clipboard
+    }
+  };
+
+  return (
+    <div className={`group my-2 flex flex-col px-4 ${isUser ? "items-end" : "items-start"}`}>
+      <div
+        className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${isUser
+          ? "whitespace-pre-wrap bg-[#005a71] text-white"
+          : "border border-[#e1efff] bg-white text-foreground dark:border-[#1E5F74] dark:bg-[#0d2d42]"
+          }`}
+      >
+        {isUser ? (
+          message.content
+        ) : (
+          <RichContent
+            markdown={message.content}
+            className="prose-sm prose-p:my-1 prose-p:first:mt-0 prose-p:last:mb-0"
+          />
+        )}
+      </div>
+      <button
+        onClick={handleCopy}
+        className="mt-1 flex items-center gap-1 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+      >
+        {copied ? <Check size={12} /> : <Copy size={12} />}
+        {copied ? "Đã sao chép" : "Sao chép"}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Card hiển thị 1 lượt gọi tool trong lịch sử — nằm đúng vị trí thời gian thật của nó
+ * (giữa 2 tin nhắn text liên quan), thay vì bị nguồn khôi phục mặc định của CopilotKit
+ * dồn hết xuống cuối luồng chat.
+ */
+function ToolCallHistoryCard({ message }: { message: ThreadHistoryMessage }) {
+  let hasError = false;
+  try {
+    const parsed = JSON.parse(message.content);
+    hasError = Boolean(parsed?.error);
+  } catch {
+    // content không phải JSON hợp lệ — coi như không có lỗi, hiển thị raw text.
+  }
+
+  return (
+    <div className="my-2 px-4">
+      <details className="group rounded-xl border border-[#e1efff] bg-white px-4 py-2.5 text-sm dark:border-[#1E5F74] dark:bg-[#0d2d42]">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
+            <span
+              className={`size-2 shrink-0 rounded-full ${hasError ? "bg-red-500" : "bg-emerald-500"}`}
+            />
+            <span className="truncate font-mono text-xs font-semibold text-foreground">
+              {message.toolName}
+            </span>
+          </div>
+          <span
+            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${hasError
+              ? "bg-red-50 text-red-600 dark:bg-red-900/20"
+              : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20"
+              }`}
+          >
+            {hasError ? "Error" : "Done"}
+          </span>
+        </summary>
+        <div className="mt-2 space-y-2 border-t border-[#e1efff] pt-2 text-xs dark:border-[#1E5F74]">
+          {message.toolArgs !== undefined && (
+            <div>
+              <p className="mb-1 font-semibold uppercase tracking-wide text-muted-foreground">
+                Arguments
+              </p>
+              <pre className="overflow-x-auto rounded-lg bg-muted/50 p-2 text-[11px]">
+                {JSON.stringify(message.toolArgs ?? {}, null, 2)}
+              </pre>
+            </div>
+          )}
+          <div>
+            <p className="mb-1 font-semibold uppercase tracking-wide text-muted-foreground">
+              Result
+            </p>
+            <pre className="overflow-x-auto rounded-lg bg-muted/50 p-2 text-[11px]">
+              {message.content}
+            </pre>
+          </div>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function getMessageText(m: any): string {
+  if (typeof m.content === "string") return m.content;
+  try {
+    return JSON.stringify(m.content ?? "");
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Tự đọc lịch sử tin nhắn thật từ endpoint riêng (/threads/:id/history), bỏ qua
+ * cơ chế "tự tải lại lịch sử khi đổi threadId" lỗi của CopilotKit (GitHub issue
+ * #2200, #3181). Lịch sử (text + tool) luôn hiển thị cố định trên cùng theo đúng
+ * thứ tự thời gian thật, và tin nhắn "live" trùng nội dung/id với lịch sử sẽ bị
+ * lọc bỏ để tránh hiện lặp/sai vị trí.
+ */
+export function createAgentProgressMessageView(
+  agentId: string,
+  title?: string,
+  welcomeText?: string,
+) {
   function AgentProgressMessageView(props: any) {
+    const config = useCopilotChatConfiguration();
+    const threadId: string | undefined = (config as any)?.threadId;
+
+    const liveMessages = props.messages ?? [];
+
+    const [history, setHistory] = useState<ThreadHistoryMessage[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
+    const loadedThreadRef = useRef<string | undefined>(undefined);
+
+    useEffect(() => {
+      if (!threadId) {
+        setHistory([]);
+        setHistoryLoading(false);
+        return;
+      }
+      if (loadedThreadRef.current === threadId) return;
+      loadedThreadRef.current = threadId;
+      setHistoryLoading(true);
+      fetchThreadHistory(threadId)
+        .then((msgs) => setHistory(msgs))
+        .catch(() => setHistory([]))
+        .finally(() => setHistoryLoading(false));
+    }, [threadId]);
+
+    if (historyLoading) {
+      return (
+        <div className="flex h-full min-h-[200px] items-center justify-center text-sm text-muted-foreground">
+          Đang tải...
+        </div>
+      );
+    }
+
+    const hasHistory = history.length > 0;
+
+    const historyTextSet = new Set(
+      history
+        .filter((h) => h.kind === "text")
+        .map((h) => `${h.role}::${h.content}`),
+    );
+    // Dùng tool_call_id (không phải id của riêng ToolMessage) để lọc — đảm bảo loại bỏ
+    // CẢ CẶP AIMessage(tool_calls) + ToolMessage(kết quả) cùng lúc. Nếu chỉ lọc 1 phía,
+    // phía còn lại sẽ hiện treo mãi ở trạng thái "Running" vì mất cặp tương ứng.
+    const historyToolCallIdSet = new Set(
+      history
+        .filter((h) => h.kind === "tool" && h.toolCallId)
+        .map((h) => h.toolCallId as string),
+    );
+    const filteredLiveMessages = liveMessages.filter((m: any) => {
+      const toolCallId = m.tool_call_id || m.toolCallId;
+      if (toolCallId && historyToolCallIdSet.has(toolCallId)) return false;
+
+      const toolCalls = m.tool_calls || m.toolCalls;
+      if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+        const allResolved = toolCalls.every((tc: any) => historyToolCallIdSet.has(tc.id));
+        if (allResolved) return false;
+      }
+
+      const role = m.role === "user" ? "user" : "assistant";
+      const text = getMessageText(m);
+      return !historyTextSet.has(`${role}::${text}`);
+    });
+
+    if (!hasHistory && filteredLiveMessages.length === 0 && welcomeText) {
+      return <WelcomeBubble text={welcomeText} />;
+    }
+
     return (
       <>
-        <CopilotChatMessageView {...props} />
+        {hasHistory && (
+          <div>
+            {history.map((m) =>
+              m.kind === "tool" ? (
+                <ToolCallHistoryCard key={m.id} message={m} />
+              ) : (
+                <HistoryBubble key={m.id} message={m} />
+              ),
+            )}
+          </div>
+        )}
+        <CopilotChatMessageView {...props} messages={filteredLiveMessages} />
         <AgentProgressBubble agentId={agentId} title={title} />
       </>
     );
   }
-
-  AgentProgressMessageView.Cursor = CopilotChatMessageView.Cursor;
-
+  AgentProgressMessageView.Cursor = NoCursor;
   return AgentProgressMessageView as typeof CopilotChatMessageView;
 }
