@@ -1,9 +1,12 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../src/prisma/prisma-client.factory';
 import * as crypto from 'crypto';
 import * as dotenv from 'dotenv';
-dotenv.config({ path: '../.env' });
+import * as path from 'path';
 
-const prisma = new PrismaClient();
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const prisma = createPrismaClient();
+
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 const MODEL = process.env.EMBEDDING_MODEL || 'nomic-embed-text';
 
@@ -42,14 +45,15 @@ async function main() {
 
   for (const job of jobs) {
     console.log(`Syncing job: ${job.id} - ${job.title}`);
-    
-    const text = `${job.title}. ${job.description} ${job.requirements || ''}`.trim();
+
+    const rawText = `${job.title}. ${job.description} ${job.requirements || ''}`.trim();
+    const text = `search_document: ${rawText}`;
     const embedding = await generateEmbedding(text);
-    
+
     if (embedding) {
       const id = crypto.randomUUID();
       const vectorString = `[${embedding.join(',')}]`;
-      
+
       try {
         await prisma.$executeRaw`
           INSERT INTO "job_embedding" ("id", "jobId", "embedding")
@@ -64,8 +68,7 @@ async function main() {
     } else {
       console.error(`❌ Failed to generate vector for job ${job.id}`);
     }
-    
-    // Add small delay to avoid overloading Ollama
+
     await new Promise(resolve => setTimeout(resolve, 500));
   }
 

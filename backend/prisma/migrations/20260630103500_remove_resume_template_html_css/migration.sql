@@ -1,3 +1,3 @@
 ALTER TABLE "resume_template"
-  DROP COLUMN "htmlTemplate",
-  DROP COLUMN "cssTemplate";
+  DROP COLUMN IF EXISTS "htmlTemplate",
+  DROP COLUMN IF EXISTS "cssTemplate";

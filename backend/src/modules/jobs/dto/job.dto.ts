@@ -187,9 +187,28 @@ export class VectorSearchDto {
   @IsArray()
   @IsNumber({}, { each: true })
   embedding: number[];
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   limit?: number;
+
+  @IsOptional()
+  @IsString()
+  wardId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(2000000000)
+  salaryMin?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(2000000000)
+  salaryMax?: number;
 }

@@ -2,6 +2,9 @@
  * @file ecosystem.config.js
  * @description PM2 ecosystem configuration.
  * @note Chạy được trên cả Windows và Linux, gồm backend, frontend, inngest và FastAPI agent.
+ * @note frontend chạy bản PRODUCTION (đã build sẵn) để tránh hiện tượng biên dịch
+ *       chậm/đứng khi chuyển trang trong dev mode với codebase lớn.
+ *       Muốn quay lại dev mode (hot-reload khi sửa code), đổi "start" thành "run dev:ui".
  */
 const path = require("path");
 const root = __dirname;
@@ -9,25 +12,19 @@ module.exports = {
   apps: [
     {
       name: "backend",
-      // --- Cấu hình cũ ---
-      // script: "dist/src/main.js",
-      node_args: "-r dotenv/config",
-      // --- Cấu hình mới (dùng 1 cách duy nhất qua package manager) ---
-      script: "pnpm",
-      args: "run dev",
+      script: "cmd.exe",
+      args: "/c pnpm run dev",
+      interpreter: "none",
       cwd: path.join(root, "backend"),
       env: { NODE_ENV: "development" },
     },
     {
       name: "frontend",
-      // --- Cấu hình cũ ---
-      // script: "node_modules/next/dist/bin/next",
-      // args: "dev -p 3001",
-      // --- Cấu hình mới (dùng 1 cách duy nhất qua package manager) ---
-      script: "pnpm",
-      args: "run dev:ui",
+      script: "cmd.exe",
+      args: "/c pnpm start",
+      interpreter: "none",
       cwd: path.join(root, "web"),
-      env: { NODE_ENV: "development" },
+      env: { NODE_ENV: "production" },
     },
     {
       name: "inngest",

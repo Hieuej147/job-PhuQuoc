@@ -8,13 +8,14 @@ from tools.candidate.career_advisor import CareerAdvisorTool
 from tools.candidate.search_jobs import SearchJobsTool
 from tools.candidate.list_my_cvs import ListMyCvsTool
 from tools.candidate.get_cv_detail import GetCvDetailTool
+from tools.candidate.choose_cv_template import ChooseCvTemplateTool
 from tools.candidate.save_cv import SaveCvTool
 
 
 class CandidateAgent(BaseAgent):
-    def __init__(self, llm: BaseChatModel, context: AgentContext):
+    def __init__(self, llm: BaseChatModel, context: AgentContext, checkpointer=None):
         api_client = ApiClient()
-        super().__init__(llm, context, api_client)
+        super().__init__(llm, context, api_client, checkpointer)
 
     def _register_tools(self) -> list:
         return [
@@ -22,6 +23,7 @@ class CandidateAgent(BaseAgent):
             SearchJobsTool(api_client=self.api_client),
             ListMyCvsTool(api_client=self.api_client),
             GetCvDetailTool(api_client=self.api_client),
+            ChooseCvTemplateTool(api_client=self.api_client),
             SaveCvTool(api_client=self.api_client),
         ]
 
@@ -45,6 +47,7 @@ class CandidateAgent(BaseAgent):
             "search_jobs": "job_searcher_node",
             "list_my_cvs": "list_my_cvs_node",
             "get_cv_detail": "get_cv_detail_node",
+            "choose_cv_template": "choose_cv_template_node",
             "save_cv": "save_cv_node",
         }
 

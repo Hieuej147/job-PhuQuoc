@@ -52,6 +52,15 @@ class SaveCvInput(BaseModel):
         default=None,
         description="Nếu đã có resume_id (đang sửa CV cũ), truyền vào đây. Để trống nếu đang tạo CV mới.",
     )
+    template_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "ID template lấy được từ tool choose_cv_template. "
+            "BẮT BUỘC khi tạo CV mới (resume_id trống) — phải gọi choose_cv_template trước để lấy giá trị này. "
+            "Khi cập nhật CV đã có (resume_id có giá trị): để trống nếu KHÔNG đổi mẫu, "
+            "hoặc truyền vào nếu user muốn ĐỔI SANG MẪU KHÁC (cũng phải gọi choose_cv_template trước để lấy giá trị này)."
+        ),
+    )
     title: Optional[str] = Field(default=None, description="Tên/tiêu đề CV, ví dụ 'CV Frontend Developer'")
     name: Optional[str] = Field(default=None, description="Họ tên ứng viên")
     email: Optional[str] = Field(default=None, description="Email liên hệ")
@@ -62,10 +71,6 @@ class SaveCvInput(BaseModel):
     projects: Optional[List[ProjectItem]] = Field(default=None, description="Danh sách dự án cần thêm/thiết lập")
     skills: Optional[str] = Field(default=None, description="Danh sách kỹ năng, dạng chuỗi phân tách bởi dấu phẩy")
     languages: Optional[str] = Field(default=None, description="Ngôn ngữ biết, dạng chuỗi")
-    style_preference: Optional[str] = Field(
-        default=None,
-        description="Phong cách template mong muốn khi tạo CV mới, ví dụ 'chuyên nghiệp', 'sáng tạo', 'tối giản'",
-    )
     replace_lists: bool = Field(
         default=False,
         description="True nếu muốn THAY THẾ hoàn toàn danh sách education/experience/projects thay vì chỉ thêm vào",
@@ -76,8 +81,11 @@ class SaveCvTool(BaseTool):
     name = "save_cv"
     description = (
         "Tạo mới CV (nếu không có resume_id) hoặc cập nhật CV đã tồn tại (nếu có resume_id). "
-        "Khi tạo mới, tool sẽ tự chọn template phù hợp và lưu vào hệ thống. "
+        "Khi tạo mới, BẮT BUỘC phải có template_id (lấy từ tool choose_cv_template gọi trước đó) — "
+        "nếu thiếu, tool sẽ báo lỗi thay vì tự chọn template. "
         "Khi cập nhật, chỉ cần truyền các trường muốn thay đổi; các trường không truyền sẽ được giữ nguyên. "
+        "Nếu user muốn ĐỔI SANG MẪU KHÁC cho CV đã có, gọi choose_cv_template trước để lấy template_id mới "
+        "rồi truyền kèm resume_id vào đây. "
         "Với education/experience/projects, mặc định sẽ THÊM vào danh sách hiện có (không xóa dữ liệu cũ) "
         "trừ khi replace_lists=True."
     )
@@ -85,26 +93,6 @@ class SaveCvTool(BaseTool):
 
     def __init__(self, api_client: ApiClient):
         self.api_client = api_client
-
-    async def _pick_template_id(self, style_preference: Optional[str]) -> Optional[str]:
-        try:
-            response = await self.api_client.get("/resumes/templates")
-            items = response.get("data", response) if isinstance(response, dict) else response
-            if isinstance(items, dict):
-                items = items.get("items", [])
-            if not isinstance(items, list) or not items:
-                return None
-
-            if style_preference:
-                keyword = style_preference.strip().lower()
-                for tpl in items:
-                    text = f"{tpl.get('name', '')} {tpl.get('description', '')}".lower()
-                    if keyword in text:
-                        return tpl.get("id")
-
-            return items[0].get("id")
-        except Exception:
-            return None
 
     def _merge_list(self, existing: Optional[list], new_items: Optional[list], replace: bool) -> Optional[list]:
         if new_items is None:
@@ -117,6 +105,7 @@ class SaveCvTool(BaseTool):
     async def run(
         self,
         resume_id: Optional[str] = None,
+        template_id: Optional[str] = None,
         title: Optional[str] = None,
         name: Optional[str] = None,
         email: Optional[str] = None,
@@ -127,7 +116,6 @@ class SaveCvTool(BaseTool):
         projects: Optional[List[ProjectItem]] = None,
         skills: Optional[str] = None,
         languages: Optional[str] = None,
-        style_preference: Optional[str] = None,
         replace_lists: bool = False,
     ) -> dict:
         try:
@@ -137,6 +125,8 @@ class SaveCvTool(BaseTool):
                 current_data = unwrap_data(current)
 
                 payload: Dict[str, Any] = {}
+                if template_id is not None:
+                    payload["templateId"] = template_id
                 if title is not None:
                     payload["title"] = title
                 if name is not None:
@@ -171,9 +161,13 @@ class SaveCvTool(BaseTool):
                 }
 
             # --- TẠO CV MỚI ---
-            template_id = await self._pick_template_id(style_preference)
             if not template_id:
-                return {"error": "Không tìm thấy template CV nào khả dụng để tạo mới."}
+                return {
+                    "error": (
+                        "Thiếu template_id. Cần gọi tool choose_cv_template trước để chọn mẫu CV, "
+                        "rồi mới gọi save_cv để tạo mới."
+                    )
+                }
 
             payload = {"templateId": template_id}
             if title is not None:
@@ -221,9 +215,9 @@ class SaveCvTool(BaseTool):
             is_update = bool(args.get("resume_id"))
             state["activeWorker"] = "cv_manager"
             state["status"] = "running"
-            state["currentStep"] = "Đang cập nhật CV..." if is_update else "Đang tạo và lưu CV mới..."
+            state["currentStep"] = "Đang cập nhật CV..." if is_update else "Đang lưu CV mới..."
             state["toolStatus"] = "save_cv"
-            state["progress"] = 60
+            state["progress"] = 80
             await copilotkit_emit_state(config, state)
 
             def parse_items(raw_list, model_cls):
@@ -233,6 +227,7 @@ class SaveCvTool(BaseTool):
 
             result = await tool_instance.run(
                 resume_id=args.get("resume_id"),
+                template_id=args.get("template_id"),
                 title=args.get("title"),
                 name=args.get("name"),
                 email=args.get("email"),
@@ -243,7 +238,6 @@ class SaveCvTool(BaseTool):
                 projects=parse_items(args.get("projects"), ProjectItem),
                 skills=args.get("skills"),
                 languages=args.get("languages"),
-                style_preference=args.get("style_preference"),
                 replace_lists=args.get("replace_lists", False),
             )
 

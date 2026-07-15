@@ -95,10 +95,11 @@ def sanitize_tool_message_order(messages: list) -> list:
 
 
 class BaseAgent(ABC):
-    def __init__(self, llm: BaseChatModel, context: AgentContext, api_client=None):
+    def __init__(self, llm: BaseChatModel, context: AgentContext, api_client=None, checkpointer=None):
         self.llm = llm
         self.context = context
         self.api_client = api_client
+        self.checkpointer = checkpointer or MemorySaver()
         self.tools = self._register_tools()
         self.graph = self._build_graph()
 
@@ -199,6 +200,15 @@ class BaseAgent(ABC):
             return Command(goto="chat_node", update={"authorization": state["authorization"]})
 
         async def chat_node(state: Any, config: RunnableConfig) -> Command:
+            # Nếu chưa có tin nhắn nào của user, kết thúc luôn để hiển thị welcomeMessageText từ FE
+            if not any(
+                m.__class__.__name__ in ("HumanMessage", "HumanMessageChunk")
+                or getattr(m, "type", None) == "human"
+                or (isinstance(m, dict) and m.get("role") == "user")
+                for m in state.get("messages", [])
+            ):
+                return Command(goto="__end__")
+
             fe_tools = state.get("copilotkit", {}).get("actions", [])
             context_items = state.get("copilotkit", {}).get("context", [])
             auth_info = state.get("authorization", {})
@@ -272,4 +282,4 @@ class BaseAgent(ABC):
         for node_name in custom_routing.values():
             workflow.add_edge(node_name, "chat_node")
 
-        return workflow.compile(checkpointer=MemorySaver())
+        return workflow.compile(checkpointer=self.checkpointer)

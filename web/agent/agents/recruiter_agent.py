@@ -13,9 +13,9 @@ from tools.recruiter.create_job import CreateJobTool           # thêm
 
 
 class RecruiterAgent(BaseAgent):
-    def __init__(self, llm: BaseChatModel, context: AgentContext):
+    def __init__(self, llm: BaseChatModel, context: AgentContext, checkpointer=None):
         api_client = ApiClient()
-        super().__init__(llm, context, api_client)
+        super().__init__(llm, context, api_client, checkpointer)
 
     def _register_tools(self) -> list:
         return [

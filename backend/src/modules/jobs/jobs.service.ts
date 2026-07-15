@@ -627,23 +627,47 @@ export class JobsService {
     ]);
   }
 
-  async vectorSearch(embedding: number[], limit: number = 10) {
+  async vectorSearch(
+    embedding: number[],
+    limit: number = 10,
+    wardId?: string,
+    salaryMin?: number,
+    salaryMax?: number,
+    minSimilarity: number = 0.35, // ← THÊM THAM SỐ NÀY
+  ) {
     const vectorString = `[${embedding.join(',')}]`;
 
     const results = await this.prisma.$queryRaw`
+    SELECT * FROM (
       SELECT 
         j.id, j.title, j.slug, j."salaryMin", j."salaryMax", j.type, j."wardId",
+        w.name as "wardName",
         c.name as "companyName", c.logo as "companyLogo",
         1 - (je.embedding <=> ${vectorString}::vector) as similarity
       FROM "job" j
       JOIN "job_embedding" je ON j.id = je."jobId"
       JOIN "company" c ON j."companyId" = c.id
+      LEFT JOIN "address_ward" w ON j."wardId" = w.id
+      LEFT JOIN "address_district" d ON w."districtId" = d.id
+      LEFT JOIN "address_province" p ON d."provinceId" = p.id
       WHERE j.status = 'ACTIVE'
         AND j."archivedAt" IS NULL
         AND (j.deadline IS NULL OR j.deadline >= NOW())
-      ORDER BY je.embedding <=> ${vectorString}::vector
-      LIMIT ${limit}
-    `;
+        ${wardId ? Prisma.sql`
+          AND (
+            j."wardId" = ${wardId}
+            OR w.name ILIKE ${'%' + wardId + '%'}
+            OR d.name ILIKE ${'%' + wardId + '%'}
+            OR p.name ILIKE ${'%' + wardId + '%'}
+          )
+        ` : Prisma.empty}
+        ${salaryMin ? Prisma.sql`AND j."salaryMin" >= ${salaryMin}` : Prisma.empty}
+        ${salaryMax ? Prisma.sql`AND j."salaryMax" <= ${salaryMax}` : Prisma.empty}
+    ) sub
+    WHERE similarity >= ${minSimilarity}
+    ORDER BY similarity DESC
+    LIMIT ${limit}
+  `;
 
     return Array.isArray(results) ? results.map(r => ({
       id: r.id,
@@ -652,7 +676,7 @@ export class JobsService {
       company: r.companyName,
       companyLogo: r.companyLogo,
       salary: `${r.salaryMin || '?'} - ${r.salaryMax || '?'}`,
-      location: r.wardId,
+      location: r.wardName || r.wardId,
       type: r.type,
       similarity: r.similarity
     })) : [];

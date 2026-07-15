@@ -13,8 +13,14 @@ from core.api_client import ApiClient
 class SearchJobsInput(BaseModel):
     keyword: str = Field(description="Từ khóa tìm kiếm, vị trí hoặc kỹ năng")
     location: Optional[str] = Field(default=None, description="Thành phố hoặc remote")
-    min_salary: Optional[int] = Field(default=None, description="Lương tối thiểu")
-    max_salary: Optional[int] = Field(default=None, description="Lương tối đa")
+    min_salary: Optional[int] = Field(
+        default=None,
+        description="Lương tối thiểu, đơn vị VNĐ (đồng). Ví dụ user nói '8 triệu' phải quy đổi thành 8000000."
+    )
+    max_salary: Optional[int] = Field(
+        default=None,
+        description="Lương tối đa, đơn vị VNĐ (đồng). Ví dụ user nói '12 triệu' phải quy đổi thành 12000000."
+    )
     limit: int = Field(default=10, description="Số lượng kết quả")
 
 
@@ -88,7 +94,7 @@ class SearchJobsTool(BaseTool):
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{ollama_url}/api/embeddings",
-                    json={"model": model, "prompt": keyword},
+                    json={"model": model, "prompt": f"search_query: {keyword}"},
                     timeout=30.0
                 )
                 response.raise_for_status()
@@ -96,9 +102,6 @@ class SearchJobsTool(BaseTool):
 
         except Exception as e:
             return {"error": f"Failed to generate embedding: {str(e)}", "jobs": [], "total": 0}
-
-        if not embedding:
-            return {"error": "No embedding generated", "jobs": [], "total": 0}
 
         # Đảm bảo embedding là list Python thuần
         embedding = list(embedding)

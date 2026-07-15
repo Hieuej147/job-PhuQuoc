@@ -91,11 +91,11 @@ export default function CandidateDashboard() {
   const unreadNotifs = summary?.notifications.unreadCount || 0;
   const quotaItems = summary?.quota
     ? [
-        { resource: "candidateApplications", label: "Đơn ứng tuyển", ...summary.quota.applications },
-        { resource: "candidateResumes", label: "CV đã tạo", ...summary.quota.resumes },
-        { resource: "savedJobs", label: "Việc đã lưu", ...summary.quota.savedJobs },
-        { resource: "savedCompanies", label: "Công ty theo dõi", ...summary.quota.savedCompanies },
-      ]
+      { resource: "candidateApplications", label: "Đơn ứng tuyển", ...summary.quota.applications },
+      { resource: "candidateResumes", label: "CV đã tạo", ...summary.quota.resumes },
+      { resource: "savedJobs", label: "Việc đã lưu", ...summary.quota.savedJobs },
+      { resource: "savedCompanies", label: "Công ty theo dõi", ...summary.quota.savedCompanies },
+    ]
     : [];
 
   return (
@@ -263,7 +263,8 @@ export default function CandidateDashboard() {
       <TabsContent value="ai">
         <CandidateDashboardAiTab
           title="Career Co-worker"
-          initialMessage="Xin chào! Tôi là Career Co-worker. Tôi có thể xem nhanh hồ sơ, CV, đơn ứng tuyển và việc đã lưu để gợi ý bước tiếp theo cho bạn."
+          initialMessage={`Xin chào! Mình là Career Co-worker — có thể xem nhanh hồ sơ, CV, đơn ứng tuyển của bạn để gợi ý bước tiếp theo.
+Bạn cần hỗ trợ gì hôm nay?`}
           contextDescription="Candidate dashboard context: user, profile checklist, applications, saved jobs, resumes, notifications."
           contextValue={{ user, profile, completionPct, checklist, applications, savedJobs, resumes, notifications }}
         />

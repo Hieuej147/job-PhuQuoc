@@ -18,11 +18,11 @@ def _candidate_context():
     )
 
 
-def create_candidate_graph():
-    return CandidateAgent(llm=_llm(), context=_candidate_context()).graph
+def create_candidate_graph(checkpointer=None):
+    return CandidateAgent(llm=_llm(), context=_candidate_context(), checkpointer=checkpointer).graph
 
 
-def create_recruiter_graph():
+def create_recruiter_graph(checkpointer=None):
     settings = get_settings()
     llm = ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key)
     context = AgentContext(
@@ -30,7 +30,7 @@ def create_recruiter_graph():
         user_name="Recruiter",
         role="recruiter",
     )
-    return RecruiterAgent(llm=llm, context=context).graph
+    return RecruiterAgent(llm=llm, context=context, checkpointer=checkpointer).graph
 
 
 def create_candidate_job_graph():
