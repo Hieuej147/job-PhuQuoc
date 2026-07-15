@@ -103,3 +103,4 @@ docs/BE_ARCHITECTURE_PRODUCTION_AWS_REVIEW_VI.md
 local-reports/
 logs/inngest-error.log
 logs/inngest-out.log
+.codex/

@@ -2,7 +2,9 @@
 
 ## Truy cập
 
-Sau khi khởi động backend, truy cập: **http://localhost:3000/docs**
+Sau khi khởi động backend, truy cập trực tiếp backend tại **http://localhost:3006/docs**.
+
+Nếu đang bật Nginx reverse proxy local, API public đi qua **http://localhost**, nhưng Scalar docs vẫn nên mở trực tiếp từ backend để test và debug.
 
 ## Đăng nhập trong Scalar
 
@@ -10,7 +12,7 @@ Scalar UI cần session cookie để test các endpoint yêu cầu auth.
 
 ### Bước 1: Đăng nhập
 
-1. Mở Scalar docs tại `http://localhost:3000/docs`
+1. Mở Scalar docs tại `http://localhost:3006/docs`
 2. Tìm endpoint `POST /api/v1/scalar-auth/login`
 3. Click "Try it"
 4. Nhập body:

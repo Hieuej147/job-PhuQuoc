@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Search, MapPin, ChevronDown, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { apiUrl } from "@/lib/api-client";
 
 const ALL_LOCATION = { id: "", name: "Tất cả khu vực", slug: "" };
 
@@ -26,7 +27,7 @@ export default function SearchBar() {
 
   // Fetch wards from API
   useEffect(() => {
-    fetch("/api/v1/address/wards?limit=50", { credentials: "include" })
+    fetch(apiUrl("/api/v1/address/wards?limit=50"), { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
         const items = d.data?.items || d.data || [];

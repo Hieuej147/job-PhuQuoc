@@ -1,8 +1,9 @@
-// Võ Thành Phú
 "use client"
 
+// Võ Thành Phú
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { apiUrl } from "@/lib/api-client";
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
 import { QuotaUpgradeDialog } from "@/components/quota/quota-upgrade-dialog"
@@ -35,7 +36,7 @@ export default function CompanyCard({ company, index = 0, isFollowed = false }: 
     }
     setFollowLoading(true);
     try {
-      const res = await fetch(`/api/v1/saved/companies/${company.id}`, {
+      const res = await fetch(apiUrl(`/api/v1/saved/companies/${company.id}`), {
         method: "POST",
         credentials: "include",
       });

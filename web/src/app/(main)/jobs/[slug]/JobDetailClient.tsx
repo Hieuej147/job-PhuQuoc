@@ -8,10 +8,11 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { OverviewItem } from "@/types/job";
 import { Briefcase, Loader2, X, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
-import { unwrapApiPayload } from "@/lib/api-client";
+import { unwrapApiPayload, apiUrl } from "@/lib/api-client";
 import { companyInitials, formatSalary, jobTypeLabel } from "@/lib/utils/format";
 import { checkApplication, getSavedJobIds, saveJob, unsaveJob } from "@/features/job-detail/api";
 
@@ -266,12 +267,16 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       router.push(`/auth/login?redirect=/jobs/${job.slug}`);
       return;
     }
+    if (user.role !== "CANDIDATE") {
+      toast.error("Chỉ tài khoản ứng viên mới có thể ứng tuyển công việc.");
+      return;
+    }
     if (isApplied) return;
     setShowApplyModal(true);
     setApplyError(null);
     // Fetch user's resumes
     try {
-      const res = await fetch("/api/v1/resumes/my", { credentials: "include" });
+      const res = await fetch(apiUrl("/api/v1/resumes/my"), { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         const list = extractResumeList(d);
@@ -297,7 +302,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
 
         const formData = new FormData();
         formData.append("file", uploadedFile);
-        const uploadRes = await fetch("/api/v1/upload/candidate-cv", {
+        const uploadRes = await fetch(apiUrl("/api/v1/upload/candidate-cv"), {
           method: "POST",
           credentials: "include",
           body: formData,
@@ -314,7 +319,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         body.cvUrl = uploadData.cvUrl;
       }
 
-      const res = await fetch("/api/v1/applications", {
+      const res = await fetch(apiUrl("/api/v1/applications"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

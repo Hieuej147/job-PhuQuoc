@@ -42,14 +42,12 @@ export class CreateJobDto {
   salaryMax?: number;
 
 
-  @IsOptional()
   @IsString()
-  wardId?: string;
+  wardId: string;
 
 
-  @IsOptional()
   @IsString()
-  addressDetail?: string;
+  addressDetail: string;
 
 
   @IsOptional()

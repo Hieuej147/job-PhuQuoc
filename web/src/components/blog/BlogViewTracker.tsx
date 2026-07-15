@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { apiUrl } from "@/lib/api-client";
 
 interface BlogViewTrackerProps {
   slug: string;
@@ -17,7 +18,7 @@ export function BlogViewTracker({ slug, delayMs = 15000 }: BlogViewTrackerProps)
       trackedRef.current = true;
 
       try {
-        await fetch(`/api/v1/blogs/slug/${slug}/view`, { method: "POST" });
+        await fetch(apiUrl(`/api/v1/blogs/slug/${slug}/view`), { method: "POST" });
       } catch (error) {
         console.error("Không thể ghi nhận lượt xem blog:", error);
       }

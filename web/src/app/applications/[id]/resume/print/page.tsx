@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { TEMPLATE_MAP } from "@/template";
 import { toTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
+import { apiUrl } from "@/lib/api-client";
 
 type ResumeInfo = {
   id: string;
@@ -36,7 +37,7 @@ export default function EmployerApplicationResumePrintPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/v1/applications/${id}/resume`, { credentials: "include" })
+    fetch(apiUrl(`/api/v1/applications/${id}/resume`), { credentials: "include" })
       .then((response) => response.json())
       .then((body) => setPayload(body.data?.data ?? body.data ?? body))
       .finally(() => setLoading(false));
@@ -67,7 +68,7 @@ export default function EmployerApplicationResumePrintPage() {
   }
 
   if (payload.type === "uploaded") {
-    const fileUrl = `/api/v1/applications/${id}/resume-file`;
+    const fileUrl = apiUrl(`/api/v1/applications/${id}/resume-file`);
 
     return (
       <div className="min-h-screen bg-slate-200">

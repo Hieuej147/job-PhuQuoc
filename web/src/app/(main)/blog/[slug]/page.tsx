@@ -12,7 +12,7 @@ import BlogDetailClient from "@/components/blog/BlogDetailClient";
 import { BlogViewTracker } from "@/components/blog/BlogViewTracker";
 import { articleJsonLd, breadcrumbJsonLd } from "@/features/seo/structured-data";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3006";
 
 interface RouteProps {
   params: Promise<{ slug: string }>;

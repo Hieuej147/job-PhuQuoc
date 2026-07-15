@@ -6,6 +6,7 @@ import { TEMPLATE_MAP } from "@/template";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { toNewTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
+import { apiUrl } from "@/lib/api-client";
 
 function NewCvContent() {
   const router = useRouter();
@@ -23,8 +24,8 @@ function NewCvContent() {
     const loadProfile = async () => {
       try {
         const [authResponse, profileResponse] = await Promise.all([
-          fetch("/api/v1/auth/me", { credentials: "include" }),
-          fetch("/api/v1/resumes/profile", { credentials: "include" }),
+          fetch(apiUrl("/api/v1/auth/me"), { credentials: "include" }),
+          fetch(apiUrl("/api/v1/resumes/profile"), { credentials: "include" }),
         ]);
 
         if (!authResponse.ok) throw new Error("Failed to load user profile");

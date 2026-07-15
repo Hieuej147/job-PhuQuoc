@@ -2,7 +2,7 @@
 
 const { spawn } = require("node:child_process");
 
-const endpoint = process.env.INNGEST_DEV_URL || "http://localhost:3000/api/inngest";
+const endpoint = process.env.INNGEST_DEV_URL || "http://localhost:3006/api/inngest";
 const maxAttempts = Number(process.env.INNGEST_WAIT_ATTEMPTS || 60);
 const delayMs = Number(process.env.INNGEST_WAIT_DELAY_MS || 2000);
 

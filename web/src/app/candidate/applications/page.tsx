@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { apiDelete, unwrapApiPayload } from "@/lib/api-client";
+import { apiDelete, unwrapApiPayload, apiUrl } from "@/lib/api-client";
 
 interface ApplicationMessage {
   id: string;
@@ -102,7 +102,7 @@ export default function ApplicationsPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    fetch("/api/v1/applications/my?limit=100", { credentials: "include" })
+    fetch(apiUrl("/api/v1/applications/my?limit=100"), { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
         const payload = unwrapApiPayload<any>(d);

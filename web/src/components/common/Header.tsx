@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/hooks/use-theme";
+import { apiUrl } from "@/lib/api-client";
 import {
   RefreshCw,
   CheckCircle,
@@ -81,7 +82,7 @@ export default function Header() {
     : "U";
 
   const handleLogout = () => {
-    fetch("/api/auth/sign-out", { method: "POST", credentials: "include" })
+    fetch(apiUrl("/api/auth/sign-out"), { method: "POST", credentials: "include" })
       .then(() => { window.location.href = "/auth/login"; });
   };
 

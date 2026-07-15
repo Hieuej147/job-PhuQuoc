@@ -4,7 +4,7 @@ import { Briefcase } from "lucide-react";
 import { jobPostingJsonLd, breadcrumbJsonLd } from "@/features/seo/structured-data";
 import JobDetailClient from "./JobDetailClient";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3006";
 
 interface PageProps {
   params: Promise<{ slug: string }>;

@@ -4,6 +4,32 @@ export function unwrapApiPayload<T = unknown>(body: unknown): T {
   return (nested?.data ?? payload?.data ?? body) as T;
 }
 
+function stripTrailingSlash(value: string) {
+  return value.replace(/\/+$/, "");
+}
+
+function isAbsoluteUrl(path: string) {
+  return /^https?:\/\//i.test(path);
+}
+
+function isBackendPath(path: string) {
+  return path.startsWith("/api/v1") || path.startsWith("/api/auth");
+}
+
+function getBackendBaseUrl() {
+  const browserBase = process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    return browserBase ? stripTrailingSlash(browserBase) : "";
+  }
+  return stripTrailingSlash(process.env.BACKEND_URL || browserBase || "http://localhost:3006");
+}
+
+export function apiUrl(path: string) {
+  if (isAbsoluteUrl(path) || !isBackendPath(path)) return path;
+  const baseUrl = getBackendBaseUrl();
+  return baseUrl ? `${baseUrl}${path}` : path;
+}
+
 export class ApiError extends Error {
   status: number;
   code?: string;
@@ -42,7 +68,7 @@ function getErrorDetails(body: any) {
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(path, {
+    response = await fetch(apiUrl(path), {
       ...options,
       credentials: options.credentials ?? "include",
       headers:

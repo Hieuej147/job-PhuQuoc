@@ -4,6 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { apiUrl } from "@/lib/api-client";
 import { 
   Select, 
   SelectContent, 
@@ -90,7 +91,7 @@ export function PostMetadataForm({
     formData.append('file', file);
 
     try {
-      const res = await fetch('/api/v1/upload/post-image', {
+      const res = await fetch(apiUrl('/api/v1/upload/post-image'), {
         method: 'POST',
         body: formData,
       });

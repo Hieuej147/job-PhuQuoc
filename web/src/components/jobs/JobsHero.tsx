@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "@/lib/api-client";
 /**
  * @file JobsHero.tsx
  * @description Component banner tìm kiếm chính của trang danh sách việc làm.
@@ -58,7 +59,7 @@ export default function JobsHero({
 
   // Fetch wards dynamically from API
   useEffect(() => {
-    fetch("/api/v1/address/wards?limit=50", { credentials: "include" })
+    fetch(apiUrl("/api/v1/address/wards?limit=50"), { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
         const items = d.data?.items || d.data || [];

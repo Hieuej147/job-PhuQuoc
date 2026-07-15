@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import CompaniesPageClient from "@/components/company/CompaniesPageClient";
 import Loading from "./loading";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3006";
 
 export const metadata: Metadata = {
   title: "Công Ty Tuyển Dụng Phú Quốc | Nhà Tuyển Dụng Hàng Đầu | PQJobs",

@@ -20,7 +20,7 @@ type RealtimeContextValue = {
 const RealtimeContext = createContext<RealtimeContextValue>({ socket: null, status: "idle" });
 
 function getRealtimeUrl() {
-  return process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3000";
+  return process.env.NEXT_PUBLIC_REALTIME_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost";
 }
 
 function prependNotification(payload: NotificationsList | undefined, notification: NotificationItem) {
@@ -66,6 +66,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     setStatus("connecting");
     const nextSocket = io(`${getRealtimeUrl()}/realtime`, {
+      path: "/socket.io",
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity,

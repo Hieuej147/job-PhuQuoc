@@ -34,12 +34,12 @@ async function bootstrap() {
       functions,
     }),
   );
-
+  // import { VersioningType } from "@nestjs/common"; in the furture if tou want to use versioning
   app.setGlobalPrefix("api/v1", {
     exclude: ["api/auth/(.*)", "api/inngest"],
   });
 
-// OpenAPI config for Scalar API docs
+  // OpenAPI config for Scalar API docs
   const config = new DocumentBuilder()
     .setTitle("Phú Quốc Jobs API")
     .setDescription("Backend API cho website tìm việc làm tại Phú Quốc")
@@ -99,11 +99,11 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3001",
+    origin: process.env.FRONTEND_URL || "http://localhost:3006",
     credentials: true,
   });
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3006;
   await app.listen(port);
   console.log(`Server running on http://localhost:${port}`);
   console.log(`API Docs (Scalar): http://localhost:${port}/docs`);

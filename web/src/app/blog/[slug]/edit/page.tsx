@@ -8,6 +8,7 @@ import { BlogEditor } from '@/components/blog/BlogEditor';
 import { PostMetadataForm } from '@/components/blog/PostMetadataForm';
 import { ArrowLeft, Save, Send, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiUrl } from "@/lib/api-client";
 
 interface EditBlogPageProps {
   params: Promise<{ slug: string }>;
@@ -38,7 +39,7 @@ export default function EditBlogPage({ params }: EditBlogPageProps) {
   // Fetch existing post details
   // Load categories list
   useEffect(() => {
-    fetch('/api/v1/blog-categories')
+    fetch(apiUrl('/api/v1/blog-categories'))
       .then(res => res.json())
       .then(payload => {
         const data = Array.isArray(payload.data?.items)
@@ -58,7 +59,7 @@ export default function EditBlogPage({ params }: EditBlogPageProps) {
   useEffect(() => {
     async function loadPost() {
       try {
-        const response = await fetch(`/api/v1/blogs/slug/${id}`);
+        const response = await fetch(apiUrl(`/api/v1/blogs/slug/${id}`));
         if (!response.ok) {
           if (response.status === 404) {
             throw new Error('Không tìm thấy bài viết');
@@ -137,7 +138,7 @@ export default function EditBlogPage({ params }: EditBlogPageProps) {
     };
 
     try {
-      const response = await fetch(`/api/v1/blogs/${dbId}`, {
+      const response = await fetch(apiUrl(`/api/v1/blogs/${dbId}`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

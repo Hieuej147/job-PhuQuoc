@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { Suspense } from "react";
 import JobsPageClient from "./JobsPageClient";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3006";
 
 export const metadata: Metadata = {
   title: "Việc Làm Phú Quốc 2026 | Resort, Khách Sạn, Nhà Hàng | PQJobs",

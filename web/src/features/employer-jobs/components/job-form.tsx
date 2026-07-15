@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { MarkdownRichEditor } from "@/components/ui/MarkdownRichEditor";
 import { EXP_LEVELS, JOB_LEVELS, JOB_TYPES } from "../constants";
 import type { JobCategory, JobFormState } from "../types";
+import type { WorkLocation } from "@/features/locations/api";
 
 function CurrencyInput({
   value,
@@ -46,6 +47,7 @@ function CurrencyInput({
 export function JobForm({
   form,
   categories,
+  workLocations,
   submitting,
   submitLabel,
   submittingLabel,
@@ -54,6 +56,7 @@ export function JobForm({
 }: {
   form: JobFormState;
   categories: JobCategory[];
+  workLocations: WorkLocation[];
   submitting: boolean;
   submitLabel: string;
   submittingLabel: string;
@@ -151,6 +154,46 @@ export function JobForm({
             <div>
               <label className="mb-1.5 block text-sm font-medium">Lương tối đa (VND)</label>
               <CurrencyInput value={form.salaryMax} onChange={(value) => onChange("salaryMax", value)} placeholder="VD: 20.000.000" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Địa điểm làm việc</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Nhập địa điểm làm việc thực tế của tin tuyển dụng. Địa điểm này có thể khác địa chỉ công ty.
+          </p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">
+                Khu vực tại Phú Quốc <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={form.wardId}
+                onChange={(event) => onChange("wardId", event.target.value)}
+                className="w-full rounded-lg border bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-[#0d2d42]"
+              >
+                <option value="">Chọn khu vực làm việc</option>
+                {workLocations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">
+                Địa chỉ chi tiết <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={form.addressDetail}
+                onChange={(event) => onChange("addressDetail", event.target.value)}
+                placeholder="VD: Grand World, Bãi Trường, 123 Trần Hưng Đạo"
+              />
             </div>
           </div>
         </CardContent>

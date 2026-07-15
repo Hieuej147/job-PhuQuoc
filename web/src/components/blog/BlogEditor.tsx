@@ -6,6 +6,7 @@ import { Node, mergeAttributes } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import StarterKit from "@tiptap/starter-kit";
+import { apiUrl } from "@/lib/api-client";
 import {
   Bold,
   Heading2,
@@ -109,7 +110,7 @@ export function BlogEditor({
 
     setUploading(true);
     try {
-      const response = await fetch("/api/v1/upload/post-image", {
+      const response = await fetch(apiUrl("/api/v1/upload/post-image"), {
         method: "POST",
         body: formData,
       });

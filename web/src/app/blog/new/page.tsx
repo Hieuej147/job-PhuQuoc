@@ -8,6 +8,7 @@ import { BlogEditor } from '@/components/blog/BlogEditor';
 import { PostMetadataForm } from '@/components/blog/PostMetadataForm';
 import { ArrowLeft, Save, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiUrl } from "@/lib/api-client";
 
 export default function NewBlogPage() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function NewBlogPage() {
 
   // Load categories list
   useEffect(() => {
-    fetch('/api/v1/blog-categories')
+    fetch(apiUrl('/api/v1/blog-categories'))
       .then(res => res.json())
       .then(payload => {
         const data = Array.isArray(payload.data?.items)
@@ -99,7 +100,7 @@ export default function NewBlogPage() {
     };
 
     try {
-      const response = await fetch('/api/v1/blogs', {
+      const response = await fetch(apiUrl('/api/v1/blogs'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

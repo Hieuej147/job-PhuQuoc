@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { CacheService } from '../../common/cache/cache.service';
@@ -37,6 +37,48 @@ export class JobsService {
     private readonly jobBackground: JobBackgroundService,
     private readonly quotaService: QuotaService,
   ) { }
+
+  private async assertWardExists(wardId: string) {
+    const ward = await this.prisma.addressWard.findUnique({
+      where: { id: wardId },
+      select: { id: true },
+    });
+    if (!ward) {
+      throw new BadRequestException('Khu vực làm việc không hợp lệ');
+    }
+  }
+
+  private async normalizeCreateLocation(data: CreateJobDto) {
+    const wardId = data.wardId?.trim();
+    const addressDetail = data.addressDetail?.trim();
+
+    if (!wardId) {
+      throw new BadRequestException('Vui lòng chọn khu vực làm việc');
+    }
+    if (!addressDetail) {
+      throw new BadRequestException('Vui lòng nhập địa chỉ làm việc chi tiết');
+    }
+
+    await this.assertWardExists(wardId);
+    return { ...data, wardId, addressDetail };
+  }
+
+  private async normalizeUpdateLocation(job: { wardId: string | null; addressDetail: string | null }, data: UpdateJobDto) {
+    const rawWardId = data.wardId === undefined ? job.wardId : data.wardId;
+    const rawAddressDetail = data.addressDetail === undefined ? job.addressDetail : data.addressDetail;
+    const wardId = rawWardId?.trim();
+    const addressDetail = rawAddressDetail?.trim();
+
+    if (!wardId) {
+      throw new BadRequestException('Vui lòng chọn khu vực làm việc');
+    }
+    if (!addressDetail) {
+      throw new BadRequestException('Vui lòng nhập địa chỉ làm việc chi tiết');
+    }
+
+    await this.assertWardExists(wardId);
+    return { ...data, wardId, addressDetail };
+  }
 
   async findAll(query: JobQueryDto) {
     const { search, category, type, experience, level, salaryMin, salaryMax, salaryRange, ward, companyId, sort } = query;
@@ -306,13 +348,14 @@ export class JobsService {
   async create(userId: string, data: CreateJobDto) {
     const company = await this.companyContract.findByOwnerId(userId);
     if (!company) throw new NotFoundException('You need a company to post jobs');
+    const normalizedData = await this.normalizeCreateLocation(data);
     const usedJobs = await this.countEmployerJobQuotaUsage(userId);
     await this.quotaService.assertWithinForUser(userId, 'employerJobs', usedJobs);
-    const slug = slugify(data.title) + '-' + Date.now().toString(36);
+    const slug = slugify(normalizedData.title) + '-' + Date.now().toString(36);
     const job = await this.prisma.job.create({
       data: {
-        ...data, slug, companyId: company.id,
-        type: data.type as JobType, experience: data.experience as ExperienceLevel, level: data.level as JobLevel,
+        ...normalizedData, slug, companyId: company.id,
+        type: normalizedData.type as JobType, experience: normalizedData.experience as ExperienceLevel, level: normalizedData.level as JobLevel,
         status: 'DRAFT',
       },
     });
@@ -326,7 +369,8 @@ export class JobsService {
     if (!job) throw new NotFoundException('Job not found');
     if (job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
     if (job.archivedAt) throw new ConflictException('Archived jobs must be restored before editing');
-    const updated = await this.prisma.job.update({ where: { id }, data: data as Prisma.JobUpdateInput });
+    const normalizedData = await this.normalizeUpdateLocation(job, data);
+    const updated = await this.prisma.job.update({ where: { id }, data: normalizedData as Prisma.JobUpdateInput });
     await this.invalidateCache();
 
     if (

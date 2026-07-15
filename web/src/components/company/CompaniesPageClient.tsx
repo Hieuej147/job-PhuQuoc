@@ -9,6 +9,7 @@ import CompanyList from "@/components/company/CompanyList";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Company } from "@/types/company";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiUrl } from "@/lib/api-client";
 
 const SIZE_LABELS: Record<string, string> = {
   SIZE_1_50: "1-50",
@@ -75,7 +76,7 @@ export default function CompaniesPageClient({
       return;
     }
 
-    fetch("/api/v1/saved/companies?limit=500", { credentials: "include" })
+    fetch(apiUrl("/api/v1/saved/companies?limit=500"), { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!d) return;

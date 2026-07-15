@@ -16,6 +16,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useCandidateDashboardSummary } from "@/features/dashboard/queries";
 import { computeProfileCompletion } from "@/lib/profile-completion";
 import { QuotaUsageCard } from "@/components/quota/quota-usage-card";
+import { apiUrl } from "@/lib/api-client";
 
 interface Application { id: string; job: { title: string; company: { name: string } }; createdAt: string; status: "PENDING" | "REVIEWING" | "ACCEPTED" | "REJECTED"; }
 interface SavedJob { id: string; job: { id: string; slug?: string; title: string; company: { name: string }; type?: string; jobType?: string; salaryMin?: number; salaryMax?: number; deadline?: string | null }; createdAt: string; }
@@ -37,7 +38,7 @@ export default function CandidateDashboard() {
   useEffect(() => {
     async function fetchProfileResume() {
       try {
-        const res = await fetch("/api/v1/resumes/profile", { credentials: "include" });
+        const res = await fetch(apiUrl("/api/v1/resumes/profile"), { credentials: "include" });
         if (res.ok) {
           const payload = await res.json();
           const profileData = payload?.data?.data || payload?.data || {};

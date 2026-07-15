@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/client";
+import { apiUrl } from "@/lib/api-client";
 
 const appOrigin =
   typeof window === "undefined"
@@ -6,5 +7,5 @@ const appOrigin =
     : window.location.origin;
 
 export const authClient = createAuthClient({
-  baseURL: `${appOrigin}/api/auth`,
+  baseURL: process.env.NEXT_PUBLIC_API_URL ? apiUrl("/api/auth") : `${appOrigin}/api/auth`,
 });

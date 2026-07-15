@@ -6,6 +6,7 @@ import { TEMPLATE_MAP, SLUG_TO_ID } from "@/template";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { toNewTemplateResume, toTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
+import { apiUrl } from "@/lib/api-client";
 
 export default function TemplatePage() {
   const params = useParams();
@@ -30,8 +31,8 @@ export default function TemplatePage() {
       if (!resumeId) {
         try {
           const [authResponse, profileResponse] = await Promise.all([
-            fetch("/api/v1/auth/me", { credentials: "include" }),
-            fetch("/api/v1/resumes/profile", { credentials: "include" }),
+            fetch(apiUrl("/api/v1/auth/me"), { credentials: "include" }),
+            fetch(apiUrl("/api/v1/resumes/profile"), { credentials: "include" }),
           ]);
           const authJson = authResponse.ok ? await authResponse.json() : {};
           const profileJson = profileResponse.ok ? await profileResponse.json() : {};
@@ -52,7 +53,7 @@ export default function TemplatePage() {
       }
 
       try {
-        const response = await fetch(`/api/v1/resumes/${resumeId}`, { credentials: "include" });
+        const response = await fetch(apiUrl(`/api/v1/resumes/${resumeId}`), { credentials: "include" });
         if (!response.ok) throw new Error("Failed to load CV");
         const json = await response.json();
         const r = json.data?.data ?? json.data ?? json;

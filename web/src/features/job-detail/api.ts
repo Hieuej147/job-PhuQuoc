@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, unwrapApiPayload } from "@/lib/api-client";
+import { apiDelete, apiGet, apiPost, unwrapApiPayload, apiUrl } from "@/lib/api-client";
 
 export async function getSavedJobIds() {
   const payload = await apiGet<any>("/api/v1/saved/jobs?limit=200");
@@ -7,7 +7,7 @@ export async function getSavedJobIds() {
 }
 
 export async function checkApplication(jobId: string) {
-  const response = await fetch(`/api/v1/applications/check/${jobId}`, { credentials: "include" });
+  const response = await fetch(apiUrl(`/api/v1/applications/check/${jobId}`), { credentials: "include" });
   if (!response.ok) return false;
   const data = await response.json();
   const appliedState = unwrapApiPayload<{ applied?: boolean }>(data);

@@ -23,6 +23,9 @@ describe('JobsService', () => {
       company: {
         findUnique: vi.fn(),
       },
+      addressWard: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'ward1', name: 'Duong Dong' }),
+      },
     };
     auditServiceMock = {
       log: vi.fn().mockResolvedValue(undefined),
@@ -136,10 +139,20 @@ describe('JobsService', () => {
         title: 'New Job',
         description: 'Job description',
         categoryId: 'cat1',
+        wardId: 'ward1',
+        addressDetail: '123 Tran Hung Dao',
       });
 
       expect(result.status).toBe('DRAFT');
       expect(result.companyId).toBe('company1');
+      expect(prismaMock.job.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            wardId: 'ward1',
+            addressDetail: '123 Tran Hung Dao',
+          }),
+        }),
+      );
       expect(jobBackgroundMock.syncEmbedding).not.toHaveBeenCalled();
     });
 
@@ -150,7 +163,47 @@ describe('JobsService', () => {
         title: 'New Job',
         description: 'Job description',
         categoryId: 'cat1',
+        wardId: 'ward1',
+        addressDetail: '123 Tran Hung Dao',
       })).rejects.toThrow('You need a company to post jobs');
+    });
+
+    it('should require a work location', async () => {
+      const mockCompany = { id: 'company1', ownerId: 'user1' };
+      companyContractMock.findByOwnerId.mockResolvedValue(mockCompany);
+
+      await expect(service.create('user1', {
+        title: 'New Job',
+        description: 'Job description',
+        categoryId: 'cat1',
+        addressDetail: '123 Tran Hung Dao',
+      } as any)).rejects.toThrow('Vui lòng chọn khu vực làm việc');
+    });
+
+    it('should require a detailed work address', async () => {
+      const mockCompany = { id: 'company1', ownerId: 'user1' };
+      companyContractMock.findByOwnerId.mockResolvedValue(mockCompany);
+
+      await expect(service.create('user1', {
+        title: 'New Job',
+        description: 'Job description',
+        categoryId: 'cat1',
+        wardId: 'ward1',
+      } as any)).rejects.toThrow('Vui lòng nhập địa chỉ làm việc chi tiết');
+    });
+
+    it('should reject an unknown work location', async () => {
+      const mockCompany = { id: 'company1', ownerId: 'user1' };
+      companyContractMock.findByOwnerId.mockResolvedValue(mockCompany);
+      prismaMock.addressWard.findUnique.mockResolvedValue(null);
+
+      await expect(service.create('user1', {
+        title: 'New Job',
+        description: 'Job description',
+        categoryId: 'cat1',
+        wardId: 'unknown-ward',
+        addressDetail: '123 Tran Hung Dao',
+      })).rejects.toThrow('Khu vực làm việc không hợp lệ');
     });
 
     it('should auto-generate slug', async () => {
@@ -164,6 +217,8 @@ describe('JobsService', () => {
         title: 'Frontend Developer',
         description: 'Job description',
         categoryId: 'cat1',
+        wardId: 'ward1',
+        addressDetail: '123 Tran Hung Dao',
       });
 
       expect(prismaMock.job.create).toHaveBeenCalledWith(
@@ -182,6 +237,8 @@ describe('JobsService', () => {
         id: '1',
         company: { ownerId: 'user1' },
         archivedAt: null,
+        wardId: 'ward1',
+        addressDetail: '123 Tran Hung Dao',
       };
       prismaMock.job.findUnique.mockResolvedValue(mockJob);
       prismaMock.job.update.mockResolvedValue({ ...mockJob, title: 'Updated' });
@@ -195,6 +252,8 @@ describe('JobsService', () => {
         id: '1',
         company: { ownerId: 'user1' },
         archivedAt: null,
+        wardId: 'ward1',
+        addressDetail: '123 Tran Hung Dao',
       };
       prismaMock.job.findUnique.mockResolvedValue(mockJob);
       prismaMock.job.update.mockResolvedValue({
@@ -214,6 +273,8 @@ describe('JobsService', () => {
         id: '1',
         company: { ownerId: 'user1' },
         archivedAt: null,
+        wardId: 'ward1',
+        addressDetail: '123 Tran Hung Dao',
       };
       const updated = {
         ...mockJob,
@@ -235,6 +296,8 @@ describe('JobsService', () => {
         id: '1',
         company: { ownerId: 'user1' },
         archivedAt: null,
+        wardId: 'ward1',
+        addressDetail: '123 Tran Hung Dao',
       };
       prismaMock.job.findUnique.mockResolvedValue(mockJob);
       prismaMock.job.update.mockResolvedValue({
@@ -259,6 +322,8 @@ describe('JobsService', () => {
       const mockJob = {
         id: '1',
         company: { ownerId: 'user1' },
+        wardId: 'ward1',
+        addressDetail: '123 Tran Hung Dao',
       };
       prismaMock.job.findUnique.mockResolvedValue(mockJob);
 

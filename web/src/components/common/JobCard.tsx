@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth/auth-provider";
+import { apiUrl } from "@/lib/api-client";
 
 export interface HomeJobItem {
   id: string;
@@ -34,7 +35,7 @@ export interface JobCardProps {
 
 async function fetchSavedJobIds(userId: string): Promise<string[]> {
   try {
-    const res = await fetch("/api/v1/saved/jobs?limit=100", {
+    const res = await fetch(apiUrl("/api/v1/saved/jobs?limit=100"), {
       credentials: "include",
     });
     if (!res.ok) return [];
@@ -77,7 +78,7 @@ export default function JobCard({ job }: JobCardProps) {
         return;
       }
 
-      const saveRes = await fetch(`/api/v1/saved/jobs/${job.id}`, {
+      const saveRes = await fetch(apiUrl(`/api/v1/saved/jobs/${job.id}`), {
         method: "POST",
         credentials: "include",
       });
