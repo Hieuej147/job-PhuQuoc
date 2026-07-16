@@ -2,29 +2,32 @@
  * @file ecosystem.config.js
  * @description PM2 ecosystem configuration.
  * @note Chạy được trên cả Windows và Linux, gồm backend, frontend, inngest và FastAPI agent.
- * @note frontend chạy bản PRODUCTION (đã build sẵn) để tránh hiện tượng biên dịch
- *       chậm/đứng khi chuyển trang trong dev mode với codebase lớn.
- *       Muốn quay lại dev mode (hot-reload khi sửa code), đổi "start" thành "run dev:ui".
+ * @note frontend chạy DEV mode để có hot reload và Next.js dev indicator khi đang code.
+ *       Nếu cần test production locally, build web rồi đổi process frontend sang "start".
  */
 const path = require("path");
 const root = __dirname;
+const isWindows = process.platform === "win32";
+const pnpmScript = isWindows ? "cmd.exe" : "pnpm";
+const pnpmArgs = (script) => (isWindows ? `/c pnpm ${script}` : script);
+
 module.exports = {
   apps: [
     {
       name: "backend",
-      script: "cmd.exe",
-      args: "/c pnpm run dev",
+      script: pnpmScript,
+      args: pnpmArgs("run dev"),
       interpreter: "none",
       cwd: path.join(root, "backend"),
       env: { NODE_ENV: "development" },
     },
     {
       name: "frontend",
-      script: "cmd.exe",
-      args: "/c pnpm start",
+      script: pnpmScript,
+      args: pnpmArgs("run dev:ui"),
       interpreter: "none",
       cwd: path.join(root, "web"),
-      env: { NODE_ENV: "production" },
+      env: { NODE_ENV: "development" },
     },
     {
       name: "inngest",
@@ -45,7 +48,7 @@ module.exports = {
       env: {
         NODE_ENV: "development",
         PYTHONIOENCODING: "utf-8",
-        PYTHONUNBUFFERED: "1"
+        PYTHONUNBUFFERED: "1",
       },
     },
   ],

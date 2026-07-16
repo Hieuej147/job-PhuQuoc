@@ -20,7 +20,8 @@
     "db:down": "docker compose -f docker/docker-compose.yml down",
     "db:reset": "cd backend && npx prisma migrate reset --force && npx prisma db seed",
     "db:studio": "cd backend && npx prisma studio",
-    "redis:ui": "pnpm dlx redis-commander --redis-host 127.0.0.1 --redis-port 6381"
+    "redis:ui": "pnpm dlx redis-commander --redis-host 127.0.0.1 --redis-port 6381",
+    "ngrok": "ngrok http 3001"
   },
   "devDependencies": {},
   "packageManager": "pnpm@9.0.0",

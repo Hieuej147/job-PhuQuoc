@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from tools.base_tool import BaseTool
 from core.api_client import ApiClient
+from tools.candidate.resume_helpers import summarize_resume, unwrap_data, unwrap_list
 
 
 class ListMyCvsInput(BaseModel):
@@ -28,27 +29,34 @@ class ListMyCvsTool(BaseTool):
 
     async def run(self) -> dict:
         try:
-            response = await self.api_client.get("/resumes/my")
-            items = response.get("data", response) if isinstance(response, dict) else response
-            if isinstance(items, dict):
-                items = items.get("items", [])
-            if not isinstance(items, list):
-                items = []
+            cvs_response = await self.api_client.get("/resumes/my")
+            profile_response = await self.api_client.get("/resumes/profile")
+            items = unwrap_list(cvs_response)
+            profile = unwrap_data(profile_response)
+            profile_summary = summarize_resume(profile, "profile")
+            cvs = [
+                summary
+                for summary in (summarize_resume(cv, "created_cv") for cv in items)
+                if summary is not None
+            ]
+
             return {
-                "cvs": [
-                    {
-                        "id": cv.get("id"),
-                        "title": cv.get("title"),
-                        "templateId": cv.get("templateId"),
-                        "isDefault": cv.get("isDefault"),
-                        "updatedAt": cv.get("updatedAt"),
-                    }
-                    for cv in items
-                ],
-                "total": len(items),
+                "profile": profile_summary,
+                "cvs": cvs,
+                "hasProfile": profile_summary is not None,
+                "totalCreatedCvs": len(cvs),
+                "hasAnyCvLikeData": len(cvs) > 0 or bool(profile_summary and profile_summary.get("hasContent")),
             }
         except Exception as e:
-            return {"error": str(e), "cvs": [], "total": 0}
+            return {
+                "error": str(e),
+                "message": "Không thể kiểm tra danh sách CV lúc này. Đây là lỗi kết nối/xác thực, không có nghĩa là bạn chưa có CV.",
+                "profile": None,
+                "cvs": [],
+                "hasProfile": False,
+                "totalCreatedCvs": 0,
+                "hasAnyCvLikeData": False,
+            }
 
     def as_node(self):
         tool_instance = self

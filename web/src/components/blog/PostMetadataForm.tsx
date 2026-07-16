@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { apiUrl } from "@/lib/api-client";
+import { uploadPostImage } from '@/features/blog/upload-post-image';
 import { 
   Select, 
   SelectContent, 
@@ -87,31 +87,14 @@ export function PostMetadataForm({
     }
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
 
     try {
-      const res = await fetch(apiUrl('/api/v1/upload/post-image'), {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error('Upload cover failed');
-      }
-
-      const body = await res.json();
-      const imageUrl = body.url || body.data?.url;
-
-      if (!imageUrl) {
-        throw new Error('No URL returned from upload');
-      }
-
+      const imageUrl = await uploadPostImage(file);
       setCoverImage(imageUrl);
       toast.success('Upload ảnh bìa thành công!');
     } catch (error) {
       console.error(error);
-      toast.error('Có lỗi xảy ra khi upload ảnh bìa.');
+      toast.error(error instanceof Error ? error.message : 'Có lỗi xảy ra khi upload ảnh bìa.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

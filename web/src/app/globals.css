@@ -21,13 +21,13 @@
   --secondary-foreground: #005a71;
   --muted: #e1efff;
   --muted-foreground: #3f484c;
-  --accent: #F59E0B;
+  --accent: #f59e0b;
   --accent-foreground: #ffffff;
   --destructive: #ba1a1a;
   --destructive-foreground: #ffffff;
   --border: #bec8cd;
   --input: #bec8cd;
-  --ring: #0E7490;
+  --ring: #0e7490;
 
   /* Chart tokens */
   --chart-tooltip-bg: #ffffff;
@@ -40,7 +40,8 @@
   --cpk-default-font-family: var(--font-body);
 
   /* Fonts */
-  --font-body: "Be Vietnam Pro", "Plus Jakarta Sans", "DM Sans", "Segoe UI", sans-serif;
+  --font-body:
+    "Be Vietnam Pro", "Plus Jakarta Sans", "DM Sans", "Segoe UI", sans-serif;
   --font-code:
     "Spline Sans Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
 
@@ -50,10 +51,12 @@
   --cpk-lilac-400: #bec2ff;
   --cpk-orange-400: #ffac4d;
   --cpk-yellow-400: #fff388;
-  --cpk-ambient-gradient: linear-gradient(90deg,
-      #bec2ff 0%,
-      #85ecce 45.673%,
-      #ffac4d 100%);
+  --cpk-ambient-gradient: linear-gradient(
+    90deg,
+    #bec2ff 0%,
+    #85ecce 45.673%,
+    #ffac4d 100%
+  );
   --sidebar: hsl(0 0% 98%);
   --sidebar-foreground: hsl(240 5.3% 26.1%);
   --sidebar-primary: hsl(240 5.9% 10%);
@@ -66,30 +69,30 @@
 
 :root.dark,
 .dark {
-  --background: #0C2231;
-  --foreground: #E0F2FE;
+  --background: #0c2231;
+  --foreground: #e0f2fe;
 
-  --card: #0F3347;
-  --card-foreground: #E0F2FE;
-  --popover: #0C2231;
-  --popover-foreground: #E0F2FE;
-  --primary: #67E8F9;
-  --primary-foreground: #0C2231;
-  --secondary: #1E5F74;
-  --secondary-foreground: #E0F2FE;
-  --muted: #1E5F74;
-  --muted-foreground: #94A3B8;
-  --accent: #F59E0B;
-  --accent-foreground: #0C2231;
+  --card: #0f3347;
+  --card-foreground: #e0f2fe;
+  --popover: #0c2231;
+  --popover-foreground: #e0f2fe;
+  --primary: #67e8f9;
+  --primary-foreground: #0c2231;
+  --secondary: #1e5f74;
+  --secondary-foreground: #e0f2fe;
+  --muted: #1e5f74;
+  --muted-foreground: #94a3b8;
+  --accent: #f59e0b;
+  --accent-foreground: #0c2231;
   --destructive: #ba1a1a;
   --destructive-foreground: #ffffff;
-  --border: #1E5F74;
-  --input: #1E5F74;
-  --ring: #67E8F9;
+  --border: #1e5f74;
+  --input: #1e5f74;
+  --ring: #67e8f9;
 
-  --chart-tooltip-bg: #0F3347;
-  --chart-tooltip-border: #1E5F74;
-  --chart-axis: #94A3B8;
+  --chart-tooltip-bg: #0f3347;
+  --chart-tooltip-border: #1e5f74;
+  --chart-axis: #94a3b8;
 
   --sidebar: hsl(210 30% 8%);
   --sidebar-foreground: hsl(210 20% 90%);
@@ -158,7 +161,9 @@ html {
 .fade-up {
   opacity: 0;
   transform: translateY(20px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  transition:
+    opacity 0.6s ease-out,
+    transform 0.6s ease-out;
 }
 
 .fade-up.visible {
@@ -203,7 +208,8 @@ html {
   opacity: 0;
   visibility: hidden;
   transform: translateY(24px);
-  transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+  transition:
+    opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.7s cubic-bezier(0.4, 0, 0.2, 1),
     visibility 0.7s;
 }
@@ -248,17 +254,19 @@ html {
 
 /* ── AUTH INPUT FOCUS ── */
 .auth-input {
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .auth-input:focus {
   outline: none;
-  border-color: #0E7490;
+  border-color: #0e7490;
   box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.18);
 }
 
 .dark .auth-input:focus {
-  border-color: #67E8F9;
+  border-color: #67e8f9;
   box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.18);
 }
 
@@ -296,7 +304,8 @@ html {
   opacity: 0;
   visibility: hidden;
   transform: translateY(24px);
-  transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+  transition:
+    opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.7s cubic-bezier(0.4, 0, 0.2, 1),
     visibility 0.7s;
 }
@@ -312,7 +321,7 @@ html {
 }
 
 .stagger-2 {
-  transition-delay: 0.10s;
+  transition-delay: 0.1s;
 }
 
 .stagger-3 {
@@ -320,21 +329,29 @@ html {
 }
 
 .stagger-4 {
-  transition-delay: 0.20s;
+  transition-delay: 0.2s;
 }
 
 /* ── ARTICLE CUSTOM COMPONENT STYLING ── */
 .highlight-box {
-  background: linear-gradient(135deg, rgba(14, 116, 144, .06), rgba(13, 148, 136, .04));
-  border: 1px solid rgba(14, 116, 144, .2);
-  border-radius: .875rem;
+  background: linear-gradient(
+    135deg,
+    rgba(14, 116, 144, 0.06),
+    rgba(13, 148, 136, 0.04)
+  );
+  border: 1px solid rgba(14, 116, 144, 0.2);
+  border-radius: 0.875rem;
   padding: 1.25rem 1.5rem;
   margin: 1.25rem 0;
 }
 
 .dark .highlight-box {
-  background: linear-gradient(135deg, rgba(14, 116, 144, .12), rgba(13, 148, 136, .08));
-  border-color: rgba(103, 232, 249, .2);
+  background: linear-gradient(
+    135deg,
+    rgba(14, 116, 144, 0.12),
+    rgba(13, 148, 136, 0.08)
+  );
+  border-color: rgba(103, 232, 249, 0.2);
 }
 
 .highlight-box p {
@@ -349,7 +366,7 @@ html {
 
 /* Article typography styles from reference */
 .article-body {
-  font-size: .9375rem;
+  font-size: 0.9375rem;
   line-height: 1.85;
   color: #1e293b;
 }
@@ -362,8 +379,8 @@ html {
   font-size: 1.2rem;
   font-weight: 700;
   color: #005a71;
-  margin: 1.75rem 0 .75rem;
-  padding-left: .75rem;
+  margin: 1.75rem 0 0.75rem;
+  padding-left: 0.75rem;
   border-left: 3px solid #0e7490;
 }
 
@@ -376,7 +393,7 @@ html {
   font-size: 1rem;
   font-weight: 700;
   color: #005a71;
-  margin: 1.25rem 0 .5rem;
+  margin: 1.25rem 0 0.5rem;
 }
 
 .dark .article-body h3 {
@@ -384,17 +401,17 @@ html {
 }
 
 .article-body p {
-  margin-bottom: .875rem;
+  margin-bottom: 0.875rem;
 }
 
 .article-body ul {
   list-style: none !important;
   padding: 0 !important;
-  margin: .75rem 0 1rem !important;
+  margin: 0.75rem 0 1rem !important;
 }
 
 .article-body ul li {
-  padding: .35rem 0 .35rem 1.5rem !important;
+  padding: 0.35rem 0 0.35rem 1.5rem !important;
   position: relative !important;
 }
 
@@ -529,7 +546,7 @@ html {
 }
 
 .stagger-2 {
-  animation-delay: 0.10s;
+  animation-delay: 0.1s;
 }
 
 .stagger-3 {
@@ -537,7 +554,7 @@ html {
 }
 
 .stagger-4 {
-  animation-delay: 0.20s;
+  animation-delay: 0.2s;
 }
 
 /* Ẩn "loading cursor" mặc định của CopilotKit — đã có AgentProgressBubble
@@ -547,7 +564,6 @@ html {
 }
 
 @media print {
-
   html,
   body {
     margin: 0 !important;
@@ -565,7 +581,7 @@ html {
     padding: 0 !important;
   }
 
-  .resume-print-page>div {
+  .resume-print-page > div {
     width: 100% !important;
     max-width: 100% !important;
     min-height: 297mm !important;
@@ -574,7 +590,7 @@ html {
   }
 
   /* Force CV sheet to cover the whole A4 page without white borders */
-  .resume-print-page>div>div {
+  .resume-print-page > div > div {
     max-width: 100% !important;
     width: 100% !important;
     min-height: 297mm !important;
@@ -612,11 +628,11 @@ html {
     display: grid !important;
   }
 
-  .resume-print-page .futuristic-cv-grid>div:first-child {
+  .resume-print-page .futuristic-cv-grid > div:first-child {
     grid-column: span 1 !important;
   }
 
-  .resume-print-page .futuristic-cv-grid>aside {
+  .resume-print-page .futuristic-cv-grid > aside {
     grid-column: span 1 !important;
   }
 }
@@ -629,4 +645,19 @@ html {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
+}
+
+@keyframes chatgpt-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+}
+.animate-thinking-dot {
+  animation: chatgpt-pulse 1.5s ease-in-out infinite;
 }

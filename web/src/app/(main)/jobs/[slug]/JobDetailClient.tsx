@@ -7,14 +7,13 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { OverviewItem } from "@/types/job";
-import { Briefcase, Loader2, X, CheckCircle2 } from "lucide-react";
-import { toast } from "sonner";
+import { Loader2, X, CheckCircle2 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
-import { unwrapApiPayload, apiUrl } from "@/lib/api-client";
 import { companyInitials, formatSalary, jobTypeLabel } from "@/lib/utils/format";
 import { checkApplication, getSavedJobIds, saveJob, unsaveJob } from "@/features/job-detail/api";
+import { useJobApplyFlow } from "@/features/job-detail/use-job-apply-flow";
 
 import JobDetailHero from "@/components/jobs/JobDetailHero";
 import {
@@ -85,22 +84,6 @@ interface RelatedJob {
 interface JobDetailClientProps {
   job: JobData;
   relatedJobs: RelatedJob[];
-}
-
-function extractResumeList(payload: any): any[] {
-  const candidates = [
-    payload?.data?.data?.items,
-    payload?.data?.data,
-    payload?.data?.items,
-    payload?.data,
-    payload?.items,
-    payload,
-  ];
-
-  const list = candidates.find(Array.isArray);
-  if (!list) return [];
-
-  return list.filter((resume: any) => resume?.id && resume?.title !== "PROFILE_MASTER");
 }
 
 const EXP_LABELS: Record<string, string> = {
@@ -252,94 +235,13 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
     location: r.ward?.name || "Phú Quốc",
   }));
 
-  const [showApplyModal, setShowApplyModal] = useState(false);
-  const [coverLetter, setCoverLetter] = useState("");
-  const [applying, setApplying] = useState(false);
-  const [applySuccess, setApplySuccess] = useState(false);
-  const [applyError, setApplyError] = useState<string | null>(null);
-  const [applyTab, setApplyTab] = useState<"select" | "upload">("select");
-  const [resumes, setResumes] = useState<any[]>([]);
-  const [selectedResumeId, setSelectedResumeId] = useState<string>("");
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-
-  const openApplyModal = async () => {
-    if (!user) {
-      router.push(`/auth/login?redirect=/jobs/${job.slug}`);
-      return;
-    }
-    if (user.role !== "CANDIDATE") {
-      toast.error("Chỉ tài khoản ứng viên mới có thể ứng tuyển công việc.");
-      return;
-    }
-    if (isApplied) return;
-    setShowApplyModal(true);
-    setApplyError(null);
-    // Fetch user's resumes
-    try {
-      const res = await fetch(apiUrl("/api/v1/resumes/my"), { credentials: "include" });
-      if (res.ok) {
-        const d = await res.json();
-        const list = extractResumeList(d);
-        setResumes(list);
-        const defaultResume = list.find((r: any) => r.isDefault);
-        if (defaultResume) setSelectedResumeId(defaultResume.id);
-        else if (list.length > 0) setSelectedResumeId(list[0].id);
-      }
-    } catch {}
-  };
-
-  const handleApply = async () => {
-    setApplying(true);
-    setApplyError(null);
-    try {
-      const body: Record<string, unknown> = { jobId: job.id };
-      if (coverLetter) body.coverLetter = coverLetter;
-      if (applyTab === "select" && selectedResumeId) body.resumeId = selectedResumeId;
-      if (applyTab === "upload") {
-        if (!uploadedFile) {
-          throw new Error("Vui lòng chọn file CV PDF");
-        }
-
-        const formData = new FormData();
-        formData.append("file", uploadedFile);
-        const uploadRes = await fetch(apiUrl("/api/v1/upload/candidate-cv"), {
-          method: "POST",
-          credentials: "include",
-          body: formData,
-        });
-        const uploadBody = await uploadRes.json().catch(() => ({}));
-        if (!uploadRes.ok) {
-          throw new Error(uploadBody?.message || "Upload CV thất bại");
-        }
-
-        const uploadData = uploadBody?.data?.data ?? uploadBody?.data;
-        if (!uploadData?.cvUrl) {
-          throw new Error("Upload CV không trả về URL hợp lệ");
-        }
-        body.cvUrl = uploadData.cvUrl;
-      }
-
-      const res = await fetch(apiUrl("/api/v1/applications"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || `HTTP ${res.status}`);
-      }
-      setApplySuccess(true);
-      setIsApplied(true);
-      setShowApplyModal(false);
-      setCoverLetter("");
-      setUploadedFile(null);
-    } catch (e) {
-      setApplyError(e instanceof Error ? e.message : "Ứng tuyển thất bại");
-    } finally {
-      setApplying(false);
-    }
-  };
+  const applyFlow = useJobApplyFlow({
+    jobId: job.id,
+    jobSlug: job.slug,
+    user,
+    isApplied,
+    onApplied: () => setIsApplied(true),
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24 md:pb-0 transition-colors duration-200">
@@ -356,7 +258,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
           </div>
 
           <div className="space-y-5">
-            <JobApplySidebar onApply={openApplyModal} onSave={toggleSave} isSaved={isSaved} isApplied={isApplied} />
+            <JobApplySidebar onApply={applyFlow.openApplyModal} onSave={toggleSave} isSaved={isSaved} isApplied={isApplied} />
             <JobOverviewSidebar items={overviewItems} />
             <JobCompanySidebar
               companyLogo={job.company.logo}
@@ -374,51 +276,51 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
         <RelatedJobs jobs={mappedRelated} />
       </div>
 
-      <JobStickyBarMobile onApply={openApplyModal} onBookmark={toggleSave} isBookmarked={isSaved} isApplied={isApplied} />
+      <JobStickyBarMobile onApply={applyFlow.openApplyModal} onBookmark={toggleSave} isBookmarked={isSaved} isApplied={isApplied} />
 
       {/* Apply Modal */}
-      {showApplyModal && (
+      {applyFlow.showApplyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-[#0d2d42] rounded-2xl shadow-2xl max-w-lg w-full mx-4 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Ứng tuyển: {job.title}</h3>
-              <button onClick={() => setShowApplyModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><X className="w-5 h-5" /></button>
+              <button onClick={applyFlow.closeApplyModal} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Tại {job.company.name}</p>
 
-            {applyError && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">{applyError}</div>
+            {applyFlow.applyError && (
+              <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">{applyFlow.applyError}</div>
             )}
 
             {/* CV Tabs */}
             <div className="flex gap-2 mb-4">
               <button
-                onClick={() => setApplyTab("select")}
-                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${applyTab === "select" ? "bg-[#0E7490] text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
+                onClick={() => applyFlow.setApplyTab("select")}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${applyFlow.applyTab === "select" ? "bg-[#0E7490] text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
               >
                 CV đã lưu
               </button>
               <button
-                onClick={() => setApplyTab("upload")}
-                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${applyTab === "upload" ? "bg-[#0E7490] text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
+                onClick={() => applyFlow.setApplyTab("upload")}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${applyFlow.applyTab === "upload" ? "bg-[#0E7490] text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
               >
                 Upload PDF
               </button>
             </div>
 
             {/* Tab Content */}
-            {applyTab === "select" ? (
+            {applyFlow.applyTab === "select" ? (
               <div className="mb-4">
                 <label className="text-sm font-medium mb-1.5 block">Chọn CV</label>
-                {resumes.length === 0 ? (
+                {applyFlow.resumes.length === 0 ? (
                   <p className="text-sm text-gray-500">Bạn chưa có CV. Hãy tạo CV trước khi ứng tuyển.</p>
                 ) : (
                   <select
-                    value={selectedResumeId}
-                    onChange={(e) => setSelectedResumeId(e.target.value)}
+                    value={applyFlow.selectedResumeId}
+                    onChange={(e) => applyFlow.setSelectedResumeId(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#071a2b] dark:border-gray-600"
                   >
-                    {resumes.map((r: any) => (
+                    {applyFlow.resumes.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.title} {r.isDefault ? "(Mặc định)" : ""} — {r.template?.name || ""}
                       </option>
@@ -433,7 +335,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
                   <input
                     type="file"
                     accept=".pdf"
-                    onChange={(e) => setUploadedFile(e.target.files?.[0] || null)}
+                    onChange={(e) => applyFlow.setUploadedFile(e.target.files?.[0] || null)}
                     className="hidden"
                     id="cv-upload"
                   />
@@ -443,8 +345,8 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
                       <p className="text-xs mt-1">Tối đa 10MB</p>
                     </div>
                   </label>
-                  {uploadedFile && (
-                    <p className="mt-2 text-sm text-[#0E7490] font-medium">{uploadedFile.name}</p>
+                  {applyFlow.uploadedFile && (
+                    <p className="mt-2 text-sm text-[#0E7490] font-medium">{applyFlow.uploadedFile.name}</p>
                   )}
                 </div>
               </div>
@@ -454,8 +356,8 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
             <div className="mb-4">
               <label className="text-sm font-medium mb-1.5 block">Thư giới thiệu (tùy chọn)</label>
               <textarea
-                value={coverLetter}
-                onChange={(e) => setCoverLetter(e.target.value)}
+                value={applyFlow.coverLetter}
+                onChange={(e) => applyFlow.setCoverLetter(e.target.value)}
                 rows={3}
                 placeholder="Giới thiệu ngắn gọn về bản thân và lý do bạn phù hợp với vị trí này..."
                 className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#071a2b] dark:border-gray-600 resize-none focus:outline-none focus:ring-2 focus:ring-[#0E7490]"
@@ -463,9 +365,9 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
             </div>
 
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowApplyModal(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Hủy</button>
-              <button onClick={handleApply} disabled={applying || (applyTab === "select" && resumes.length === 0)} className="px-6 py-2 text-sm bg-[#0E7490] hover:bg-[#005a71] text-white rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center gap-2">
-                {applying ? <><Loader2 className="w-4 h-4 animate-spin" /> Đang gửi...</> : "Gửi đơn ứng tuyển"}
+              <button onClick={applyFlow.closeApplyModal} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Hủy</button>
+              <button onClick={applyFlow.handleApply} disabled={applyFlow.applying || (applyFlow.applyTab === "select" && applyFlow.resumes.length === 0)} className="px-6 py-2 text-sm bg-[#0E7490] hover:bg-[#005a71] text-white rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center gap-2">
+                {applyFlow.applying ? <><Loader2 className="w-4 h-4 animate-spin" /> Đang gửi...</> : "Gửi đơn ứng tuyển"}
               </button>
             </div>
           </div>
@@ -473,11 +375,11 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       )}
 
       {/* Success Toast */}
-      {applySuccess && (
+      {applyFlow.applySuccess && (
         <div className="fixed bottom-4 right-4 z-50 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-in slide-in-from-bottom-5">
           <CheckCircle2 className="w-5 h-5" />
           <span className="text-sm font-medium">Ứng tuyển thành công! Nhà tuyển dụng sẽ phản hồi sớm.</span>
-          <button onClick={() => setApplySuccess(false)} className="ml-2 hover:bg-green-700 rounded p-0.5"><X className="w-4 h-4" /></button>
+          <button onClick={() => applyFlow.setApplySuccess(false)} className="ml-2 hover:bg-green-700 rounded p-0.5"><X className="w-4 h-4" /></button>
         </div>
       )}
     </div>

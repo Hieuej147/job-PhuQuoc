@@ -22,8 +22,8 @@ class RankCandidatesTool(BaseTool):
 
     async def run(self, job_id: str, top_n: int = 5) -> dict:
         try:
-            # Get job details
-            job = await self.api_client.get(f"/jobs/{job_id}")
+            # Employer-facing detail can read the owner's draft/closed/archived job.
+            job = await self.api_client.get(f"/jobs/manage/{job_id}")
             job_data = job.get("data", job)
 
             # Get candidates

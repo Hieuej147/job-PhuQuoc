@@ -3,18 +3,24 @@ const path = require("path");
 const { spawn, spawnSync } = require("child_process");
 
 const root = path.resolve(__dirname, "..");
+const repoRoot = path.resolve(root, "..");
 const agentDir = path.join(root, "agent");
 
-// Load .env từ web/
-const envFile = path.join(root, ".env");
-if (fs.existsSync(envFile)) {
+function loadEnvFile(envFile, { override = false } = {}) {
+  if (!fs.existsSync(envFile)) return;
   fs.readFileSync(envFile, "utf-8")
     .split("\n")
     .forEach((line) => {
       const match = line.match(/^\s*([^#][^=]*?)\s*=\s*(.*)\s*$/);
-      if (match) process.env[match[1]] = match[2].replace(/^["']|["']$/g, "");
+      if (!match) return;
+      const key = match[1];
+      if (!override && process.env[key] !== undefined) return;
+      process.env[key] = match[2].replace(/^["']|["']$/g, "");
     });
 }
+
+loadEnvFile(path.join(repoRoot, "backend", ".env"));
+loadEnvFile(path.join(root, ".env"));
 
 function pickPython() {
   // Ưu tiên uv run nếu có sẵn — đảm bảo đúng môi trường venv, tránh lệch PATH/DLL trên Windows
