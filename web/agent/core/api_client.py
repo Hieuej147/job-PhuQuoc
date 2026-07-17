@@ -6,6 +6,25 @@ logger = logging.getLogger(__name__)
 
 
 class ApiClient:
+    """
+    LƯU Ý VỀ AN TOÀN ĐA REQUEST (đọc trước khi sửa file này):
+
+    api_client là 1 instance DÙNG CHUNG cho mọi request/mọi user (được tạo 1 lần
+    lúc FastAPI khởi động — xem agent_factory.py + main.py lifespan). set_cookie()
+    ghi đè self._cookie ngay trên instance chung này.
+
+    Điều này AN TOÀN với điều kiện: mỗi custom node (as_node trong các tool) phải
+    tự gọi self.sync_auth_from_state(state) NGAY TRƯỚC dòng gọi tool_instance.run(),
+    không để await nào xen giữa 2 bước đó (xem base_tool.py). Vì asyncio chỉ
+    chuyển sang task khác tại điểm `await`, và set_cookie() -> _get_headers() xảy
+    ra hoàn toàn đồng bộ (không await) ngay trong 1 lượt gọi, nên không thể bị
+    request khác ghi đè cookie giữa chừng.
+
+    KHÔNG dùng contextvars ở đây: LangGraph có thể chạy từng node trong 1
+    asyncio.Task riêng, khiến giá trị ContextVar không lan đúng từ auth_node
+    sang node tool phía sau (gây lỗi 401 do cookie "biến mất" giữa các node).
+    """
+
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = base_url or "http://localhost:3000/api/v1"
         self.timeout = 300

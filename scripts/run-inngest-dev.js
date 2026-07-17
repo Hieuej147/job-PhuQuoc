@@ -33,9 +33,18 @@ async function main() {
   console.log(`[inngest] starting dev server for ${endpoint}`);
   console.log("[inngest] UI: http://localhost:8288");
 
+  // Trên Windows, "npx" thực chất là "npx.cmd" (1 batch script), không phải file
+  // thực thi trực tiếp. spawn() với shell:false gọi thẳng executable theo tên,
+  // Windows không tự resolve ra "npx.cmd" qua PATH trong trường hợp này, gây lỗi
+  // "spawn npx ENOENT". Bật shell:true trên Windows để Node chạy lệnh này thông
+  // qua cmd.exe (giống hệt việc bạn tự gõ "npx ..." trong terminal) — trên
+  // macOS/Linux giữ nguyên shell:false như cũ (không cần và tránh rủi ro shell-
+  // injection không cần thiết ở các hệ điều hành đó).
+  const isWindows = process.platform === "win32";
+
   const child = spawn("npx", ["inngest-cli@latest", "dev", "-u", endpoint], {
     stdio: "inherit",
-    shell: false,
+    shell: isWindows,
   });
 
   const stop = (signal) => {
@@ -57,4 +66,3 @@ main().catch((error) => {
   console.error(`[inngest] ${error.message}`);
   process.exit(1);
 });
-

@@ -10,6 +10,7 @@ from tools.candidate.list_my_cvs import ListMyCvsTool
 from tools.candidate.get_cv_detail import GetCvDetailTool
 from tools.candidate.choose_cv_template import ChooseCvTemplateTool
 from tools.candidate.save_cv import SaveCvTool
+from tools.shared.create_blog_post import CreateBlogPostTool
 
 
 class CandidateAgent(BaseAgent):
@@ -25,9 +26,20 @@ class CandidateAgent(BaseAgent):
             GetCvDetailTool(api_client=self.api_client),
             ChooseCvTemplateTool(api_client=self.api_client),
             SaveCvTool(api_client=self.api_client),
+            CreateBlogPostTool(api_client=self.api_client),
         ]
 
-    def _get_system_prompt(self) -> str:
+    # ASYNC để khớp interface mới của BaseAgent (xem base_agent.py — system
+    # prompt giờ được tính lại mỗi lượt chat thay vì 1 lần cố định lúc khởi
+    # động, vì self.context là dữ liệu tĩnh dùng chung cho MỌI candidate, xem
+    # core/agent_factory.py::create_candidate_graph). CandidateAgent hiện chưa
+    # tự fetch thêm gì qua API (skills/experience_years vẫn lấy từ
+    # self.context, hiện luôn rỗng do agent_factory chưa set) — cùng loại vấn
+    # đề như company_name từng bị ở RecruiterAgent, nhưng CHƯA gây lỗi quan sát
+    # được trong thực tế (candidate tools tự hỏi user trực tiếp thông tin cần
+    # thiết thay vì dựa vào context), nên chưa mở rộng fetch ở đây — có thể bổ
+    # sung sau nếu cần cá nhân hóa system prompt theo hồ sơ thật.
+    async def _get_system_prompt(self, state) -> str:
         return CANDIDATE_SYSTEM_PROMPT.format(
             user_id=self.context.user_id,
             user_name=self.context.user_name,
@@ -49,6 +61,7 @@ class CandidateAgent(BaseAgent):
             "get_cv_detail": "get_cv_detail_node",
             "choose_cv_template": "choose_cv_template_node",
             "save_cv": "save_cv_node",
+            "create_blog_post": "create_blog_post_node",
         }
 
     def _add_custom_nodes(self, workflow):

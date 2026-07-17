@@ -30,6 +30,7 @@ import { UploadModule } from "./modules/upload/upload.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { QuotaModule } from "./common/quota/quota.module";
 import { ChatThreadsModule } from "./modules/chat-threads/chat-threads.module";
+import { EmailIntegrationModule } from "./modules/email-integration/email-integration.module";
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { ChatThreadsModule } from "./modules/chat-threads/chat-threads.module";
     DashboardModule,
     QuotaModule,
     ChatThreadsModule,
+    EmailIntegrationModule,
   ],
   providers: [
     {

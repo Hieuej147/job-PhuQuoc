@@ -266,7 +266,47 @@ export default function CandidateDashboard() {
           initialMessage={`Xin chào! Mình là Career Co-worker — có thể xem nhanh hồ sơ, CV, đơn ứng tuyển của bạn để gợi ý bước tiếp theo.
 Bạn cần hỗ trợ gì hôm nay?`}
           contextDescription="Candidate dashboard context: user, profile checklist, applications, saved jobs, resumes, notifications."
-          contextValue={{ user, profile, completionPct, checklist, applications, savedJobs, resumes, notifications }}
+          contextValue={{
+            // CHỈ đưa các trường thật sự cần cho AI trả lời/tư vấn — TUYỆT ĐỐI
+            // không đưa nguyên profile/user thô vào context. profile.avatar là
+            // ảnh dạng base64 (data:image/jpeg;base64,...) có thể dài tới hàng
+            // trăm nghìn ký tự — từng gây lỗi OpenAIContextOverflowError (context
+            // vượt 128k token) dù người dùng chỉ gõ "hello", vì context này được
+            // gửi kèm MỌI lượt chat bất kể nội dung tin nhắn.
+            user: user ? { id: (user as any).id, name: (user as any).name, email: (user as any).email } : null,
+            profile: profile
+              ? {
+                name: profile.name,
+                title: profile.title,
+                summary: profile.summary,
+                skills: profile.skills,
+                degree: profile.degree,
+                languages: profile.languages,
+                // education/experience/projects lược bớt, chỉ giữ số lượng —
+                // nội dung chi tiết không cần thiết cho ngữ cảnh chat, và có
+                // thể khá dài nếu candidate liệt kê nhiều mục.
+                educationCount: Array.isArray(profile.education) ? profile.education.length : 0,
+                experienceCount: Array.isArray(profile.experience) ? profile.experience.length : 0,
+                projectsCount: Array.isArray(profile.projects) ? profile.projects.length : 0,
+              }
+              : null,
+            completionPct,
+            checklist,
+            applications: applications.map((a) => ({
+              id: a.id,
+              jobTitle: a.job?.title,
+              company: a.job?.company?.name,
+              status: a.status,
+              createdAt: a.createdAt,
+            })),
+            savedJobs: savedJobs.map((sj) => ({
+              id: sj.id,
+              jobTitle: sj.job?.title,
+              company: sj.job?.company?.name,
+            })),
+            resumesCount: resumes.length,
+            unreadNotificationsCount: unreadNotifs,
+          }}
         />
       </TabsContent>
     </Tabs>

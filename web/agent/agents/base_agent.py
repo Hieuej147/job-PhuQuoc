@@ -15,6 +15,11 @@ from core.context import AgentContext
 
 logger = logging.getLogger(__name__)
 
+# recursion_limit được set ở web/agent/main.py (tham số config=RunnableConfig
+# (recursion_limit=...) khi khởi tạo LangGraphAGUIAgent) — không đặt ở file
+# này. Xem ghi chú đầy đủ trong main.py về 2 cách đã thử KHÔNG hiệu quả trước
+# khi tìm ra cách đúng, và lý do .with_config() trên graph đã bị bỏ.
+
 
 def decode_jwt(token: str) -> Optional[Dict[str, Any]]:
     """Decode JWT without verification (payload only)"""
@@ -109,8 +114,12 @@ class BaseAgent(ABC):
         ...
 
     @abstractmethod
-    def _get_system_prompt(self) -> str:
-        """Return system prompt"""
+    async def _get_system_prompt(self, state: Any) -> str:
+        """Return system prompt. ASYNC vì cần fetch dữ liệu tươi (ví dụ tên
+        công ty thật của recruiter) mỗi lượt chat qua self.api_client, thay vì
+        dùng self.context tĩnh chỉ set 1 lần lúc server khởi động (agent_factory
+        tạo đúng 1 graph instance dùng chung cho MỌI user — self.context không
+        bao giờ đại diện đúng cho user thật đang chat)."""
         ...
 
     @abstractmethod
@@ -138,7 +147,6 @@ class BaseAgent(ABC):
         state_class = self._get_state_class()
         lc_tools_for_binding = self._get_lc_tools_for_binding()
         lc_tools_for_toolnode = self._get_lc_tools_for_toolnode()
-        system_prompt = self._get_system_prompt()
 
         def should_continue(state: Any) -> str:
             messages = state.get("messages", [])
@@ -213,6 +221,16 @@ class BaseAgent(ABC):
             context_items = state.get("copilotkit", {}).get("context", [])
             auth_info = state.get("authorization", {})
 
+            # Re-đồng bộ cookie NGAY TRƯỚC KHI gọi _get_system_prompt(state) —
+            # subclass (ví dụ RecruiterAgent) có thể tự gọi self.api_client bên
+            # trong đó để lấy dữ liệu tươi (tên công ty...). Đây là cùng pattern
+            # an toàn đã áp dụng cho mọi tool: set_cookie() ngay trước lời gọi
+            # API, không để logic nào khác xen giữa 2 bước đó trong cùng 1
+            # đoạn code đồng bộ (xem chi tiết trong api_client.py).
+            if self.api_client and auth_info.get("cookie"):
+                self.api_client.set_cookie(auth_info["cookie"])
+            system_prompt = await self._get_system_prompt(state)
+
             user_info = ""
             if auth_info and auth_info.get("user_id") != "anonymous":
                 user_info = f"User: {auth_info.get('name', 'Unknown')} ({auth_info.get('role', 'guest')})"
@@ -282,4 +300,15 @@ class BaseAgent(ABC):
         for node_name in custom_routing.values():
             workflow.add_edge(node_name, "chat_node")
 
+        # LƯU Ý: từng thử compiled.with_config({"recursion_limit": N}) ở đây
+        # để chặn vòng lặp tool, nhưng đã BỎ vì 2 lý do xác nhận bằng thực
+        # nghiệm: (1) không hề có tác dụng thật với recursion_limit — log vẫn
+        # báo "Recursion limit of 25 reached" dù đã set 12; (2) nghi ngờ là
+        # nguyên nhân khiến agent hoàn toàn không phản hồi (treo im, kể cả với
+        # tin nhắn đơn giản không cần gọi tool) — có thể do việc bọc graph
+        # trong RunnableBinding qua with_config() làm hỏng cách ag_ui_langgraph
+        # nhận diện/stream sự kiện AG-UI từ graph gốc.
+        # recursion_limit giờ được set ĐÚNG CÁCH và AN TOÀN qua tham số
+        # config=RunnableConfig(recursion_limit=...) khi khởi tạo
+        # LangGraphAGUIAgent trong main.py — không đụng vào graph object ở đây.
         return workflow.compile(checkpointer=self.checkpointer)

@@ -12,11 +12,37 @@ logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(mes
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from langchain_core.runnables import RunnableConfig
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 from agents.custom_agent import CustomLangGraphAGUIAgent
 from core.agent_factory import create_candidate_graph, create_recruiter_graph
 from core.checkpointer import init_checkpointer, close_checkpointer
 from core.config import get_settings
+
+# Giới hạn số bước graph tối đa cho MỖI lượt chat. Mặc định của LangGraph là
+# 25 nếu không set — quá cao, khiến 1 vòng lặp tool bị kẹt (LLM cứ gọi lại
+# tool nhiều lần liên tiếp mà không tự dừng) có thể tốn tới 20+ lượt gọi
+# OpenAI thật trước khi tự dừng bằng GraphRecursionError.
+#
+# ĐÃ THỬ 2 CÁCH KHÔNG HIỆU QUẢ trước khi tìm ra cách này (giữ lại ghi chú để
+# không ai lặp lại sai lầm):
+#   1. Set config["recursion_limit"] trong CustomLangGraphAGUIAgent.
+#      prepare_stream() (agents/custom_agent.py) — KHÔNG có tác dụng, vì
+#      ag_ui_langgraph tự dựng lại config riêng khi gọi astream_events() bên
+#      trong, không kế thừa nguyên vẹn object config mà prepare_stream() trả
+#      về (chỉ "configurable" được lấy, "recursion_limit" bị bỏ qua).
+#   2. compiled_graph.with_config({"recursion_limit": N}) trong
+#      agents/base_agent.py::_build_graph() — CŨNG KHÔNG có tác dụng, đã xác
+#      nhận bằng log thực tế (Recursion limit of 25 reached) dù đã set 12.
+#      Nhiều khả năng ag_ui_langgraph gọi thẳng vào Pregel gốc theo cách
+#      không đi qua RunnableBinding.with_config() đã bọc ngoài.
+#
+# CÁCH ĐÚNG (theo CopilotKit issue #2666, chính thức, có xác nhận hoạt động):
+# truyền config=RunnableConfig(recursion_limit=...) NGAY TẠI constructor của
+# LangGraphAGUIAgent (class cha của CustomLangGraphAGUIAgent) — đây là tham
+# số riêng, được chính agent object lưu và áp dụng khi tự gọi astream_events
+# nội bộ, không phụ thuộc vào config runtime do request/prepare_stream tạo ra.
+DEFAULT_RECURSION_LIMIT = 12
 
 
 @asynccontextmanager
@@ -27,12 +53,19 @@ async def lifespan(app: FastAPI):
     candidate_graph = create_candidate_graph(checkpointer)
     recruiter_graph = create_recruiter_graph(checkpointer)
 
+    # QUAN TRỌNG: mỗi agent PHẢI có object RunnableConfig RIÊNG, không dùng
+    # chung 1 instance — nếu LangGraphAGUIAgent tự mutate (sửa trực tiếp) dict
+    # config này ở mỗi request (ví dụ tự gắn thread_id/configurable vào đó)
+    # thay vì tạo bản sao, dùng chung 1 object giữa candidate_agent và
+    # recruiter_agent có thể khiến 2 agent ghi đè state của nhau, dẫn tới treo
+    # hoặc chờ sai thread_id khi có request gần như đồng thời tới cả 2 agent.
     add_langgraph_fastapi_endpoint(
         app=app,
         agent=CustomLangGraphAGUIAgent(
             name="candidate_agent",
             description="AI trợ lý candidate duy nhất: tư vấn, tìm việc và thiết kế CV",
             graph=candidate_graph,
+            config=RunnableConfig(recursion_limit=DEFAULT_RECURSION_LIMIT),
         ),
         path="/candidate",
     )
@@ -42,6 +75,7 @@ async def lifespan(app: FastAPI):
             name="recruiter_agent",
             description="AI trợ lý tuyển dụng cho nhà tuyển dụng",
             graph=recruiter_graph,
+            config=RunnableConfig(recursion_limit=DEFAULT_RECURSION_LIMIT),
         ),
         path="/recruiter",
     )

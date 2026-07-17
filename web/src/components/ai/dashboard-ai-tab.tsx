@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createAgentProgressMessageView } from "@/components/ai/agent-progress-chat-message";
 import { useJobSearchRenderer } from "@/components/ai/renderers/job-search-renderer";
 import { useCvToolsRenderer } from "@/components/ai/renderers/cv-tools-renderer";
+import { useJobToolsRenderer } from "@/components/ai/renderers/job-tools-renderer";
 import { useTemplateRenderer } from "@/hooks/use-template-renderer";
 import { ThreadSidebar } from "@/features/ai-chat/thread-sidebar";
 import { useChatThreads } from "@/features/ai-chat/use-chat-threads";
@@ -261,5 +262,10 @@ export function CandidateDashboardAiTab(
 export function EmployerDashboardAiTab(
   props: Omit<DashboardAiTabProps, "agentId">,
 ) {
+  // Trước đây EmployerDashboardAiTab không đăng ký renderer nào cả — mọi tool
+  // của recruiter (create_job, rank_candidates...) luôn rơi về accordion "Done"
+  // mặc định. Giờ đăng ký renderer cho create_job (card đẹp, click chuyển tới
+  // trang sửa tin /employer/jobs/{id}/edit).
+  useJobToolsRenderer();
   return <DashboardAiChat {...props} agentId="recruiter" />;
 }

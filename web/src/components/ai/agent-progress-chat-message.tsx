@@ -8,6 +8,10 @@ import { Activity, CheckCircle2, Loader2, Copy, Check, ChevronRight } from "luci
 import { useEffect, useRef, useState } from "react";
 import { fetchThreadHistory, type ThreadHistoryMessage } from "@/features/ai-chat/api";
 import { RichContent } from "@/components/ui/rich-content";
+import { SaveCvResultCard, CvListCard, CvDetailCard } from "@/components/ai/renderers/cv-tools-renderer";
+import { CreateJobResultCard } from "@/components/ai/renderers/job-tools-renderer";
+import { JobListCard } from "@/components/ai/renderers/job-list-card";
+import { CVPreviewInline, normalizeCvResult } from "@/hooks/use-template-renderer";
 
 interface AgentProgressState {
   cv_flow?: string;
@@ -97,9 +101,26 @@ function NoCursor() {
   return <></>;
 }
 
-function WelcomeBubble({ text }: { text: string }) {
+function WelcomeBubble({
+  text,
+  minHeightClassName = "min-h-[600px]",
+}: {
+  text: string;
+  minHeightClassName?: string;
+}) {
+  // Lưu ý cho lần sửa sau: đã thử 3 cách CSS (min-h-full, flex-1, ép flex-grow
+  // nhiều cấp cha kèm :has()) để làm WelcomeBubble tự chiếm đúng khoảng trống thật
+  // bên trong CopilotChat (thư viện bọc nội dung qua nhiều lớp wrapper không phải
+  // flex container, phá chuỗi truyền kích thước) — cả 3 đều không ăn thua trên
+  // thực tế dù DevTools xác nhận CSS có áp dụng, khả năng cao còn 1-2 cấp cha khác
+  // trong DOM nội bộ thư viện chưa được xử lý. Quay lại dùng min-height CỐ ĐỊNH
+  // (đơn giản, đáng tin cậy hơn) — giá trị mặc định 600px giữ nguyên như bản gốc
+  // (đã hoạt động ổn cho sidebar "push" và Dashboard full-page), chỉ truyền
+  // minHeightClassName nhỏ hơn riêng cho variant "popup" (khung nhỏ hơn nhiều).
   return (
-    <div className="flex h-full min-h-[600px] w-full flex-col items-center justify-center gap-2 px-10 py-10 text-center">
+    <div
+      className={`flex ${minHeightClassName} w-full flex-col items-center justify-center gap-2 px-10 py-10 text-center`}
+    >
       <p className="whitespace-pre-line text-xl font-medium leading-relaxed text-foreground">
         {text}
       </p>
@@ -153,6 +174,11 @@ function HistoryBubble({ message }: { message: ThreadHistoryMessage }) {
  * Card hiển thị 1 lượt gọi tool trong lịch sử — nằm đúng vị trí thời gian thật của nó
  * (giữa 2 tin nhắn text liên quan), thay vì bị nguồn khôi phục mặc định của CopilotKit
  * dồn hết xuống cuối luồng chat.
+ *
+ * Đây là fallback THÔ (accordion Arguments/Result) — chỉ dùng cho tool nào chưa có
+ * renderer riêng đẹp hơn. Xem HistoryToolCard bên dưới để biết cách tool có renderer
+ * (save_cv, search_jobs, generate_cv_template...) được ưu tiên hiển thị đúng như lúc
+ * chat live.
  */
 function ToolCallHistoryCard({ message }: { message: ThreadHistoryMessage }) {
   let hasError = false;
@@ -210,6 +236,65 @@ function ToolCallHistoryCard({ message }: { message: ThreadHistoryMessage }) {
   );
 }
 
+// Parse an toàn message.content (luôn là string khi đến từ /threads/:id/history) —
+// không throw nếu content không phải JSON hợp lệ.
+function safeParseJson(content: string): any {
+  try {
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Dispatcher cho tool-call trong LỊCH SỬ: tra theo message.toolName để tái sử dụng
+ * đúng card đẹp đã dùng lúc chat live (useRenderTool trong cv-tools-renderer.tsx,
+ * job-search-renderer.tsx, use-template-renderer.tsx) — thay vì luôn rơi về
+ * ToolCallHistoryCard (accordion Arguments/Result thô).
+ *
+ * Tool nào chưa có renderer riêng (get_candidates, draft_email, rank_candidates...)
+ * vẫn fallback về ToolCallHistoryCard như cũ, không đổi hành vi.
+ */
+function HistoryToolCard({ message }: { message: ThreadHistoryMessage }) {
+  const wrap = (node: React.ReactNode) => <div className="my-2 px-4">{node}</div>;
+
+  switch (message.toolName) {
+    case "save_cv": {
+      const data = safeParseJson(message.content);
+      return data ? wrap(<SaveCvResultCard data={data} />) : <ToolCallHistoryCard message={message} />;
+    }
+    case "list_my_cvs": {
+      const data = safeParseJson(message.content);
+      return data ? wrap(<CvListCard data={data} />) : <ToolCallHistoryCard message={message} />;
+    }
+    case "get_cv_detail": {
+      const data = safeParseJson(message.content);
+      return data ? wrap(<CvDetailCard data={data} />) : <ToolCallHistoryCard message={message} />;
+    }
+    case "create_job": {
+      const data = safeParseJson(message.content);
+      return data ? wrap(<CreateJobResultCard data={data} />) : <ToolCallHistoryCard message={message} />;
+    }
+    case "search_jobs": {
+      const data = safeParseJson(message.content);
+      return data
+        ? wrap(<JobListCard jobs={data.jobs || []} total={data.total || 0} />)
+        : <ToolCallHistoryCard message={message} />;
+    }
+    case "generate_cv_template":
+    case "adjust_cv_template":
+    case "upsert_cv_template":
+    case "preview_cv": {
+      const cv = normalizeCvResult(message.content);
+      return cv
+        ? wrap(<CVPreviewInline html={cv.html} css={cv.css || ""} />)
+        : <ToolCallHistoryCard message={message} />;
+    }
+    default:
+      return <ToolCallHistoryCard message={message} />;
+  }
+}
+
 function getMessageText(m: any): string {
   if (typeof m.content === "string") return m.content;
   try {
@@ -230,6 +315,7 @@ export function createAgentProgressMessageView(
   agentId: string,
   title?: string,
   welcomeText?: string,
+  options?: { welcomeMinHeightClassName?: string },
 ) {
   function AgentProgressMessageView(props: any) {
     const config = useCopilotChatConfiguration();
@@ -295,7 +381,7 @@ export function createAgentProgressMessageView(
     });
 
     if (!hasHistory && filteredLiveMessages.length === 0 && welcomeText) {
-      return <WelcomeBubble text={welcomeText} />;
+      return <WelcomeBubble text={welcomeText} minHeightClassName={options?.welcomeMinHeightClassName} />;
     }
 
     return (
@@ -304,7 +390,7 @@ export function createAgentProgressMessageView(
           <div>
             {history.map((m) =>
               m.kind === "tool" ? (
-                <ToolCallHistoryCard key={m.id} message={m} />
+                <HistoryToolCard key={m.id} message={m} />
               ) : (
                 <HistoryBubble key={m.id} message={m} />
               ),

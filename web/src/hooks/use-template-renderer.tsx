@@ -15,7 +15,7 @@ function LoadingCard({ text }: { text: string }) {
   );
 }
 
-function CVPreviewInline({ html, css = "" }: { html: string; css?: string }) {
+export function CVPreviewInline({ html, css = "" }: { html: string; css?: string }) {
   const srcDoc = buildSanitizedPreviewDocument(html, css);
 
   return (
@@ -36,7 +36,7 @@ function CVPreviewInline({ html, css = "" }: { html: string; css?: string }) {
   );
 }
 
-function normalizeCvResult(result: unknown): { html: string; css?: string } | null {
+export function normalizeCvResult(result: unknown): { html: string; css?: string } | null {
   if (!result) return null;
 
   if (Array.isArray(result)) {
