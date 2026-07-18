@@ -2,26 +2,21 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { io, type Socket } from "socket.io-client";
 import { useAuth } from "@/components/auth/auth-provider";
 import {
   notificationKeys,
   type NotificationItem,
   type NotificationsList,
 } from "@/features/notifications/queries";
+import { getRealtimeUrl } from "./config";
 
 type RealtimeStatus = "idle" | "connecting" | "connected" | "disconnected";
 
 type RealtimeContextValue = {
-  socket: Socket | null;
   status: RealtimeStatus;
 };
 
-const RealtimeContext = createContext<RealtimeContextValue>({ socket: null, status: "idle" });
-
-function getRealtimeUrl() {
-  return process.env.NEXT_PUBLIC_REALTIME_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost";
-}
+const RealtimeContext = createContext<RealtimeContextValue>({ status: "idle" });
 
 function prependNotification(payload: NotificationsList | undefined, notification: NotificationItem) {
   if (!payload?.items) return payload;
@@ -54,42 +49,32 @@ function markAllNotificationsRead(payload: NotificationsList | undefined, readAt
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [status, setStatus] = useState<RealtimeStatus>("idle");
 
   useEffect(() => {
     if (!user) {
       setStatus("idle");
-      setSocket(null);
       return;
     }
 
     setStatus("connecting");
-    const nextSocket = io(`${getRealtimeUrl()}/realtime`, {
-      path: "/socket.io",
+    const eventSource = new EventSource(`${getRealtimeUrl()}/api/v1/realtime/events`, {
       withCredentials: true,
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
     });
 
-    setSocket(nextSocket);
-
-    nextSocket.on("connect", () => {
+    eventSource.addEventListener("realtime.ready", () => {
       setStatus("connected");
-      nextSocket.emit("notifications.subscribe");
-      nextSocket.emit("dashboard.subscribe", { role: user.role });
       queryClient.invalidateQueries({ queryKey: notificationKeys.all });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     });
-    nextSocket.on("disconnect", () => setStatus("disconnected"));
-    nextSocket.on("connect_error", (error) => {
-      setStatus("disconnected");
-      console.error("Realtime socket connection failed:", error);
-    });
 
-    nextSocket.on("notification.created", ({ notification }: { notification: NotificationItem }) => {
+    eventSource.onerror = (error) => {
+      setStatus("disconnected");
+      console.error("Realtime SSE connection failed:", error);
+    };
+
+    const handleNotificationCreated = (event: MessageEvent) => {
+      const { notification } = JSON.parse(event.data) as { notification: NotificationItem };
       queryClient.setQueriesData<NotificationsList>({ queryKey: ["notifications", "recent"] }, (current) =>
         prependNotification(current, notification),
       );
@@ -97,22 +82,25 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         prependNotification(current, notification),
       );
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    });
+    };
 
-    nextSocket.on("notification.unread_count.changed", ({ count }: { count: number }) => {
+    const handleUnreadCountChanged = (event: MessageEvent) => {
+      const { count } = JSON.parse(event.data) as { count: number };
       queryClient.setQueryData(notificationKeys.unreadCount, { count });
-    });
+    };
 
-    nextSocket.on("notification.read", ({ id, readAt }: { id: string; readAt?: string | null }) => {
+    const handleNotificationRead = (event: MessageEvent) => {
+      const { id, readAt } = JSON.parse(event.data) as { id: string; readAt?: string | null };
       queryClient.setQueriesData<NotificationsList>({ queryKey: ["notifications", "recent"] }, (current) =>
         markNotificationRead(current, id, readAt),
       );
       queryClient.setQueriesData<NotificationsList>({ queryKey: ["notifications", "list"] }, (current) =>
         markNotificationRead(current, id, readAt),
       );
-    });
+    };
 
-    nextSocket.on("notification.all_read", ({ readAt }: { readAt: string }) => {
+    const handleAllNotificationsRead = (event: MessageEvent) => {
+      const { readAt } = JSON.parse(event.data) as { readAt: string };
       queryClient.setQueryData(notificationKeys.unreadCount, { count: 0 });
       queryClient.setQueriesData<NotificationsList>({ queryKey: ["notifications", "recent"] }, (current) =>
         markAllNotificationsRead(current, readAt),
@@ -120,20 +108,25 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       queryClient.setQueriesData<NotificationsList>({ queryKey: ["notifications", "list"] }, (current) =>
         markAllNotificationsRead(current, readAt),
       );
-    });
+    };
 
-    nextSocket.on("dashboard.invalidate", () => {
+    const handleDashboardInvalidate = () => {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    });
+    };
+
+    eventSource.addEventListener("notification.created", handleNotificationCreated);
+    eventSource.addEventListener("notification.unread_count.changed", handleUnreadCountChanged);
+    eventSource.addEventListener("notification.read", handleNotificationRead);
+    eventSource.addEventListener("notification.all_read", handleAllNotificationsRead);
+    eventSource.addEventListener("dashboard.invalidate", handleDashboardInvalidate);
 
     return () => {
-      nextSocket.disconnect();
-      setSocket(null);
+      eventSource.close();
       setStatus("idle");
     };
   }, [queryClient, user]);
 
-  const value = useMemo(() => ({ socket, status }), [socket, status]);
+  const value = useMemo(() => ({ status }), [status]);
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
 }

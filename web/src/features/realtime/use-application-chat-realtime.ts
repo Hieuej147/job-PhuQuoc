@@ -2,8 +2,14 @@
 
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { applicationMessagesQueryKey, type ApplicationMessage } from "@/features/applications/hooks/use-application-chat";
-import { useRealtimeSocket } from "./realtime-provider";
+import { io } from "socket.io-client";
+import {
+  DEFAULT_APPLICATION_MESSAGE_USAGE,
+  applicationMessagesQueryKey,
+  type ApplicationMessage,
+  type ApplicationMessagesState,
+} from "@/features/applications/hooks/use-application-chat";
+import { getRealtimeUrl } from "./config";
 
 function sortMessages(messages: ApplicationMessage[]) {
   return [...messages].sort(
@@ -11,25 +17,44 @@ function sortMessages(messages: ApplicationMessage[]) {
   );
 }
 
-function mergeMessage(messages: ApplicationMessage[] | undefined, message: ApplicationMessage) {
-  const current = messages ?? [];
-  const existing = current.find((item) => item.id === message.id);
+function mergeMessage(state: ApplicationMessagesState | undefined, message: ApplicationMessage): ApplicationMessagesState {
+  const current = state ?? { messages: [], usage: DEFAULT_APPLICATION_MESSAGE_USAGE };
+  const messages = current.messages;
+  const existing = messages.find((item) => item.id === message.id);
   if (existing) return current;
-  return sortMessages([...current, message]);
+  return {
+    ...current,
+    messages: sortMessages([...messages, message]),
+    usage: {
+      ...current.usage,
+      used: current.usage.used + 1,
+      remaining: Math.max(0, current.usage.remaining - 1),
+    },
+  };
 }
 
 export function useApplicationChatRealtime(applicationId: string | null, open: boolean) {
-  const { socket } = useRealtimeSocket();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!socket || !applicationId || !open) return;
+    if (!applicationId || !open) return;
 
-    socket.emit("application.join", { applicationId });
+    const socket = io(`${getRealtimeUrl()}/realtime`, {
+      path: "/socket.io",
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    });
+
+    socket.on("connect", () => {
+      socket.emit("application.join", { applicationId });
+    });
 
     const handleMessageCreated = (payload: { applicationId: string; message: ApplicationMessage }) => {
       if (payload.applicationId !== applicationId) return;
-      queryClient.setQueryData<ApplicationMessage[]>(
+      queryClient.setQueryData<ApplicationMessagesState>(
         applicationMessagesQueryKey(applicationId),
         (current) => mergeMessage(current, payload.message),
       );
@@ -37,13 +62,17 @@ export function useApplicationChatRealtime(applicationId: string | null, open: b
 
     const handleMessagesRead = (payload: { applicationId: string; readerId: string; readAt: string }) => {
       if (payload.applicationId !== applicationId) return;
-      queryClient.setQueryData<ApplicationMessage[]>(applicationMessagesQueryKey(applicationId), (current = []) =>
-        current.map((message) =>
-          message.senderId !== payload.readerId && !message.readAt
-            ? { ...message, readAt: payload.readAt }
-            : message,
-        ),
-      );
+      queryClient.setQueryData<ApplicationMessagesState>(applicationMessagesQueryKey(applicationId), (current) => {
+        const currentState = current ?? { messages: [], usage: DEFAULT_APPLICATION_MESSAGE_USAGE };
+        return {
+          ...currentState,
+          messages: currentState.messages.map((message) =>
+            message.senderId !== payload.readerId && !message.readAt
+              ? { ...message, readAt: payload.readAt }
+              : message,
+          ),
+        };
+      });
     };
 
     socket.on("application.message.created", handleMessageCreated);
@@ -53,7 +82,7 @@ export function useApplicationChatRealtime(applicationId: string | null, open: b
       socket.off("application.message.created", handleMessageCreated);
       socket.off("application.messages.read", handleMessagesRead);
       socket.emit("application.leave", { applicationId });
+      socket.disconnect();
     };
-  }, [applicationId, open, queryClient, socket]);
+  }, [applicationId, open, queryClient]);
 }
-

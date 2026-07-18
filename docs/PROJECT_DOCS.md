@@ -1,7 +1,7 @@
 # Phú Quốc Jobs — Project Documentation
 
 > Tài liệu kỹ thuật toàn diện cho dự án PQJobs — nền tảng tuyển dụng đảo Phú Quốc.
-> Cập nhật: 14/07/2026
+> Cập nhật: 18/07/2026
 
 ---
 
@@ -26,10 +26,10 @@
 
 ## 1. Tổng quan dự án
 
-### 1.0 Cập nhật quan trọng 14/07/2026
+### 1.0 Cập nhật quan trọng 18/07/2026
 
 - Local topology hiện tại: frontend `http://localhost:3001`, Nginx backend reverse proxy `http://localhost`, NestJS backend nội bộ `http://localhost:3006`.
-- Browser-side FE gọi REST/Auth/Socket.IO qua Nginx: `/api/v1/*`, `/api/auth/*`, `/socket.io/*`. Next.js không còn generic proxy route cho `/api/v1/*` và `/api/auth/*`.
+- Browser-side FE gọi REST/Auth/SSE/Socket.IO qua Nginx: `/api/v1/*`, `/api/auth/*`, `/api/v1/realtime/events`, `/socket.io/*`. Next.js không còn generic proxy route cho `/api/v1/*` và `/api/auth/*`.
 - Next.js chỉ giữ server routes cho `/api/agent/*` và `/api/copilotkit/*`.
 - `BETTER_AUTH_URL` local là `http://localhost`; Google OAuth redirect URI cần đăng ký là `http://localhost/api/auth/callback/google`.
 - Backend vẫn là **NestJS modular monolith**, nhưng quota đã được refactor theo NestJS DI: `common/quota/quota.service.ts` là application service, còn `quota-expiry.service.ts` chỉ dành cho Inngest worker/repair và dùng Prisma trực tiếp.
@@ -42,7 +42,8 @@
 - Public job routes chỉ trả job `ACTIVE`, chưa hết hạn, `archivedAt = null`. Dashboard/private route dùng `/jobs/manage/:id` hoặc application history để xem tin cũ.
 - Candidate/employer “xoá” application chỉ ẩn khỏi workspace bằng `candidateDeletedAt` / `employerDeletedAt`; record vẫn giữ, không còn xoá vật lý khi cả hai bên xoá.
 - Application chat chỉ cho gửi khi application `ACCEPTED` và chưa `chatClosedAt`; `REJECTED` chỉ xem lời nhắn read-only.
-- Chat/notification/dashboard realtime dùng NestJS Socket.IO Gateway namespace `/realtime`; REST vẫn là source of truth, socket chỉ cập nhật cache FE sau khi DB ghi thành công.
+- Realtime đã tách theo use case: notification/dashboard invalidate dùng SSE `GET /api/v1/realtime/events`; application chat dùng NestJS Socket.IO namespace `/realtime`. REST vẫn là source of truth, realtime chỉ cập nhật/invalidate cache FE sau khi DB ghi thành công.
+- Public `/jobs` và `/companies` dùng SSR initial data. Khi search/filter/sort/pagination mới hiện shadcn `Skeleton`; list không giữ card cũ bên dưới loading. Card list đã bỏ các effect hover translate/shadow/transition gây nhảy layout.
 - Quota upgrade có package/purchase theo thời hạn: `QuotaPackage`, `QuotaPurchase`, `UserQuotaPlan`; Inngest có event `quota.plan.activated` và repair hết hạn hằng ngày.
 - Quota upgrade FE đi qua checkout page mock `/quota/checkout?session_id=...`; modal nâng gói chỉ tạo checkout và redirect, không complete ngầm.
 - Ảnh đại diện candidate, logo công ty và ảnh bìa công ty đều crop trên FE trước khi upload. Company cover lưu `Company.coverImage/coverImagePublicId` và upload qua `/api/v1/upload/company-cover`.
@@ -111,7 +112,8 @@
   │ Nginx Reverse Proxy :80     │    │ /api/copilotkit  │
   │ /api/v1/*  -> NestJS          │    │ /api/agent/*     │
   │ /api/auth/* -> Better Auth    │    │ Next.js routes   │
-  │ /socket.io/* -> Socket.IO     │    └────────┬─────────┘
+  │ /api/v1/realtime/events -> SSE│    └────────┬─────────┘
+  │ /socket.io/* -> Socket.IO chat│             │
   └───────────┬───────────────────┘             │
               ▼                                 ▼
   ┌───────────────────────────────┐    ┌──────────────────┐
@@ -978,14 +980,14 @@ QueryAuditDto:
 
 | Route | File | Mô tả |
 |-------|------|--------|
-| `/jobs` | `src/app/jobs/page.tsx` | Danh sách việc làm. Filter, search, pagination. JSON-LD ItemList |
+| `/jobs` | `src/app/jobs/page.tsx` | Danh sách việc làm. SSR initial data; search/filter/sort/pagination hiện shadcn Skeleton rồi render card khi data mới sẵn sàng. JSON-LD ItemList |
 | `/jobs/[slug]` | `src/app/jobs/[slug]/page.tsx` | Chi tiết việc làm. Related jobs. JSON-LD JobPosting + Breadcrumb |
 
 #### Công ty
 
 | Route | File | Mô tả |
 |-------|------|--------|
-| `/companies` | `src/app/companies/page.tsx` | Danh sách công ty. JSON-LD ItemList |
+| `/companies` | `src/app/companies/page.tsx` | Danh sách công ty. SSR initial data; route transition search/filter/sort/pagination hiện grid shadcn Skeleton. JSON-LD ItemList |
 | `/companies/[slug]` | `src/app/companies/[slug]/page.tsx` | Chi tiết công ty. Jobs của công ty. JSON-LD Organization |
 
 #### Blog
@@ -1067,8 +1069,11 @@ QueryAuditDto:
 │      ├── http://localhost/api/v1/*   → NestJS /api/v1/*     │
 │      │   - Business API (jobs, companies, applications, etc.)    │
 │      │                                                           │
-│      ├── http://localhost/socket.io/* → NestJS Socket.IO    │
-│      │   - namespace /realtime                                   │
+│      ├── http://localhost/api/v1/realtime/events → NestJS SSE    │
+│      │   - notification/dashboard invalidate events              │
+│      │                                                           │
+│      ├── http://localhost/socket.io/* → NestJS Socket.IO         │
+│      │   - namespace /realtime cho application chat              │
 │      │                                                           │
 │      ├── /api/agent/[...slug]   → Next.js server route           │
 │      │   - Agent tool calls to BACKEND_URL/api/v1/*              │
@@ -1168,8 +1173,8 @@ QueryAuditDto:
 | `features/dashboard/queries.ts` | TanStack Query hooks cho candidate/employer dashboard summary |
 | `features/notifications/queries.ts` | TanStack Query hooks cho notification list, unread count, mark read/read-all |
 | `features/notifications/utils.ts` | Notification href/icon mapping |
-| `features/realtime/realtime-provider.tsx` | Socket.IO provider cập nhật notification/dashboard cache |
-| `features/realtime/use-application-chat-realtime.ts` | Join/leave application room và merge message realtime vào cache |
+| `features/realtime/realtime-provider.tsx` | SSE provider nhận notification/dashboard events và cập nhật/invalidate TanStack Query cache |
+| `features/realtime/use-application-chat-realtime.ts` | Socket.IO join/leave application room và merge message chat realtime vào cache |
 | `features/seo/structured-data.ts` | SEO JSON-LD generators: Organization, WebSite, JobPosting, Article, Breadcrumb, LocalBusiness |
 
 ---
@@ -1883,7 +1888,7 @@ Stage 2 (runner): python:3.12-slim
 |----------|----------|--------|
 | `BACKEND_URL` | YES | Backend URL cho SSR/server route nội bộ (http://localhost:3006) |
 | `NEXT_PUBLIC_API_URL` | YES | Public backend reverse proxy cho browser (http://localhost) |
-| `NEXT_PUBLIC_REALTIME_URL` | YES | Public Socket.IO reverse proxy cho browser (http://localhost) |
+| `NEXT_PUBLIC_REALTIME_URL` | YES | Public realtime reverse proxy cho browser: SSE notification/dashboard và Socket.IO chat (http://localhost) |
 | `AGENT_URL` | YES | Agent URL (http://localhost:8125) |
 | `OPENAI_API_KEY` | YES | LLM API key |
 

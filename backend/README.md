@@ -20,14 +20,15 @@ Backend API cho website tìm việc làm tại Phú Quốc, xây dựng với Ne
 
 ---
 
-## Cập nhật quan trọng 14/07/2026
+## Cập nhật quan trọng 18/07/2026
 
 - Prisma đang dùng **Prisma 7** và `prisma.config.ts`; datasource URL không đặt trong `schema.prisma`.
 - Local topology hiện tại: frontend mở tại `http://localhost:3001`, Nginx backend reverse proxy tại `http://localhost`, NestJS backend nội bộ tại `http://localhost:3006`.
 - NestJS dùng global prefix `api/v1`, nhưng loại trừ Better Auth `/api/auth/*` và Inngest `/api/inngest`.
-- Browser/FE gọi REST/Auth/Socket.IO qua Nginx:
+- Browser/FE gọi REST/Auth/SSE/Socket.IO qua Nginx:
   - `/api/v1/*` -> `http://127.0.0.1:3006/api/v1/*`
   - `/api/auth/*` -> `http://127.0.0.1:3006/api/auth/*`
+  - `/api/v1/realtime/events` -> NestJS SSE notification/dashboard stream
   - `/socket.io/*` -> `http://127.0.0.1:3006/socket.io/*`
 - Google OAuth callback local phải trỏ về public auth base: `http://localhost/api/auth/callback/google`.
 - Quota đã tách theo NestJS DI:
@@ -39,6 +40,7 @@ Backend API cho website tìm việc làm tại Phú Quốc, xây dựng với Ne
 - Application user-facing delete chỉ set `candidateDeletedAt` hoặc `employerDeletedAt`, không xoá vật lý.
 - `Job.deadline` chỉ set từ checkout/payment duration. Create/update job DTO không nhận deadline.
 - Job embedding chỉ sync sau khi payment completion kích hoạt job thành `ACTIVE`, hoặc khi employer sửa một job đang `ACTIVE`, chưa hết hạn và chưa archive. Tạo job `DRAFT` không chạy embedding.
+- Notification/dashboard realtime dùng SSE; application chat realtime dùng Socket.IO namespace `/realtime`.
 - Chat application chỉ gửi được khi application `ACCEPTED` và chưa đóng; `REJECTED` chỉ xem lời nhắn read-only.
 
 ## Kiến trúc tổng quan
@@ -1207,22 +1209,28 @@ npx tsc --noEmit
 | Cache-Aside | CacheService | Redis caching + manual invalidation |
 | State Machine | Job/Application status | Validated transitions |
 
-## Realtime Socket.IO
+## Realtime SSE + Socket.IO
 
-- Backend dùng `RealtimeModule` với Socket.IO namespace `/realtime`; transport public đi qua Nginx `/socket.io/*` tới NestJS, chưa tách microservice riêng.
-- Socket auth dùng session cookie `better-auth.session_token`, cùng nguồn xác thực với REST.
-- Rooms chính:
-  - `user:{userId}` cho notification và dashboard invalidate.
-  - `application:{applicationId}` cho chat theo đơn ứng tuyển.
-  - `employer:{userId}` / `candidate:{userId}` cho mở rộng theo role.
-- REST vẫn là source of truth. Socket chỉ emit sau khi DB ghi thành công.
-- Redis adapter dùng `REDIS_URL` để scale nhiều backend instance; nếu Redis lỗi ở local, gateway vẫn chạy single instance và log warning.
-- Inngest vẫn xử lý workflow nền; helper tạo notification sẽ emit Socket.IO event sau khi upsert notification.
-- Event server emit:
-  - `application.message.created`
-  - `application.messages.read`
+- Backend dùng `RealtimeModule` làm global facade. `RealtimeService` route event tới adapter phù hợp:
+  - `RealtimeSseService`: notification và dashboard invalidate.
+  - `RealtimeSocketService`: application chat.
+- SSE endpoint: `GET /api/v1/realtime/events`, auth bằng Better Auth session cookie giống REST.
+- SSE event server emit:
+  - `realtime.ready`
+  - `heartbeat`
   - `notification.created`
   - `notification.read`
   - `notification.all_read`
   - `notification.unread_count.changed`
   - `dashboard.invalidate`
+- Socket.IO namespace `/realtime` chỉ dùng cho chat theo application. Transport public đi qua Nginx `/socket.io/*` tới NestJS.
+- Socket auth dùng session cookie `better-auth.session_token`, cùng nguồn xác thực với REST.
+- Socket rooms chính:
+  - `application:{applicationId}` cho chat theo đơn ứng tuyển.
+  - `user:{userId}`, `employer:{userId}`, `candidate:{userId}` vẫn join để mở rộng sau.
+- Socket event server emit:
+  - `application.message.created`
+  - `application.messages.read`
+- REST vẫn là source of truth. SSE/Socket chỉ emit sau khi DB ghi thành công hoặc khi BE muốn invalidate cache FE.
+- Redis adapter dùng `REDIS_URL` để scale Socket.IO nhiều backend instance; nếu Redis lỗi ở local, gateway vẫn chạy single instance và log warning.
+- Inngest vẫn xử lý workflow nền; helper tạo notification sẽ emit SSE event sau khi upsert notification.

@@ -1,6 +1,6 @@
 # Phú Quốc Jobs — Tài liệu cho Team FE
 
-*Cập nhật: 2026-07-14*
+*Cập nhật: 2026-07-18*
 
 ---
 
@@ -32,9 +32,9 @@
 | Events | Inngest | 4.4 |
 | Payment | Stripe | 22.2 |
 
-### Cập nhật FE cần nhớ 2026-07-14
+### Cập nhật FE cần nhớ 2026-07-18
 
-- FE mở ở `http://localhost:3001`, browser-side REST/Auth/Socket.IO gọi backend qua Nginx reverse proxy `http://localhost`.
+- FE mở ở `http://localhost:3001`, browser-side REST/Auth/SSE/Socket.IO gọi backend qua Nginx reverse proxy `http://localhost`.
 - Next.js không còn generic BFF proxy cho `/api/v1/*` và `/api/auth/*`. Hai route `web/src/app/api/v1/[...slug]/route.ts` và `web/src/app/api/auth/[...slug]/route.ts` đã bị xoá.
 - Next.js chỉ giữ BFF/server route cho `/api/agent/*` và `/api/copilotkit/*`.
 - FE dùng `apiUrl()` trong `web/src/lib/api-client.ts`; client-side ưu tiên `NEXT_PUBLIC_API_URL`, server-side dùng `BACKEND_URL`.
@@ -46,7 +46,10 @@
 - Employer bấm xoá job là **ẩn mềm khỏi workspace** qua `DELETE /api/v1/jobs/:id/employer`; FE employer không có tab “Lưu trữ”/“Khôi phục”. Record vẫn giữ `archivedAt` cho admin/support sau này.
 - Application delete chỉ ẩn khỏi workspace từng phía, không hard delete và không phải “rút đơn”.
 - Candidate đã apply vẫn xem được lịch sử job qua `GET /api/v1/applications/:id/job` kể cả khi job đã đóng/hết hạn/lưu trữ.
-- Chat application dùng REST + TanStack Query làm source of truth, nhận realtime qua Socket.IO `/realtime`. Chỉ `ACCEPTED` mới chat hai chiều; `REJECTED` chỉ xem lời nhắn read-only.
+- Public `/jobs` dùng SSR initial data; khi search/filter/sort/pagination mới hiện shadcn `Skeleton`, không giữ card cũ dưới loading. Job card đã bỏ hover shadow/translate/transition gây nhảy layout.
+- Public `/companies` dùng SSR initial data + route transition; khi search/filter/sort/pagination mới hiện grid shadcn `Skeleton`, không render card cũ trong lúc pending. Company card/list đã bỏ fade-up/hover translate/shadow ở danh sách chính.
+- Notification và dashboard invalidate dùng SSE `GET /api/v1/realtime/events` qua `RealtimeProvider`; REST/TanStack Query vẫn là source of truth.
+- Chat application dùng REST + TanStack Query làm source of truth, nhận realtime qua Socket.IO namespace `/realtime` khi dialog mở. Chỉ `ACCEPTED` mới chat hai chiều; `REJECTED` chỉ xem lời nhắn read-only.
 - Quota UI dùng `/api/v1/quota/me`, `/quota/packages`, `/quota/checkout`, `/quota/mock-complete`; package có thời hạn và Inngest tự downgrade khi hết hạn.
 - BE quota code đã tách DI: FE không bị ảnh hưởng contract, nhưng không còn file backend `storage-quota.ts`.
 
@@ -61,7 +64,8 @@ graph TB
     subgraph RP["🧭 Nginx Backend Reverse Proxy (Port 80)"]
         V1["/api/v1/*<br/>→ NestJS /api/v1/*"]
         AUTH["/api/auth/*<br/>→ Better Auth on NestJS"]
-        SOCK["/socket.io/*<br/>→ Socket.IO transport"]
+        SSE["/api/v1/realtime/events<br/>→ SSE notification/dashboard"]
+        SOCK["/socket.io/*<br/>→ Socket.IO chat transport"]
     end
 
     subgraph BFF["🔄 Next.js Server Routes"]
@@ -90,7 +94,7 @@ graph TB
     end
 
     FE -->|"UI route navigation"| MID
-    FE -->|"REST/Auth/Socket.IO"| RP
+    FE -->|"REST/Auth/SSE/Socket.IO"| RP
     FE -->|"CopilotKit"| CK
     V1 --> GUARD
     AUTH --> GUARD
@@ -104,7 +108,7 @@ graph TB
     AGENT --> GUARD
 ```
 
-> Lưu ý: Nginx không đi qua Next.js route protection. Nhánh UI đi qua `web/src/proxy.ts`/layouts của Next.js; nhánh API/Auth/Socket.IO đi qua Nginx rồi vào thẳng NestJS guards/controllers.
+> Lưu ý: Nginx không đi qua Next.js route protection. Nhánh UI đi qua `web/src/proxy.ts`/layouts của Next.js; nhánh API/Auth/SSE/Socket.IO đi qua Nginx rồi vào thẳng NestJS guards/controllers.
 
 ### Cấu trúc Monorepo
 
@@ -175,7 +179,7 @@ Backend vẫn là **modular monolith**, nhưng các module quan trọng đã b�
 - API response không phụ thuộc vào việc gửi notification/event thành công nếu side effect là non-critical.
 - Apply job, accept/reject application, complete payment có thể phát sinh Inngest event ở phía BE.
 - Job embedding sync là background work sau payment activation thành công hoặc sau khi sửa job đang ACTIVE; FE không nên chờ embedding xong. Tạo job DRAFT không chạy embedding.
-- FE gọi `/api/v1/*`, `/api/auth/*` và Socket.IO thông qua `NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_REALTIME_URL` trỏ tới Nginx reverse proxy `http://localhost`; chỉ `/api/agent/*` và `/api/copilotkit/*` còn là Next.js server routes.
+- FE gọi `/api/v1/*`, `/api/auth/*`, SSE và Socket.IO thông qua `NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_REALTIME_URL` trỏ tới Nginx reverse proxy `http://localhost`; chỉ `/api/agent/*` và `/api/copilotkit/*` còn là Next.js server routes.
 
 ### Cài đặt
 
@@ -255,7 +259,7 @@ cp docker/.env.example web/.env
 |------|----------|-------------------|-------|
 | `BACKEND_URL` | ✅ | `http://localhost:3006` | Backend URL cho SSR/server route nội bộ |
 | `NEXT_PUBLIC_API_URL` | ✅ | `http://localhost` | Public backend reverse proxy cho browser REST/Auth |
-| `NEXT_PUBLIC_REALTIME_URL` | ✅ | `http://localhost` | Public Socket.IO reverse proxy cho browser |
+| `NEXT_PUBLIC_REALTIME_URL` | ✅ | `http://localhost` | Public realtime base URL cho SSE notification/dashboard và Socket.IO chat |
 | `AGENT_URL` | ✅ | `http://localhost:8125` | Python AI agent URL |
 | `OPENAI_API_KEY` | Cần AI | — | OpenAI API key (cho AI agent) |
 | `NEXT_PUBLIC_COPILOTKIT_LICENSE_KEY` | Optional | — | CopilotKit public license key cho React provider |
@@ -1289,9 +1293,11 @@ modules/<name>/
 
 ### Realtime chat, notification và dashboard
 
-- FE kết nối Socket.IO tới backend namespace `/realtime` thông qua `RealtimeProvider`.
-- Socket chỉ đẩy event realtime; REST API vẫn là source of truth cho chat, notification và dashboard.
-- Chat application mở dialog thì emit `application.join { applicationId }`, đóng dialog thì `application.leave`.
-- Notification không polling mặc định nữa; server emit `notification.created`, `notification.read`, `notification.all_read`, `notification.unread_count.changed`.
-- Dashboard không stream payload lớn; server emit `dashboard.invalidate`, FE invalidate query `["dashboard"]` để refetch đúng lúc.
-- Nếu socket disconnect, FE giữ dữ liệu cũ và fallback bằng refetch khi focus/reconnect.
+- FE tách realtime theo use case:
+  - `RealtimeProvider` mở SSE tới `GET /api/v1/realtime/events` để nhận notification và dashboard invalidate.
+  - `useApplicationChatRealtime` chỉ mở Socket.IO namespace `/realtime` khi dialog chat application đang mở.
+- Realtime chỉ đẩy event nhẹ; REST API và TanStack Query vẫn là source of truth cho chat, notification và dashboard.
+- Chat application mở dialog thì Socket.IO emit `application.join { applicationId }`, đóng dialog thì `application.leave`.
+- Notification không polling mặc định nữa; SSE emit `notification.created`, `notification.read`, `notification.all_read`, `notification.unread_count.changed`.
+- Dashboard không stream payload lớn; SSE emit `dashboard.invalidate`, FE invalidate query `["dashboard"]` để refetch đúng lúc.
+- Nếu SSE/Socket disconnect, FE giữ dữ liệu cũ và fallback bằng refetch khi focus/reconnect.

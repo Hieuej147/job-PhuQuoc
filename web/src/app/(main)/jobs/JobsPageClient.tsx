@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import JobsHero from "@/components/jobs/JobsHero";
 import { JobFilterSidebar, JobFilterMobileDrawer } from "@/components/jobs/JobFilter";
@@ -116,6 +116,8 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [wards, setWards] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const didHydrateJobs = useRef(false);
+  const jobFetchSeq = useRef(0);
 
   // Fetch wards dynamically from API
   // should be click to fetch, but for now we fetch on mount
@@ -170,6 +172,8 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
   });
 
   const fetchJobs = useCallback(async (p: number, f: typeof filters, s: string) => {
+    const requestId = jobFetchSeq.current + 1;
+    jobFetchSeq.current = requestId;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -216,15 +220,22 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
       if (s === "salary_high") params.set("sort", "salary_desc");
       if (s === "expiring_soon") params.set("sort", "expiring_soon");
       const data = await searchJobs(params.toString());
+      if (requestId !== jobFetchSeq.current) return;
       setJobs(data.items || []);
       setTotalJobs(data.total || 0);
       setTotalPages(data.totalPages || 0);
     } catch {
-      // keep current data
+      if (requestId === jobFetchSeq.current) {
+        setJobs([]);
+        setTotalJobs(0);
+        setTotalPages(0);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === jobFetchSeq.current) {
+        setLoading(false);
+      }
     }
-  }, [categories, wards]);
+  }, [categories]);
 
   useEffect(() => {
     const search = searchParams.get("search") || "";
@@ -257,6 +268,10 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
   }, [searchParams, categories]);
 
   useEffect(() => {
+    if (!didHydrateJobs.current) {
+      didHydrateJobs.current = true;
+      return;
+    }
     fetchJobs(page, filters, sortBy);
   }, [page, filters, sortBy, fetchJobs]);
 
@@ -321,7 +336,7 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
   const mappedJobs = jobs.map(mapJobType);
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors duration-200">
+    <div className="min-h-screen bg-background text-foreground">
       <JobsHero
         totalJobs={totalJobs}
         categories={categories}
@@ -353,17 +368,13 @@ export default function JobsPageClient({ initialJobs, initialTotal, initialTotal
               onOpenMobileFilter={() => setIsMobileFilterOpen(true)}
             />
 
-            <div className={`relative min-h-[400px] transition-opacity duration-200 ${loading ? "opacity-75" : ""}`}>
-              {loading && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/50 dark:bg-slate-900/30 backdrop-blur-[1px] rounded-2xl">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E7490]" />
-                </div>
-              )}
+            <div className="relative min-h-[400px]">
               <JobList
                 jobs={mappedJobs}
                 totalPages={totalPages}
                 currentPage={page}
                 onPageChange={setPage}
+                isLoading={loading}
                 bookmarkedIds={bookmarkedIds}
                 onBookmark={toggleBookmark}
               />

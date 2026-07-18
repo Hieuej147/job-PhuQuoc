@@ -73,10 +73,10 @@ export default function Loading() {
           {Array.from({ length: 8 }).map((_, index) => (
             <div
               key={index}
-              className="relative bg-white dark:bg-[#0f2436] rounded-2xl border border-[#E0F5FB] dark:border-[#1e3a4f] shadow-sm p-5 space-y-4"
+              className="relative flex flex-col gap-4 bg-white dark:bg-[#0f2436] rounded-2xl border border-[#E0F5FB] dark:border-[#1e3a4f] shadow-sm p-5"
             >
               {/* Cover area skeleton */}
-              <div className="h-20 -mx-5 -mt-5 rounded-t-2xl bg-slate-200/50 dark:bg-slate-800/50 animate-pulse" />
+              <Skeleton className="h-20 -mx-5 -mt-5 rounded-t-2xl" />
               
               {/* Logo area */}
               <div className="-mt-12 relative z-10">
@@ -84,7 +84,7 @@ export default function Loading() {
               </div>
 
               {/* Title & Industry */}
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Skeleton className="h-5 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
               </div>

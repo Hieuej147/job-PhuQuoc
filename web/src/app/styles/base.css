@@ -1,0 +1,28 @@
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+}
+
+body,
+html {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+.auth-input {
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: #0e7490;
+  box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.18);
+}
+
+.dark .auth-input:focus {
+  border-color: #67e8f9;
+  box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.18);
+}

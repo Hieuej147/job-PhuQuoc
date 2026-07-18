@@ -1,65 +1,44 @@
 import { Injectable } from '@nestjs/common';
-import type { Namespace, Server } from 'socket.io';
-import { PinoLoggerService } from '../common/logger/pino-logger.service';
 import type {
   DashboardInvalidateScope,
   RealtimeApplicationMessage,
   RealtimeNotification,
 } from './realtime.types';
+import { RealtimeSocketService } from './realtime-socket.service';
+import { RealtimeSseService } from './realtime-sse.service';
 
 @Injectable()
 export class RealtimeService {
-  private server?: Server | Namespace;
-
-  constructor(private readonly logger: PinoLoggerService) {}
-
-  bindServer(server: Server | Namespace) {
-    this.server = server;
-  }
+  constructor(
+    private readonly socket: RealtimeSocketService,
+    private readonly sse: RealtimeSseService,
+  ) {}
 
   emitApplicationMessage(applicationId: string, message: RealtimeApplicationMessage) {
-    this.emitToRoom(`application:${applicationId}`, 'application.message.created', {
-      applicationId,
-      message,
-    });
+    this.socket.emitApplicationMessage(applicationId, message);
   }
 
   emitApplicationMessagesRead(applicationId: string, payload: { readerId: string; readAt: Date | string }) {
-    this.emitToRoom(`application:${applicationId}`, 'application.messages.read', {
-      applicationId,
-      ...payload,
-    });
+    this.socket.emitApplicationMessagesRead(applicationId, payload);
   }
 
   emitNotificationCreated(userId: string, notification: RealtimeNotification) {
-    this.emitToUser(userId, 'notification.created', { notification });
+    this.sse.emitNotificationCreated(userId, notification);
   }
 
   emitNotificationRead(userId: string, payload: { id: string; readAt: Date | string | null }) {
-    this.emitToUser(userId, 'notification.read', payload);
+    this.sse.emitNotificationRead(userId, payload);
   }
 
   emitAllNotificationsRead(userId: string, payload: { readAt: Date | string }) {
-    this.emitToUser(userId, 'notification.all_read', payload);
+    this.sse.emitAllNotificationsRead(userId, payload);
   }
 
   emitUnreadCountChanged(userId: string, count: number) {
-    this.emitToUser(userId, 'notification.unread_count.changed', { count });
+    this.sse.emitUnreadCountChanged(userId, count);
   }
 
   emitDashboardInvalidate(userId: string, scope: DashboardInvalidateScope, reason: string) {
-    this.emitToUser(userId, 'dashboard.invalidate', { scope, reason });
-  }
-
-  private emitToUser(userId: string, event: string, payload: unknown) {
-    this.emitToRoom(`user:${userId}`, event, payload);
-  }
-
-  private emitToRoom(room: string, event: string, payload: unknown) {
-    if (!this.server) {
-      this.logger.debug(`Realtime server not ready for ${event}`, 'RealtimeService');
-      return;
-    }
-    this.server.to(room).emit(event, payload);
+    this.sse.emitDashboardInvalidate(userId, scope, reason);
   }
 }
