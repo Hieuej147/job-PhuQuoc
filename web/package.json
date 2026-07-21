@@ -7,7 +7,7 @@
     "dev:ui": "next dev -p 3001",
     "dev:agent": "node ./scripts/run-agent.js",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3001",
     "install:agent": "./scripts/setup-agent.sh || scripts\\setup-agent.bat"
   },
   "dependencies": {

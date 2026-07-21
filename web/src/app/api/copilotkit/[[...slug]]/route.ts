@@ -6,7 +6,7 @@ import { NextRequest } from "next/server";
 import type { AuthUser } from "@/lib/auth";
 
 const agentUrl = process.env.AGENT_URL || "http://localhost:8125";
-const backendUrl = process.env.BACKEND_URL || "http://localhost:3000";
+const backendUrl = process.env.BACKEND_URL || "http://localhost:3006";
 let lastCopilotAuthUnavailableLogAt = 0;
 
 function logCopilotAuthUnavailableOnce(error: unknown) {

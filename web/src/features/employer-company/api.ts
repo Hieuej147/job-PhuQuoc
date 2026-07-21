@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost, unwrapApiPayload } from "@/lib/api-client";
+import { apiGet, apiPatch, apiPost, unwrapApiPayload, apiUrl } from "@/lib/api-client";
 import type { AddressProvince, Company } from "./types";
 
 export function getAddressTree() {
@@ -6,7 +6,7 @@ export function getAddressTree() {
 }
 
 export async function getMyCompany() {
-  const response = await fetch("/api/v1/companies/my", { credentials: "include" });
+  const response = await fetch(apiUrl("/api/v1/companies/my"), { credentials: "include" });
   if (response.status === 404) return null;
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new Error(body?.message || "Không thể tải hồ sơ công ty");
@@ -22,7 +22,7 @@ export function saveCompany(companyId: string | null, payload: Record<string, un
 export async function uploadCompanyLogo(file: File) {
   const formData = new FormData();
   formData.append("file", file);
-  const response = await fetch("/api/v1/upload/company-logo", {
+  const response = await fetch(apiUrl("/api/v1/upload/company-logo"), {
     method: "POST",
     credentials: "include",
     body: formData,
@@ -37,7 +37,7 @@ export async function uploadCompanyLogo(file: File) {
 export async function uploadCompanyCover(file: File) {
   const formData = new FormData();
   formData.append("file", file);
-  const response = await fetch("/api/v1/upload/company-cover", {
+  const response = await fetch(apiUrl("/api/v1/upload/company-cover"), {
     method: "POST",
     credentials: "include",
     body: formData,

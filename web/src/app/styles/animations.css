@@ -1,0 +1,130 @@
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes thinkingDot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-in {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+.fade-in {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+.slide-in-from-bottom-4 {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+.fade-up {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.6s ease-out,
+    transform 0.6s ease-out;
+}
+
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.animate-fadeUp {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.delay-100,
+.animation-delay-100,
+.stagger-1 {
+  animation-delay: 0.1s;
+  transition-delay: 0.1s;
+}
+
+.delay-200,
+.animation-delay-200,
+.stagger-2 {
+  animation-delay: 0.2s;
+  transition-delay: 0.2s;
+}
+
+.delay-300,
+.animation-delay-300,
+.stagger-3 {
+  animation-delay: 0.3s;
+  transition-delay: 0.3s;
+}
+
+.delay-400,
+.animation-delay-400,
+.stagger-4 {
+  animation-delay: 0.4s;
+  transition-delay: 0.4s;
+}
+
+.stagger-5 {
+  transition-delay: 0.5s;
+}
+
+.stagger-6 {
+  transition-delay: 0.6s;
+}
+
+.stagger-7 {
+  transition-delay: 0.7s;
+}
+
+.stagger-8 {
+  transition-delay: 0.8s;
+}
+
+.animate-thinking-dot {
+  animation: thinkingDot 1.2s ease-in-out infinite;
+}

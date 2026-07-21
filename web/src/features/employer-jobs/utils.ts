@@ -13,6 +13,8 @@ export function jobToForm(job: Partial<EmployerJob>): JobFormState {
     description: job.description ?? "",
     requirements: job.requirements ?? "",
     benefits: job.benefits ?? "",
+    wardId: job.wardId ?? job.ward?.id ?? "",
+    addressDetail: job.addressDetail ?? "",
     categoryId: job.categoryId ?? job.category?.id ?? "",
     type: job.type ?? EMPTY_JOB_FORM.type,
     experience: job.experience ?? EMPTY_JOB_FORM.experience,
@@ -32,6 +34,8 @@ export function buildJobPayload(form: JobFormState) {
     experience: form.experience,
     level: form.level,
     quantity: parseInt(form.quantity, 10) || 1,
+    wardId: form.wardId,
+    addressDetail: form.addressDetail.trim(),
   };
 
   if (form.requirements) body.requirements = form.requirements;
@@ -45,6 +49,12 @@ export function buildJobPayload(form: JobFormState) {
 export function validateJobForm(form: JobFormState) {
   if (!form.title.trim() || !form.description.trim() || !form.categoryId) {
     return "Vui lòng điền tiêu đề, mô tả và chọn ngành nghề";
+  }
+  if (!form.wardId) {
+    return "Vui lòng chọn khu vực làm việc";
+  }
+  if (!form.addressDetail.trim()) {
+    return "Vui lòng nhập địa chỉ làm việc chi tiết";
   }
   return null;
 }

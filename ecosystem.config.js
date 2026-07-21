@@ -2,30 +2,30 @@
  * @file ecosystem.config.js
  * @description PM2 ecosystem configuration.
  * @note Chạy được trên cả Windows và Linux, gồm backend, frontend, inngest và FastAPI agent.
+ * @note frontend chạy DEV mode để có hot reload và Next.js dev indicator khi đang code.
+ *       Nếu cần test production locally, build web rồi đổi process frontend sang "start".
  */
 const path = require("path");
 const root = __dirname;
+const isWindows = process.platform === "win32";
+const pnpmScript = isWindows ? "cmd.exe" : "pnpm";
+const pnpmArgs = (script) => (isWindows ? `/c pnpm ${script}` : script);
+
 module.exports = {
   apps: [
     {
       name: "backend",
-      // --- Cấu hình cũ ---
-      // script: "dist/src/main.js",
-      node_args: "-r dotenv/config",
-      // --- Cấu hình mới (dùng 1 cách duy nhất qua package manager) ---
-      script: "pnpm",
-      args: "run dev",
+      script: pnpmScript,
+      args: pnpmArgs("run dev"),
+      interpreter: "none",
       cwd: path.join(root, "backend"),
       env: { NODE_ENV: "development" },
     },
     {
       name: "frontend",
-      // --- Cấu hình cũ ---
-      // script: "node_modules/next/dist/bin/next",
-      // args: "dev -p 3001",
-      // --- Cấu hình mới (dùng 1 cách duy nhất qua package manager) ---
-      script: "pnpm",
-      args: "run dev:ui",
+      script: pnpmScript,
+      args: pnpmArgs("run dev:ui"),
+      interpreter: "none",
       cwd: path.join(root, "web"),
       env: { NODE_ENV: "development" },
     },
@@ -45,7 +45,11 @@ module.exports = {
       name: "agent",
       script: path.join(root, "web", "scripts", "run-agent.js"),
       cwd: root,
-      env: { NODE_ENV: "development" },
+      env: {
+        NODE_ENV: "development",
+        PYTHONIOENCODING: "utf-8",
+        PYTHONUNBUFFERED: "1",
+      },
     },
   ],
 };

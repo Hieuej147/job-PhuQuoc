@@ -1,3 +1,5 @@
+import { apiUrl } from "@/lib/api-client";
+
 export interface AuthUser {
   id: string;
   name: string;
@@ -32,7 +34,7 @@ export type PasswordResetRequestResult =
     };
 
 export async function authFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  return fetch(path, {
+  return fetch(apiUrl(path), {
     ...options,
     credentials: 'include',
     headers: {

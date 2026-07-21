@@ -120,7 +120,7 @@ export class AuthGuard implements CanActivate {
       const jwksUrl = new URL(
         "/api/auth/jwks",
         this.configService.get<string>("BETTER_AUTH_URL") ||
-          "http://localhost:3000",
+          "http://localhost",
       );
 
       if (!this.JWKS) {

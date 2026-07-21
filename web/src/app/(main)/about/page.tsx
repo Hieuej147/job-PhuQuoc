@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 async function getStats() {
   try {
     const [companiesRes, jobsRes] = await Promise.allSettled([
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/v1/companies?limit=1`, { cache: "no-store" }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/v1/jobs?limit=1`, { cache: "no-store" }),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006"}/api/v1/companies?limit=1`, { cache: "no-store" }),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006"}/api/v1/jobs?limit=1`, { cache: "no-store" }),
     ]);
 
     let companiesTotal = 0;

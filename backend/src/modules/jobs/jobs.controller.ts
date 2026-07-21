@@ -101,7 +101,13 @@ export class JobsController {
   @ApiOperation({ summary: 'Tìm kiếm job bằng AI vector', description: 'Agent Python gọi API này với vector nhúng để tìm kiếm semantic job.' })
   @ApiResponse({ status: 200, description: 'Danh sách top jobs phù hợp' })
   vectorSearch(@Body() body: VectorSearchDto) {
-    return this.jobsService.vectorSearch(body.embedding, body.limit || 10);
+    return this.jobsService.vectorSearch(
+      body.embedding,
+      body.limit || 10,
+      body.wardId,
+      body.salaryMin,
+      body.salaryMax,
+    );
   }
 
   @Get(':id')

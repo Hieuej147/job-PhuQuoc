@@ -1,8 +1,7 @@
 import { Metadata } from "next";
-import { Suspense } from "react";
 import JobsPageClient from "./JobsPageClient";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3006";
 
 export const metadata: Metadata = {
   title: "Việc Làm Phú Quốc 2026 | Resort, Khách Sạn, Nhà Hàng | PQJobs",
@@ -104,19 +103,13 @@ export default async function JobsPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <Suspense fallback={
-        <div className="flex items-center justify-center min-h-screen bg-[#f7f9ff] dark:bg-[#071a2b]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E7490]" />
-        </div>
-      }>
-        <JobsPageClient
-          initialJobs={jobsData.items || []}
-          initialTotal={jobsData.total || 0}
-          initialTotalPages={jobsData.totalPages || 0}
-          categories={categories}
-          stats={stats}
-        />
-      </Suspense>
+      <JobsPageClient
+        initialJobs={jobsData.items || []}
+        initialTotal={jobsData.total || 0}
+        initialTotalPages={jobsData.totalPages || 0}
+        categories={categories}
+        stats={stats}
+      />
     </>
   );
 }

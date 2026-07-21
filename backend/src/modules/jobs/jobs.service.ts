@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditWriteContractService } from '../shared/contracts/audit.contract';
 import { CacheService } from '../../common/cache/cache.service';
@@ -37,6 +37,48 @@ export class JobsService {
     private readonly jobBackground: JobBackgroundService,
     private readonly quotaService: QuotaService,
   ) { }
+
+  private async assertWardExists(wardId: string) {
+    const ward = await this.prisma.addressWard.findUnique({
+      where: { id: wardId },
+      select: { id: true },
+    });
+    if (!ward) {
+      throw new BadRequestException('Khu vực làm việc không hợp lệ');
+    }
+  }
+
+  private async normalizeCreateLocation(data: CreateJobDto) {
+    const wardId = data.wardId?.trim();
+    const addressDetail = data.addressDetail?.trim();
+
+    if (!wardId) {
+      throw new BadRequestException('Vui lòng chọn khu vực làm việc');
+    }
+    if (!addressDetail) {
+      throw new BadRequestException('Vui lòng nhập địa chỉ làm việc chi tiết');
+    }
+
+    await this.assertWardExists(wardId);
+    return { ...data, wardId, addressDetail };
+  }
+
+  private async normalizeUpdateLocation(job: { wardId: string | null; addressDetail: string | null }, data: UpdateJobDto) {
+    const rawWardId = data.wardId === undefined ? job.wardId : data.wardId;
+    const rawAddressDetail = data.addressDetail === undefined ? job.addressDetail : data.addressDetail;
+    const wardId = rawWardId?.trim();
+    const addressDetail = rawAddressDetail?.trim();
+
+    if (!wardId) {
+      throw new BadRequestException('Vui lòng chọn khu vực làm việc');
+    }
+    if (!addressDetail) {
+      throw new BadRequestException('Vui lòng nhập địa chỉ làm việc chi tiết');
+    }
+
+    await this.assertWardExists(wardId);
+    return { ...data, wardId, addressDetail };
+  }
 
   async findAll(query: JobQueryDto) {
     const { search, category, type, experience, level, salaryMin, salaryMax, salaryRange, ward, companyId, sort } = query;
@@ -306,13 +348,14 @@ export class JobsService {
   async create(userId: string, data: CreateJobDto) {
     const company = await this.companyContract.findByOwnerId(userId);
     if (!company) throw new NotFoundException('You need a company to post jobs');
+    const normalizedData = await this.normalizeCreateLocation(data);
     const usedJobs = await this.countEmployerJobQuotaUsage(userId);
     await this.quotaService.assertWithinForUser(userId, 'employerJobs', usedJobs);
-    const slug = slugify(data.title) + '-' + Date.now().toString(36);
+    const slug = slugify(normalizedData.title) + '-' + Date.now().toString(36);
     const job = await this.prisma.job.create({
       data: {
-        ...data, slug, companyId: company.id,
-        type: data.type as JobType, experience: data.experience as ExperienceLevel, level: data.level as JobLevel,
+        ...normalizedData, slug, companyId: company.id,
+        type: normalizedData.type as JobType, experience: normalizedData.experience as ExperienceLevel, level: normalizedData.level as JobLevel,
         status: 'DRAFT',
       },
     });
@@ -326,7 +369,8 @@ export class JobsService {
     if (!job) throw new NotFoundException('Job not found');
     if (job.company.ownerId !== userId) throw new ForbiddenException('Not company owner');
     if (job.archivedAt) throw new ConflictException('Archived jobs must be restored before editing');
-    const updated = await this.prisma.job.update({ where: { id }, data: data as Prisma.JobUpdateInput });
+    const normalizedData = await this.normalizeUpdateLocation(job, data);
+    const updated = await this.prisma.job.update({ where: { id }, data: normalizedData as Prisma.JobUpdateInput });
     await this.invalidateCache();
 
     if (
@@ -627,23 +671,47 @@ export class JobsService {
     ]);
   }
 
-  async vectorSearch(embedding: number[], limit: number = 10) {
+  async vectorSearch(
+    embedding: number[],
+    limit: number = 10,
+    wardId?: string,
+    salaryMin?: number,
+    salaryMax?: number,
+    minSimilarity: number = 0.35, // ← THÊM THAM SỐ NÀY
+  ) {
     const vectorString = `[${embedding.join(',')}]`;
 
     const results = await this.prisma.$queryRaw`
+    SELECT * FROM (
       SELECT 
         j.id, j.title, j.slug, j."salaryMin", j."salaryMax", j.type, j."wardId",
+        w.name as "wardName",
         c.name as "companyName", c.logo as "companyLogo",
         1 - (je.embedding <=> ${vectorString}::vector) as similarity
       FROM "job" j
       JOIN "job_embedding" je ON j.id = je."jobId"
       JOIN "company" c ON j."companyId" = c.id
+      LEFT JOIN "address_ward" w ON j."wardId" = w.id
+      LEFT JOIN "address_district" d ON w."districtId" = d.id
+      LEFT JOIN "address_province" p ON d."provinceId" = p.id
       WHERE j.status = 'ACTIVE'
         AND j."archivedAt" IS NULL
         AND (j.deadline IS NULL OR j.deadline >= NOW())
-      ORDER BY je.embedding <=> ${vectorString}::vector
-      LIMIT ${limit}
-    `;
+        ${wardId ? Prisma.sql`
+          AND (
+            j."wardId" = ${wardId}
+            OR w.name ILIKE ${'%' + wardId + '%'}
+            OR d.name ILIKE ${'%' + wardId + '%'}
+            OR p.name ILIKE ${'%' + wardId + '%'}
+          )
+        ` : Prisma.empty}
+        ${salaryMin ? Prisma.sql`AND j."salaryMin" >= ${salaryMin}` : Prisma.empty}
+        ${salaryMax ? Prisma.sql`AND j."salaryMax" <= ${salaryMax}` : Prisma.empty}
+    ) sub
+    WHERE similarity >= ${minSimilarity}
+    ORDER BY similarity DESC
+    LIMIT ${limit}
+  `;
 
     return Array.isArray(results) ? results.map(r => ({
       id: r.id,
@@ -652,7 +720,7 @@ export class JobsService {
       company: r.companyName,
       companyLogo: r.companyLogo,
       salary: `${r.salaryMin || '?'} - ${r.salaryMax || '?'}`,
-      location: r.wardId,
+      location: r.wardName || r.wardId,
       type: r.type,
       similarity: r.similarity
     })) : [];

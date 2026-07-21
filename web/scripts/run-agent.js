@@ -3,20 +3,31 @@ const path = require("path");
 const { spawn, spawnSync } = require("child_process");
 
 const root = path.resolve(__dirname, "..");
+const repoRoot = path.resolve(root, "..");
 const agentDir = path.join(root, "agent");
 
-// Load .env từ web/
-const envFile = path.join(root, ".env");
-if (fs.existsSync(envFile)) {
+function loadEnvFile(envFile, { override = false } = {}) {
+  if (!fs.existsSync(envFile)) return;
   fs.readFileSync(envFile, "utf-8")
     .split("\n")
     .forEach((line) => {
       const match = line.match(/^\s*([^#][^=]*?)\s*=\s*(.*)\s*$/);
-      if (match) process.env[match[1]] = match[2].replace(/^["']|["']$/g, "");
+      if (!match) return;
+      const key = match[1];
+      if (!override && process.env[key] !== undefined) return;
+      process.env[key] = match[2].replace(/^["']|["']$/g, "");
     });
 }
 
+loadEnvFile(path.join(repoRoot, "backend", ".env"));
+loadEnvFile(path.join(root, ".env"));
+
 function pickPython() {
+  // Ưu tiên uv run nếu có sẵn — đảm bảo đúng môi trường venv, tránh lệch PATH/DLL trên Windows
+  if (!spawnSync("uv", ["--version"], { stdio: "ignore" }).error) {
+    return { command: "uv", args: ["run", "python"] };
+  }
+
   const candidates =
     process.platform === "win32"
       ? [path.join(agentDir, ".venv", "Scripts", "python.exe"), "py", "python"]
@@ -42,7 +53,7 @@ function pickPython() {
     return { command: "python3", args: [] };
   }
   if (!spawnSync("python", ["--version"], { stdio: "ignore" }).error) {
-    return { command: "python", args: [] };
+    return { command: "python3", args: [] };
   }
   return { command: "python3", args: [] };
 }
@@ -53,13 +64,7 @@ const child = spawn(
   python.command,
   [
     ...python.args,
-    "-m",
-    "uvicorn",
-    "main:app",
-    "--host",
-    "0.0.0.0",
-    "--port",
-    "8125",
+    "main.py",
   ],
   {
     cwd: agentDir,

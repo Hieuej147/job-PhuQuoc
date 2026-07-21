@@ -14,6 +14,7 @@
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { JobType } from '@/types/job';
 import JobCard from './JobCard';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Định nghĩa kiểu dữ liệu cho props đầu vào của component JobList
 interface JobListProps {
@@ -27,24 +28,23 @@ interface JobListProps {
 }
 
 /**
- * Component SkeletonCard render một khung hình chữ nhật mờ, giật nhấp nháy 
- * để giả lập cấu trúc của thẻ JobCard trong lúc chờ tải dữ liệu.
+ * Component SkeletonCard render một khung tĩnh để giữ layout trong lúc chờ tải dữ liệu.
  */
 function SkeletonCard() {
   return (
-    <div className="bg-white dark:bg-[#0d2137] rounded-2xl p-5 border border-[#E0F5FB] dark:border-[#1a3d5c] animate-pulse transition-colors duration-200">
+    <div className="bg-white dark:bg-[#0d2137] rounded-2xl p-5 border border-[#E0F5FB] dark:border-[#1a3d5c]">
       <div className="flex gap-4">
         {/* Khung logo giả */}
-        <div className="w-14 h-14 bg-gray-100 dark:bg-[#071a2b] rounded-xl flex-shrink-0" />
+        <Skeleton className="w-14 h-14 rounded-xl flex-shrink-0" />
         {/* Khung dòng tiêu đề và mô tả giả */}
         <div className="flex-1 space-y-3">
-          <div className="h-4 bg-gray-100 dark:bg-[#071a2b] rounded w-3/4" />
-          <div className="h-3 bg-gray-100 dark:bg-[#071a2b] rounded w-1/2" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
           {/* Nhãn tag giả */}
           <div className="flex gap-2">
-            <div className="h-5 w-16 bg-gray-100 dark:bg-[#071a2b] rounded-md" />
-            <div className="h-5 w-20 bg-gray-100 dark:bg-[#071a2b] rounded-md" />
-            <div className="h-5 w-14 bg-gray-100 dark:bg-[#071a2b] rounded-md" />
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-5 w-14" />
           </div>
         </div>
       </div>
@@ -62,7 +62,7 @@ export default function JobList({
   onBookmark,
 }: JobListProps) {
 
-  // 1. Trường hợp đang tải dữ liệu: Render 4 SkeletonCard chạy hiệu ứng nhấp nháy
+  // 1. Trường hợp đang tải dữ liệu: chỉ render skeleton, không giữ danh sách cũ phía dưới.
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -76,7 +76,7 @@ export default function JobList({
   // 2. Trường hợp danh sách công việc trống: Hiển thị giao diện thông báo
   if (jobs.length === 0) {
     return (
-      <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] p-12 text-center flex flex-col items-center justify-center transition-colors duration-200">
+      <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] p-12 text-center flex flex-col items-center justify-center">
         <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
         <h3 className="text-lg font-bold text-gray-500 dark:text-gray-400 mb-1">Không tìm thấy việc làm</h3>
         <p className="text-sm text-gray-400 dark:text-[#94a3b8] max-w-sm">
@@ -108,7 +108,7 @@ export default function JobList({
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage <= 1}
-            className="p-2 rounded-xl border border-gray-200 dark:border-[#1a3d5c] text-gray-600 dark:text-[#cbd5e1] hover:border-[#0E7490] dark:hover:border-[#67e8f9] hover:text-[#0E7490] dark:hover:text-[#67e8f9] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+            className="p-2 rounded-xl border border-gray-200 dark:border-[#1a3d5c] text-gray-600 dark:text-[#cbd5e1] hover:border-[#0E7490] dark:hover:border-[#67e8f9] hover:text-[#0E7490] dark:hover:text-[#67e8f9] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
             id="prev-page"
             aria-label="Trang trước"
           >
@@ -158,7 +158,7 @@ export default function JobList({
                   key={pageNumber}
                   onClick={() => onPageChange(pageNumber as number)}
                   id={`page-${pageNumber}`}
-                  className={`w-9 h-9 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${isActive
+                  className={`w-9 h-9 rounded-xl text-sm font-semibold cursor-pointer ${isActive
                     ? 'bg-[#0E7490] text-white dark:bg-[#67e8f9] dark:text-[#071a2b] shadow-md'
                     : 'border border-gray-200 dark:border-[#1a3d5c] text-gray-600 dark:text-[#cbd5e1] hover:border-[#0E7490] dark:hover:border-[#67e8f9] hover:text-[#0E7490] dark:hover:text-[#67e8f9]'
                     }`}
@@ -173,7 +173,7 @@ export default function JobList({
           <button
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage >= totalPages}
-            className="p-2 rounded-xl border border-gray-200 dark:border-[#1a3d5c] text-gray-600 dark:text-[#cbd5e1] hover:border-[#0E7490] dark:hover:border-[#67e8f9] hover:text-[#0E7490] dark:hover:text-[#67e8f9] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+            className="p-2 rounded-xl border border-gray-200 dark:border-[#1a3d5c] text-gray-600 dark:text-[#cbd5e1] hover:border-[#0E7490] dark:hover:border-[#67e8f9] hover:text-[#0E7490] dark:hover:text-[#67e8f9] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
             id="next-page"
             aria-label="Trang tiếp"
           >

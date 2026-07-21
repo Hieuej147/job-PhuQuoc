@@ -8,7 +8,7 @@ export class EmbeddingService {
   private readonly OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
   private readonly MODEL = process.env.EMBEDDING_MODEL || 'nomic-embed-text';
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async generateEmbedding(text: string): Promise<number[] | null> {
     try {
@@ -35,14 +35,15 @@ export class EmbeddingService {
   }
 
   async syncJobEmbedding(jobId: string, title: string, description: string, requirements?: string) {
-    const text = `${title}. ${description} ${requirements || ''}`.trim();
+    const rawText = `${title}. ${description} ${requirements || ''}`.trim();
+    const text = `search_document: ${rawText}`; // ← THÊM DÒNG NÀY, đổi tên biến rawText
     const embedding = await this.generateEmbedding(text);
-    
+
     if (!embedding) return;
 
     const id = crypto.randomUUID();
     const vectorString = `[${embedding.join(',')}]`;
-    
+
     try {
       await this.prisma.$executeRaw`
         INSERT INTO "job_embedding" ("id", "jobId", "embedding")

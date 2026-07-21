@@ -5,6 +5,8 @@ export const EMPTY_JOB_FORM: JobFormState = {
   description: "",
   requirements: "",
   benefits: "",
+  wardId: "",
+  addressDetail: "",
   categoryId: "",
   type: "FULL_TIME",
   experience: "NO_EXPERIENCE",

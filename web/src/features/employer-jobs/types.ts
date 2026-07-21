@@ -6,6 +6,8 @@ export type JobFormState = {
   description: string;
   requirements: string;
   benefits: string;
+  wardId: string;
+  addressDetail: string;
   categoryId: string;
   type: string;
   experience: string;
@@ -36,7 +38,9 @@ export type EmployerJob = {
   featuredUntil?: string | null;
   categoryId?: string | null;
   category?: { id: string; name: string } | null;
-  ward?: { name: string; district?: { name: string } | null } | null;
+  wardId?: string | null;
+  addressDetail?: string | null;
+  ward?: { id?: string; name: string; district?: { name: string } | null } | null;
   requirements?: string | null;
   benefits?: string | null;
   description?: string | null;

@@ -228,8 +228,8 @@ export function BlogManagement() {
 
                     <div className="space-y-1.5 flex-1 min-w-0">
                       <Link
-                        href={`/blog/${blog.slug}`}
-                        target="_blank"
+                        href={blog.isPublished ? `/blog/${blog.slug}` : `/blog/${blog.slug}/edit`}
+                        target={blog.isPublished ? "_blank" : undefined}
                         className="font-bold text-slate-800 dark:text-white hover:text-primary hover:underline line-clamp-1 text-sm sm:text-base leading-snug"
                       >
                         {blog.title}

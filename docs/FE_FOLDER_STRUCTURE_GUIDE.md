@@ -2,7 +2,7 @@
 
 > Tài liệu hướng dẫn đặt code Frontend cho PQJobs. Mục tiêu là giúp team FE biết file mới nên nằm ở đâu, tránh nhồi logic domain vào `app/`, `components/` hoặc `lib/` sai vai trò.
 >
-> Cập nhật: 11/07/2026
+> Cập nhật: 18/07/2026
 
 ---
 
@@ -11,6 +11,7 @@
 - `app/` chỉ là route boundary của Next.js: page, layout, loading/error/not-found và API proxy/BFF.
 - `features/<domain>/` chứa logic nghiệp vụ theo domain: API client theo feature, hook, type, utils, component nội bộ của feature.
 - `components/ui/` chỉ chứa UI primitive kiểu shadcn/base component, không chứa rule nghiệp vụ.
+- Loading placeholder phải dùng `components/ui/skeleton`; không tự tạo `div animate-pulse` trong feature/page.
 - `components/common/`, `components/layout/`, `components/media/` chứa component dùng lại nhiều domain.
 - `lib/` chỉ chứa core shared thật sự, không thêm query/hook/domain business mới vào đây.
 - `hooks/` chỉ chứa hook UI/global nhỏ. Hook nghiệp vụ đặt trong `features/<domain>/hooks`.
@@ -57,13 +58,14 @@ Chứa Next.js App Router:
 - `app/employer`: dashboard và workspace employer.
 - `app/blog`: tạo/sửa bài blog.
 - `app/quota`: checkout nâng gói quota.
-- `app/api`: BFF/proxy route tới backend, auth, CopilotKit, AI agent.
+- `app/api`: chỉ giữ BFF/server route cho AI (`/api/agent/*`, `/api/copilotkit/*`). REST `/api/v1/*`, Better Auth `/api/auth/*`, SSE và Socket.IO đi qua Nginx reverse proxy tới NestJS.
 
 Rule:
 
 - Page/layout được phép fetch/compose UI, nhưng không nên chứa formatter, parser, business rule dài.
 - Nếu page vượt dài hoặc có nhiều state/action, tách sang `features/<domain>`.
-- API route trong `app/api` chỉ proxy/orchestrate mỏng, không chứa business logic thay backend.
+- API route trong `app/api` chỉ proxy/orchestrate mỏng cho AI/BFF, không chứa business logic thay backend.
+- Public list pages như `/jobs` và `/companies` dùng SSR initial data. Khi search/filter/sort/pagination thì hiển thị shadcn `Skeleton` và chỉ render card sau khi data mới sẵn sàng.
 
 ### `web/src/features`
 
@@ -92,7 +94,7 @@ Các feature hiện có:
 - `employer-jobs`: quản lý tin đăng, create/edit/checkout helper.
 - `job-detail`, `jobs-search`: public job detail/search flow.
 - `notifications`: query, mutation, href/icon mapping notification.
-- `realtime`: Socket.IO provider/hook cập nhật cache realtime.
+- `realtime`: SSE provider cho notification/dashboard invalidate và Socket.IO hook cho application chat.
 - `saved-companies`, `saved-jobs`: API cho danh sách đã lưu/theo dõi.
 - `seo`: structured data/JSON-LD helper.
 
@@ -176,19 +178,20 @@ Chỉ dành cho CV/resume template và renderer liên quan template.
 | Thêm API upload cover công ty phía FE | `features/employer-company/api.ts` |
 | Thêm component crop ảnh dùng cho avatar/logo/cover | `components/media` |
 | Thêm notification mutation/read-all | `features/notifications/queries.ts` |
-| Thêm Socket.IO listener cho cache dashboard | `features/realtime` |
+| Thêm SSE listener cho notification/dashboard cache | `features/realtime` |
 | Thêm JSON-LD cho public SEO | `features/seo` |
 | Thêm primitive `Stepper` không có nghiệp vụ | `components/ui/stepper.tsx` |
 | Thêm formatter chỉ dùng trong job card | `features/jobs-search` hoặc `components/jobs` nếu đang chỉnh component legacy |
+| Thêm skeleton loading cho list/card | Dùng `components/ui/skeleton` trong component/page liên quan |
 
 ---
 
 ## 5. Những ngoại lệ/legacy cần biết
 
-- `components/blog`, `components/jobs`, `components/dashboard`, `components/candidate/profile` vẫn tồn tại và đang được dùng.
+- `components/blog`, `components/jobs`, `components/company`, `components/dashboard`, `components/candidate/profile` vẫn tồn tại và đang được dùng.
 - Không refactor dồn các thư mục này chỉ để “đẹp cây”. Khi sửa lớn một flow, có thể tách dần sang `features/<domain>`.
 - `lib/profile-completion.ts`, `lib/resume-pdf.ts`, `lib/resume-template-data.ts` hiện còn giữ vì liên quan CV/profile nhiều nơi. Nếu refactor sau, cần kiểm tra kỹ print/export/template.
-- `app/api/*` là BFF/proxy của Next.js, không thay thế backend NestJS.
+- `app/api/*` hiện chỉ dùng cho AI/BFF còn cần Next.js server context; không dùng làm generic reverse proxy cho REST/Auth.
 
 ---
 
@@ -199,4 +202,5 @@ Chỉ dành cho CV/resume template và renderer liên quan template.
 - Component có thật sự shared không, hay chỉ dùng cho một page?
 - Page trong `app/` có đang quá dài và cần tách sang feature không?
 - Type này có dùng xuyên app không, hay chỉ nên nằm trong feature?
-- Nếu đụng realtime/notification/dashboard cache, đã dùng `features/realtime` và `features/notifications` chưa?
+- Nếu đụng realtime/notification/dashboard cache, đã dùng SSE trong `features/realtime` và query keys trong `features/notifications` chưa?
+- Nếu đụng application chat, đã dùng Socket.IO hook riêng `features/realtime/use-application-chat-realtime.ts` chưa?

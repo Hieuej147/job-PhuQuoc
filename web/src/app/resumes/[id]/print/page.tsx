@@ -6,6 +6,7 @@ import { TEMPLATE_MAP } from "@/template";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { toTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
+import { apiUrl } from "@/lib/api-client";
 
 interface ResumeData {
   id: string;
@@ -34,7 +35,7 @@ export default function PublicPrintResumePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/v1/resumes/${id}`, { credentials: "include" })
+    fetch(apiUrl(`/api/v1/resumes/${id}`), { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
         const resumeData = d.data?.data ?? d.data ?? d;

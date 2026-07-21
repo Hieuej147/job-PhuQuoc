@@ -144,6 +144,8 @@ model user {
   payments             Payment[]
   quotaPlan            UserQuotaPlan?
   quotaPurchases       QuotaPurchase[]
+  chatThreads          ChatThread[]
+  emailIntegration     EmailIntegration?
 }
 
 model UserQuotaPlan {
@@ -687,4 +689,51 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId])
   @@map("audit_log")
+}
+
+// ============================================================
+// Chat Threads (AI Agent)
+// ============================================================
+
+enum ChatAgentType {
+  CANDIDATE
+  RECRUITER
+}
+
+model ChatThread {
+  id        String        @id @default(cuid())
+  userId    String
+  agentType ChatAgentType
+  title     String        @default("Cuộc trò chuyện mới")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, agentType, updatedAt])
+  @@map("chat_thread")
+}
+// ============================================================
+// Email Integration (Gmail OAuth để gửi email thật thay mặt user)
+// ============================================================
+// Cố tình TÁCH RIÊNG khỏi model `account` (better-auth quản lý nội bộ cho
+// đăng nhập) — không đụng vào logic/behavior của better-auth khi thư viện
+// nâng cấp, và scope OAuth khác nhau (login chỉ cần email/profile, gửi mail
+// cần thêm gmail.send) nên tách để không phải hỏi lại quyền đăng nhập mỗi
+// lần chỉ muốn kết nối Gmail.
+model EmailIntegration {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  provider             String    @default("google")
+  email                String
+  accessToken          String
+  refreshToken         String?
+  accessTokenExpiresAt DateTime?
+  scope                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_integration")
 }

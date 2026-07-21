@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { organizationJsonLd, webSiteJsonLd } from "@/features/seo/structured-data";
 import HomePageClient from "./HomePageClient";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3006";
 
 export const metadata: Metadata = {
   title: "PQJobs | Tuyển Dụng & Việc Làm Phú Quốc Lương Cao 2026",

@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCandidateDashboardSummary } from "@/features/dashboard/queries";
 import { useUnreadNotifications } from "@/features/notifications/queries";
 import { computeProfileCompletion } from "@/lib/profile-completion";
+import { apiUrl } from "@/lib/api-client";
 
 export function CandidateSidebar() {
   const pathname = usePathname();
@@ -25,7 +26,7 @@ export function CandidateSidebar() {
   const [profile, setProfile] = useState<Record<string, any> | null>(null);
   useEffect(() => {
     if (!user) return;
-    fetch("/api/v1/resumes/profile", { credentials: "include" })
+    fetch(apiUrl("/api/v1/resumes/profile"), { credentials: "include" })
       .then(res => res.ok ? res.json() : null)
       .then(payload => {
         if (payload) {
@@ -72,7 +73,7 @@ export function CandidateSidebar() {
   ];
 
   const handleLogout = () => {
-    fetch("/api/auth/sign-out", { method: "POST", credentials: "include" })
+    fetch(apiUrl("/api/auth/sign-out"), { method: "POST", credentials: "include" })
       .then(() => {
         window.location.href = "/auth/login";
       });

@@ -1,5 +1,7 @@
 import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
+import { IoAdapter } from "@nestjs/platform-socket.io";
+import type { ServerOptions } from "socket.io";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { apiReference } from "@scalar/nestjs-api-reference";
@@ -12,6 +14,33 @@ import { inngest, createAllFunctions } from "./inngest/client";
 import { PrismaService } from "./prisma/prisma.service";
 import { RealtimeService } from "./realtime/realtime.service";
 
+/**
+ * NestJS + Socket.IO CHỈ hỗ trợ 1 cấu hình CORS DUY NHẤT ở cấp server gốc
+ * (root `Server` instance), dùng chung cho MỌI namespace — không có CORS
+ * riêng theo từng namespace. Cấu hình `cors` đặt trong
+ * `@WebSocketGateway({ namespace: '/realtime', cors: {...} })` (xem
+ * realtime.gateway.ts) KHÔNG đáng tin cậy để tự áp dụng lên server gốc khi
+ * gateway có namespace — đây là vấn đề đã biết của NestJS + Socket.IO
+ * (nestjs/nest issue #12559: thêm namespace vào là CORS ngừng hoạt động).
+ *
+ * Triệu chứng đúng bug này: gọi thẳng http://localhost:3006/socket.io/...
+ * qua thanh địa chỉ trình duyệt (navigation, không bị CORS chi phối) thì
+ * server trả lời bình thường — nhưng cùng URL đó gọi từ code JS trong trang
+ * (XHR polling của socket.io-client, có Origin khác) lại bị chặn.
+ *
+ * Cách sửa chuẩn: ép CORS ở cấp IoAdapter khi tạo server Socket.IO gốc,
+ * không phụ thuộc vào cấu hình cors riêng lẻ của từng @WebSocketGateway.
+ */
+class CorsIoAdapter extends IoAdapter {
+  createIOServer(port: number, options?: ServerOptions) {
+    const corsOptions = {
+      origin: process.env.FRONTEND_URL || "http://localhost:3001",
+      credentials: true,
+    };
+    return super.createIOServer(port, { ...options, cors: corsOptions });
+  }
+}
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: true,
@@ -20,6 +49,10 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.useBodyParser("json", { limit: "10mb" });
+
+  // Ép CORS đúng ở cấp server Socket.IO gốc — xem giải thích chi tiết ở
+  // class CorsIoAdapter phía trên. Đặt trước app.listen().
+  app.useWebSocketAdapter(new CorsIoAdapter(app));
 
   // Create Inngest functions with PrismaService
   const prisma = app.get(PrismaService);
@@ -34,12 +67,12 @@ async function bootstrap() {
       functions,
     }),
   );
-
+  // import { VersioningType } from "@nestjs/common"; in the furture if tou want to use versioning
   app.setGlobalPrefix("api/v1", {
     exclude: ["api/auth/(.*)", "api/inngest"],
   });
 
-// OpenAPI config for Scalar API docs
+  // OpenAPI config for Scalar API docs
   const config = new DocumentBuilder()
     .setTitle("Phú Quốc Jobs API")
     .setDescription("Backend API cho website tìm việc làm tại Phú Quốc")
@@ -103,7 +136,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3006;
   await app.listen(port);
   console.log(`Server running on http://localhost:${port}`);
   console.log(`API Docs (Scalar): http://localhost:${port}/docs`);

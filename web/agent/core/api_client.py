@@ -1,13 +1,33 @@
 import httpx
 import logging
+import os
 from typing import Optional, Any, Dict
 
 logger = logging.getLogger(__name__)
 
 
 class ApiClient:
+    """
+    LƯU Ý VỀ AN TOÀN ĐA REQUEST (đọc trước khi sửa file này):
+
+    api_client là 1 instance DÙNG CHUNG cho mọi request/mọi user (được tạo 1 lần
+    lúc FastAPI khởi động — xem agent_factory.py + main.py lifespan). set_cookie()
+    ghi đè self._cookie ngay trên instance chung này.
+
+    Điều này AN TOÀN với điều kiện: mỗi custom node (as_node trong các tool) phải
+    tự gọi self.sync_auth_from_state(state) NGAY TRƯỚC dòng gọi tool_instance.run(),
+    không để await nào xen giữa 2 bước đó (xem base_tool.py). Vì asyncio chỉ
+    chuyển sang task khác tại điểm `await`, và set_cookie() -> _get_headers() xảy
+    ra hoàn toàn đồng bộ (không await) ngay trong 1 lượt gọi, nên không thể bị
+    request khác ghi đè cookie giữa chừng.
+
+    KHÔNG dùng contextvars ở đây: LangGraph có thể chạy từng node trong 1
+    asyncio.Task riêng, khiến giá trị ContextVar không lan đúng từ auth_node
+    sang node tool phía sau (gây lỗi 401 do cookie "biến mất" giữa các node).
+    """
+
     def __init__(self, base_url: Optional[str] = None):
-        self.base_url = base_url or "http://localhost:3001/api/agent"
+        self.base_url = base_url or self._resolve_base_url()
         self.timeout = 300
         self._auth_token: Optional[str] = None
         self._cookie: Optional[str] = None
@@ -15,6 +35,19 @@ class ApiClient:
             base_url=self.base_url,
             timeout=self.timeout,
         )
+
+    def _resolve_base_url(self) -> str:
+        raw_url = (
+            os.getenv("AGENT_BACKEND_API_URL")
+            or os.getenv("BACKEND_API_URL")
+            or os.getenv("BACKEND_URL")
+            or os.getenv("NEXT_PUBLIC_API_URL")
+            or "http://localhost:3006"
+        ).rstrip("/")
+
+        if raw_url.endswith("/api/v1"):
+            return raw_url
+        return f"{raw_url}/api/v1"
 
     def set_auth_token(self, token: Optional[str]):
         self._auth_token = token

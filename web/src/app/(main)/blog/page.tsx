@@ -6,7 +6,7 @@
 import type { Metadata } from 'next';
 import BlogPageClient from '@/components/blog/BlogPageClient';
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3006";
 
 export const metadata: Metadata = {
     title: 'Cẩm Nang Việc Làm Phú Quốc | Blog Tuyển Dụng Resort & Du Lịch',

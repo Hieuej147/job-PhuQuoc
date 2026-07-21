@@ -8,7 +8,7 @@ import { RegisterEmailDto } from './dto/register-email.dto';
 @ApiTags('Auth')
 @Controller('scalar-auth')
 export class ScalarAuthController {
-  private readonly AUTH_URL = process.env.BETTER_AUTH_URL || 'http://localhost:3000';
+  private readonly AUTH_URL = process.env.BETTER_AUTH_URL || 'http://localhost';
   private readonly ORIGIN = process.env.FRONTEND_URL || this.AUTH_URL;
 
   constructor(private readonly authService: AuthService) {}
