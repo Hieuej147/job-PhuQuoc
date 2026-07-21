@@ -50,7 +50,9 @@ export async function fetchBlogCategories() {
 }
 
 export async function fetchBlogBySlug(slug: string): Promise<BlogEditorState> {
-  const payload = await apiGet<any>(`/api/v1/blogs/slug/${slug}`);
+  // Editor cần đọc được cả draft của chính chủ. Không dùng endpoint public
+  // `/blogs/slug/:slug`, vì endpoint đó chỉ được phép trả bài đã publish.
+  const payload = await apiGet<any>(`/api/v1/blogs/my/slug/${slug}`);
   const data = unwrapApiPayload<BlogPostPayload>(payload);
   return {
     id: data.id,

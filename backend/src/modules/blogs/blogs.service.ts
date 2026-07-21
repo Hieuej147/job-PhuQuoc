@@ -104,7 +104,7 @@ export class BlogsService {
   }
 
   async findBySlug(slug: string) {
-    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, "slug", slug);
+    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, "public-slug", slug);
     const cached = await this.cache.get(cacheKey);
     if (cached) {
       return cached;
@@ -117,22 +117,39 @@ export class BlogsService {
         author: { select: { id: true, name: true, image: true } },
       },
     });
-    if (!blog) throw new NotFoundException("Blog not found");
+    if (!blog || !blog.isPublished) throw new NotFoundException("Blog not found");
 
     await this.cache.set(cacheKey, blog, this.CACHE_TTL);
     return blog;
   }
 
+  async findEditableBySlug(slug: string, userId: string, userRole: Role) {
+    const blog = await this.prisma.blogPost.findUnique({
+      where: { slug },
+      include: {
+        category: true,
+        author: { select: { id: true, name: true, image: true } },
+      },
+    });
+    if (!blog) throw new NotFoundException("Blog not found");
+
+    if (blog.authorId !== userId && userRole !== Role.ADMIN) {
+      throw new ForbiddenException("Bạn không có quyền chỉnh sửa bài viết này");
+    }
+
+    return blog;
+  }
+
   async incrementView(slug: string) {
     const blog = await this.prisma.blogPost.findUnique({ where: { slug } });
-    if (!blog) throw new NotFoundException("Blog not found");
+    if (!blog || !blog.isPublished) throw new NotFoundException("Blog not found");
 
     const updated = await this.prisma.blogPost.update({
       where: { slug },
       data: { views: { increment: 1 } },
     });
 
-    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, "slug", slug);
+    const cacheKey = this.cache.generateKey(this.CACHE_PREFIX, "public-slug", slug);
     await this.cache.del(cacheKey);
     await this.invalidateCache();
 

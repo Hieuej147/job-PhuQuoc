@@ -39,9 +39,21 @@ export class BlogsController {
     return this.blogsService.findMyBlogs(user.user.id, query);
   }
 
+  @Get('my/slug/:slug')
+  @Roles('CANDIDATE', 'EMPLOYER', 'ADMIN')
+  @ApiBearerAuth('better-auth.session_token')
+  @ApiOperation({ summary: 'Chi tiết blog để chỉnh sửa', description: 'Cho phép tác giả đọc cả bài nháp; admin có thể đọc mọi bài.' })
+  @ApiParam({ name: 'slug', description: 'Slug của blog' })
+  @ApiResponse({ status: 200, description: 'Chi tiết blog thuộc quyền chỉnh sửa' })
+  @ApiResponse({ status: 403, description: 'Không có quyền chỉnh sửa' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy' })
+  findMyBlogBySlug(@Param('slug') slug: string, @CurrentUser() user: UserSession) {
+    return this.blogsService.findEditableBySlug(slug, user.user.id, user.user.role as any);
+  }
+
   @Get('slug/:slug')
   @Public()
-  @ApiOperation({ summary: 'Chi tiết blog theo slug' })
+  @ApiOperation({ summary: 'Chi tiết blog công khai theo slug', description: 'Chỉ trả bài đã publish.' })
   @ApiParam({ name: 'slug', description: 'Slug của blog' })
   @ApiResponse({ status: 200, description: 'Chi tiết blog' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })

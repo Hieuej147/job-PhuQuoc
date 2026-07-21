@@ -18,6 +18,7 @@ export default function EditBlogPage({ params }: EditBlogPageProps) {
   const { slug: id } = use(params);
   const { user, isLoading: authLoading } = useAuth();
   const { state, patchState, categories, loading, error, saving, save } = useBlogEditorForm({ slug: id });
+  const isPublished = state.status === 'PUBLISHED';
 
   // Render Loader during auth or post loading
   if (authLoading || loading) {
@@ -85,7 +86,7 @@ export default function EditBlogPage({ params }: EditBlogPageProps) {
               disabled={saving}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              <span>Lưu nháp</span>
+              <span>{isPublished ? 'Chuyển về nháp' : 'Lưu nháp'}</span>
             </Button>
             <Button
               size="sm"
@@ -94,7 +95,7 @@ export default function EditBlogPage({ params }: EditBlogPageProps) {
               disabled={saving}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              <span>Lưu & Đăng</span>
+              <span>{isPublished ? 'Cập nhật bài công khai' : 'Lưu & Đăng'}</span>
             </Button>
           </div>
         </div>

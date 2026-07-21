@@ -95,7 +95,15 @@ export function useBlogEditorForm(options: { slug?: string } = {}) {
             ? "Đã đăng bài viết thành công!"
             : "Đã lưu nháp bài viết!",
       );
-      router.push(saved.slug ? `/blog/${saved.slug}` : "/blog");
+      if (saved.slug) {
+        router.push(
+          finalStatus === "PUBLISHED"
+            ? `/blog/${saved.slug}`
+            : `/blog/${saved.slug}/edit`,
+        );
+      } else {
+        router.push("/blog");
+      }
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : "Có lỗi xảy ra khi lưu bài viết.");
