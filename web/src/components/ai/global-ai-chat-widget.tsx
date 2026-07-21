@@ -8,6 +8,7 @@ import { createAgentProgressMessageView } from "@/components/ai/agent-progress-c
 import { useJobSearchRenderer } from "@/components/ai/renderers/job-search-renderer";
 import { useCvToolsRenderer } from "@/components/ai/renderers/cv-tools-renderer";
 import { useJobToolsRenderer } from "@/components/ai/renderers/job-tools-renderer";
+import { useBlogPostRenderer } from "@/components/ai/renderers/blog-tools-renderer";
 import { useTemplateRenderer } from "@/hooks/use-template-renderer";
 import { useChatThreads } from "@/features/ai-chat/use-chat-threads";
 import { type ChatAgentType, type ChatThread } from "@/features/ai-chat/api";
@@ -470,10 +471,11 @@ function CandidateSidebarBody({
     topOffset: number;
     onClose: () => void;
 }) {
-    // Đăng ký renderer y hệt CandidateDashboardAiTab: tìm việc, tạo/chỉnh template CV, quản lý CV.
+    // Đăng ký renderer y hệt CandidateDashboardAiTab: tìm việc, tạo/chỉnh template CV, quản lý CV, viết blog.
     useJobSearchRenderer();
     useTemplateRenderer();
     useCvToolsRenderer();
+    useBlogPostRenderer();
 
     return <WidgetSidebar agentId="candidate" variant={variant} topOffset={topOffset} onClose={onClose} />;
 }
@@ -487,10 +489,11 @@ function RecruiterSidebarBody({
     topOffset: number;
     onClose: () => void;
 }) {
-    // Đăng ký renderer cho các tool của recruiter (hiện có: create_job) — trước
-    // đây RecruiterSidebarBody không gọi renderer nào cả, khiến mọi tool luôn
-    // rơi về accordion "Done" mặc định thay vì card đẹp.
+    // Đăng ký renderer cho các tool của recruiter (create_job, send_email,
+    // draft_email, create_blog_post) — trước đây RecruiterSidebarBody không
+    // gọi renderer nào cả, khiến mọi tool luôn rơi về accordion "Done" mặc định.
     useJobToolsRenderer();
+    useBlogPostRenderer();
 
     return <WidgetSidebar agentId="recruiter" variant={variant} topOffset={topOffset} onClose={onClose} />;
 }
