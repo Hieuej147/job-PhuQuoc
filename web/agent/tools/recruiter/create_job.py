@@ -1,5 +1,10 @@
+import json
+from typing import cast, Optional
+
+from copilotkit.langchain import copilotkit_emit_state
+from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
-from typing import Optional
 from tools.base_tool import BaseTool
 from core.api_client import ApiClient
 
@@ -41,6 +46,11 @@ class CreateJobInput(BaseModel):
         default=1,
         description="Số lượng tuyển dụng"
     )
+    # ĐÃ BỎ field `deadline`: backend KHÔNG nhận deadline khi tạo job (CreateJobDto
+    # không có field này — xem tài liệu API). NestJS ValidationPipe({whitelist:true})
+    # âm thầm loại bỏ field lạ chứ không báo lỗi, khiến tool trước đây "tưởng" đã
+    # lưu deadline thành công nhưng thực ra không hề được set. Deadline CHỈ được
+    # backend tự tính sau khi employer thanh toán, theo số ngày của gói đã chọn.
 
 
 class CreateJobTool(BaseTool):
@@ -48,8 +58,10 @@ class CreateJobTool(BaseTool):
     description = (
         "Tạo tin tuyển dụng mới ở trạng thái DRAFT. "
         "Dùng SAU KHI đã có category_id từ get_categories, ward_id từ get_work_locations "
-        "và đã xác nhận đầy đủ thông tin với nhà tuyển dụng. "
-        "Job tạo xong ở trạng thái DRAFT, cần thanh toán để kích hoạt."
+        "đầy đủ thông tin với nhà tuyển dụng. "
+        "Job tạo xong ở trạng thái DRAFT — CHƯA hiển thị công khai và CHƯA có hạn "
+        "nộp hồ sơ; nhà tuyển dụng cần vào trang thanh toán, chọn gói đăng tin để "
+        "kích hoạt job và hệ thống sẽ tự set hạn nộp theo số ngày của gói đó."
     )
     args_schema = CreateJobInput
 
@@ -107,8 +119,9 @@ class CreateJobTool(BaseTool):
                 "status": job.get("status"),
                 "message": (
                     f"Đã tạo tin tuyển dụng '{title}' thành công! "
-                    f"Trạng thái hiện tại: DRAFT. "
-                    f"Vui lòng vào trang thanh toán để kích hoạt tin đăng."
+                    f"Trạng thái hiện tại: DRAFT (chưa công khai, chưa có hạn nộp). "
+                    f"Vui lòng vào trang thanh toán và chọn gói đăng tin để kích hoạt — "
+                    f"hạn nộp hồ sơ sẽ được tự động set theo số ngày của gói đó."
                 ),
             }
         except Exception as e:
@@ -117,3 +130,52 @@ class CreateJobTool(BaseTool):
                 "error": str(e),
                 "message": "Không thể tạo tin tuyển dụng. Vui lòng thử lại.",
             }
+    def as_node(self):
+        tool_instance = self
+
+        async def node(state: dict, config: RunnableConfig) -> dict:
+            ai_message = cast(AIMessage, state["messages"][-1])
+            tool_call = ai_message.tool_calls[0]
+            tool_call_id = tool_call["id"]
+            args = tool_call.get("args", {})
+
+            state["activeWorker"] = "recruiter_manager"
+            state["status"] = "running"
+            state["currentStep"] = "Đang tạo tin tuyển dụng..."
+            state["toolStatus"] = "create_job"
+            state["progress"] = 70
+            await copilotkit_emit_state(config, state)
+
+            tool_instance.sync_auth_from_state(state)
+            result = await tool_instance.run(
+                title=args.get("title"),
+                description=args.get("description"),
+                category_id=args.get("category_id"),
+                ward_id=args.get("ward_id"),
+                address_detail=args.get("address_detail"),
+                type=args.get("type"),
+                experience=args.get("experience"),
+                level=args.get("level"),
+                salary_min=args.get("salary_min"),
+                salary_max=args.get("salary_max"),
+                requirements=args.get("requirements"),
+                benefits=args.get("benefits"),
+                quantity=args.get("quantity", 1),
+            )
+
+            has_error = not result.get("success", False)
+            state["status"] = "error" if has_error else "done"
+            state["currentStep"] = "Không thể tạo tin tuyển dụng." if has_error else "Đã tạo tin tuyển dụng thành công."
+            state["progress"] = 100
+            state["messages"] = [
+                ToolMessage(
+                    tool_call_id=tool_call_id,
+                    name=tool_call["name"],
+                    content=json.dumps(result, ensure_ascii=False),
+                )
+            ]
+            await copilotkit_emit_state(config, state)
+            return state
+
+        node.__name__ = "create_job_node"
+        return node

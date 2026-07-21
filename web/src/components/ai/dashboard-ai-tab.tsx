@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { createAgentProgressMessageView } from "@/components/ai/agent-progress-chat-message";
 import { useJobSearchRenderer } from "@/components/ai/renderers/job-search-renderer";
 import { useCvToolsRenderer } from "@/components/ai/renderers/cv-tools-renderer";
+import { useJobToolsRenderer } from "@/components/ai/renderers/job-tools-renderer";
+import { useBlogPostRenderer } from "@/components/ai/renderers/blog-tools-renderer";
 import { useTemplateRenderer } from "@/hooks/use-template-renderer";
 import { ThreadSidebar } from "@/features/ai-chat/thread-sidebar";
 import { useAiThreadActivityTracker } from "@/features/ai-chat/use-ai-thread-activity";
@@ -135,11 +137,18 @@ export function CandidateDashboardAiTab(
   useJobSearchRenderer();
   useTemplateRenderer();
   useCvToolsRenderer();
+  useBlogPostRenderer();
   return <DashboardAiChat {...props} agentId="candidate" />;
 }
 
 export function EmployerDashboardAiTab(
   props: Omit<DashboardAiTabProps, "agentId">,
 ) {
+  // Trước đây EmployerDashboardAiTab không đăng ký renderer nào cả — mọi tool
+  // của recruiter (create_job, rank_candidates...) luôn rơi về accordion "Done"
+  // mặc định. Giờ đăng ký renderer cho create_job (card đẹp, click chuyển tới
+  // trang sửa tin /employer/jobs/{id}/edit) và create_blog_post.
+  useJobToolsRenderer();
+  useBlogPostRenderer();
   return <DashboardAiChat {...props} agentId="recruiter" />;
 }

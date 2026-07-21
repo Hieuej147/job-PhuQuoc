@@ -225,6 +225,11 @@ class SaveCvTool(BaseTool):
                     return None
                 return [model_cls(**item) if isinstance(item, dict) else item for item in raw_list]
 
+            # QUAN TRỌNG: đồng bộ cookie/token từ state["authorization"] lên
+            # api_client (dùng chung cho mọi request) NGAY TRƯỚC khi gọi run(),
+            # không để await nào xen giữa 2 dòng này — xem giải thích chi tiết
+            # trong BaseTool.sync_auth_from_state() (base_tool.py).
+            tool_instance.sync_auth_from_state(state)
             result = await tool_instance.run(
                 resume_id=args.get("resume_id"),
                 template_id=args.get("template_id"),

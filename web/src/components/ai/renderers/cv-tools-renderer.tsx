@@ -5,7 +5,7 @@ import { z } from "zod";
 import { CheckCircle2, FileText, Pencil, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
-function SaveCvResultCard({ data }: { data: any }) {
+export function SaveCvResultCard({ data }: { data: any }) {
     if (data?.error) {
         return (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
@@ -42,7 +42,7 @@ function SaveCvResultCard({ data }: { data: any }) {
     return cardContent;
 }
 
-function CvListCard({ data }: { data: any }) {
+export function CvListCard({ data }: { data: any }) {
     const cvs = data?.cvs || [];
 
     if (data?.error) {
@@ -85,7 +85,7 @@ function CvListCard({ data }: { data: any }) {
     );
 }
 
-function CvDetailCard({ data }: { data: any }) {
+export function CvDetailCard({ data }: { data: any }) {
     if (data?.error) {
         return (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">

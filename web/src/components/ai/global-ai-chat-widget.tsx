@@ -18,6 +18,8 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { createAgentProgressMessageView } from "@/components/ai/agent-progress-chat-message";
 import { useCvToolsRenderer } from "@/components/ai/renderers/cv-tools-renderer";
 import { useJobSearchRenderer } from "@/components/ai/renderers/job-search-renderer";
+import { useJobToolsRenderer } from "@/components/ai/renderers/job-tools-renderer";
+import { useBlogPostRenderer } from "@/components/ai/renderers/blog-tools-renderer";
 import { useTemplateRenderer } from "@/hooks/use-template-renderer";
 import { type ChatThread } from "@/features/ai-chat/api";
 import {
@@ -286,11 +288,14 @@ function CandidateSidebarBody({ topOffset, onClose }: { topOffset: number; onClo
   useJobSearchRenderer();
   useTemplateRenderer();
   useCvToolsRenderer();
+  useBlogPostRenderer();
 
   return <WidgetSidebar agentId="candidate" topOffset={topOffset} onClose={onClose} />;
 }
 
 function RecruiterSidebarBody({ topOffset, onClose }: { topOffset: number; onClose: () => void }) {
+  useJobToolsRenderer();
+  useBlogPostRenderer();
   return <WidgetSidebar agentId="recruiter" topOffset={topOffset} onClose={onClose} />;
 }
 
