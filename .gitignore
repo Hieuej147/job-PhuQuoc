@@ -104,3 +104,4 @@ local-reports/
 logs/inngest-error.log
 logs/inngest-out.log
 .codex/
+.playwright-mcp/
