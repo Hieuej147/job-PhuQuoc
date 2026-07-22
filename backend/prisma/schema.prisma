@@ -142,10 +142,10 @@ model user {
   savedCompanies       SavedCompany[]
   blogs                BlogPost[]
   payments             Payment[]
-  quotaPlan            UserQuotaPlan?   ///
-  quotaPurchases       QuotaPurchase[]  ///
-  chatThreads          ChatThread[]     //
-  emailIntegration EmailIntegration?
+  quotaPlan            UserQuotaPlan?
+  quotaPurchases       QuotaPurchase[]
+  chatThreads          ChatThread[]
+  emailIntegration     EmailIntegration?
 }
 
 model UserQuotaPlan {
@@ -713,8 +713,6 @@ model ChatThread {
   @@index([userId, agentType, updatedAt])
   @@map("chat_thread")
 }
-
-
 // ============================================================
 // Email Integration (Gmail OAuth để gửi email thật thay mặt user)
 // ============================================================

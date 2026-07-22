@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Trash2, Star, Download } from "lucide-react";
 import { toast } from "sonner";
 import { ResumePrintDocument } from "@/components/resume/resume-print-document";
+import { apiUrl } from "@/lib/api-client";
 
 import { TEMPLATE_MAP } from "@/template";
 import { toTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
@@ -44,7 +45,7 @@ export default function ResumeDetailPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const resumeRes = await fetch(`/api/v1/resumes/${id}`, { credentials: "include" });
+        const resumeRes = await fetch(apiUrl(`/api/v1/resumes/${id}`), { credentials: "include" });
 
         if (resumeRes.ok) {
           const d = await resumeRes.json();
@@ -62,7 +63,7 @@ export default function ResumeDetailPage() {
   const handleDelete = async () => {
     if (!window.confirm("Xác nhận xóa hồ sơ này?")) return;
     try {
-      const res = await fetch(`/api/v1/resumes/${id}`, {
+      const res = await fetch(apiUrl(`/api/v1/resumes/${id}`), {
         method: "DELETE",
         credentials: "include",
       });
@@ -81,7 +82,7 @@ export default function ResumeDetailPage() {
   };
 
   const handleSetDefault = async () => {
-    await fetch(`/api/v1/resumes/${id}`, {
+    await fetch(apiUrl(`/api/v1/resumes/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

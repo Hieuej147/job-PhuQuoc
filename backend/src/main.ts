@@ -23,7 +23,7 @@ import { RealtimeService } from "./realtime/realtime.service";
  * gateway có namespace — đây là vấn đề đã biết của NestJS + Socket.IO
  * (nestjs/nest issue #12559: thêm namespace vào là CORS ngừng hoạt động).
  *
- * Triệu chứng đúng bug này: gọi thẳng http://localhost:3000/socket.io/...
+ * Triệu chứng đúng bug này: gọi thẳng http://localhost:3006/socket.io/...
  * qua thanh địa chỉ trình duyệt (navigation, không bị CORS chi phối) thì
  * server trả lời bình thường — nhưng cùng URL đó gọi từ code JS trong trang
  * (XHR polling của socket.io-client, có Origin khác) lại bị chặn.
@@ -67,7 +67,7 @@ async function bootstrap() {
       functions,
     }),
   );
-
+  // import { VersioningType } from "@nestjs/common"; in the furture if tou want to use versioning
   app.setGlobalPrefix("api/v1", {
     exclude: ["api/auth/(.*)", "api/inngest"],
   });
@@ -136,7 +136,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3006;
   await app.listen(port);
   console.log(`Server running on http://localhost:${port}`);
   console.log(`API Docs (Scalar): http://localhost:${port}/docs`);

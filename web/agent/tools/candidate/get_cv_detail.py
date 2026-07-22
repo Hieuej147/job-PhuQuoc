@@ -8,14 +8,7 @@ from pydantic import BaseModel, Field
 
 from tools.base_tool import BaseTool
 from core.api_client import ApiClient
-
-
-def unwrap_data(response):
-    """Bóc tách các lớp {"data": {...}} lồng nhau mà backend đôi khi trả về."""
-    result = response
-    while isinstance(result, dict) and "id" not in result and "data" in result:
-        result = result["data"]
-    return result
+from tools.candidate.resume_helpers import unwrap_data, unwrap_list
 
 
 class GetCvDetailInput(BaseModel):
@@ -40,23 +33,23 @@ class GetCvDetailTool(BaseTool):
 
     async def _resolve_resume_id(self, resume_id: Optional[str], title_hint: Optional[str]) -> dict:
         if resume_id:
-            return {"id": resume_id}
+            return {"id": resume_id, "kind": "created_cv"}
 
         response = await self.api_client.get("/resumes/my")
-        items = response.get("data", response) if isinstance(response, dict) else response
-        if isinstance(items, dict):
-            items = items.get("items", [])
-        if not isinstance(items, list):
-            items = []
+        items = unwrap_list(response)
 
         if not items:
-            return {"error": "Bạn chưa có CV nào được lưu."}
+            profile_response = await self.api_client.get("/resumes/profile")
+            profile = unwrap_data(profile_response)
+            if isinstance(profile, dict) and profile.get("id"):
+                return {"id": profile["id"], "kind": "profile"}
+            return {"error": "Bạn chưa có hồ sơ gốc hoặc CV tạo riêng nào được lưu."}
 
         if title_hint:
             keyword = title_hint.strip().lower()
             matches = [cv for cv in items if keyword in (cv.get("title") or "").lower()]
             if len(matches) == 1:
-                return {"id": matches[0]["id"]}
+                return {"id": matches[0]["id"], "kind": "created_cv"}
             if len(matches) > 1:
                 return {
                     "error": "Có nhiều CV trùng khớp từ khóa, cần xác nhận rõ hơn.",
@@ -68,7 +61,7 @@ class GetCvDetailTool(BaseTool):
             }
 
         if len(items) == 1:
-            return {"id": items[0]["id"]}
+            return {"id": items[0]["id"], "kind": "created_cv"}
 
         return {
             "error": "Bạn có nhiều CV, cần biết rõ muốn xem CV nào.",
@@ -83,9 +76,12 @@ class GetCvDetailTool(BaseTool):
 
             resume = await self.api_client.get(f"/resumes/{resolved['id']}")
             data = unwrap_data(resume)
-            return {"resume": data}
+            return {"kind": resolved.get("kind", "created_cv"), "resume": data}
         except Exception as e:
-            return {"error": str(e)}
+            return {
+                "error": str(e),
+                "message": "Không thể lấy CV lúc này. Đây là lỗi kết nối/xác thực, không có nghĩa là bạn chưa có CV.",
+            }
 
     def as_node(self):
         tool_instance = self

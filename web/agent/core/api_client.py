@@ -1,5 +1,6 @@
 import httpx
 import logging
+import os
 from typing import Optional, Any, Dict
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ class ApiClient:
     """
 
     def __init__(self, base_url: Optional[str] = None):
-        self.base_url = base_url or "http://localhost:3000/api/v1"
+        self.base_url = base_url or self._resolve_base_url()
         self.timeout = 300
         self._auth_token: Optional[str] = None
         self._cookie: Optional[str] = None
@@ -34,6 +35,19 @@ class ApiClient:
             base_url=self.base_url,
             timeout=self.timeout,
         )
+
+    def _resolve_base_url(self) -> str:
+        raw_url = (
+            os.getenv("AGENT_BACKEND_API_URL")
+            or os.getenv("BACKEND_API_URL")
+            or os.getenv("BACKEND_URL")
+            or os.getenv("NEXT_PUBLIC_API_URL")
+            or "http://localhost:3006"
+        ).rstrip("/")
+
+        if raw_url.endswith("/api/v1"):
+            return raw_url
+        return f"{raw_url}/api/v1"
 
     def set_auth_token(self, token: Optional[str]):
         self._auth_token = token

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useTransition } from "react";
-import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import CompaniesHero from "@/components/company/CompaniesHero";
 import CompaniesFilterBar from "@/components/company/CompaniesFilterBar";
@@ -9,6 +8,7 @@ import CompanyList from "@/components/company/CompanyList";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Company } from "@/types/company";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiUrl } from "@/lib/api-client";
 
 const SIZE_LABELS: Record<string, string> = {
   SIZE_1_50: "1-50",
@@ -24,6 +24,36 @@ interface CompaniesPageClientProps {
   initialTotalPages?: number;
   industries?: string[];
   initialSearchParams?: { page: string; search: string; industry: string; sort: string; };
+}
+
+function CompanyCardSkeleton() {
+  return (
+    <div className="relative flex flex-col gap-4 rounded-2xl border border-[#E0F5FB] bg-white p-5 shadow-sm dark:border-[#1e3a4f] dark:bg-[#0f2436]">
+      <Skeleton className="h-20 -mx-5 -mt-5 rounded-t-2xl" />
+
+      <div className="-mt-12 relative z-10">
+        <Skeleton className="w-14 h-14 rounded-xl border-2 border-white dark:border-[#1e3a4f]" />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
+      </div>
+
+      <div className="flex gap-2">
+        <Skeleton className="h-6 w-24 rounded-md" />
+        <Skeleton className="h-6 w-16 rounded-md" />
+      </div>
+
+      <div className="flex items-center justify-between border-t border-[#bec8cd]/10 pt-2">
+        <Skeleton className="h-4 w-20" />
+        <div className="flex gap-2">
+          <Skeleton className="h-7 w-16 rounded-lg" />
+          <Skeleton className="h-7 w-12 rounded-lg bg-[#005a71]/30" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function CompaniesPageClient({
@@ -75,7 +105,7 @@ export default function CompaniesPageClient({
       return;
     }
 
-    fetch("/api/v1/saved/companies?limit=500", { credentials: "include" })
+    fetch(apiUrl("/api/v1/saved/companies?limit=500"), { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!d) return;
@@ -112,7 +142,6 @@ export default function CompaniesPageClient({
     return () => observer.disconnect();
   }, [currentPage, activeTab, sortBy, searchText]);
 
-  const filtered = initialCompanies;
   const totalPages = initialTotalPages;
   const paginatedCompanies = initialCompanies;
 
@@ -153,39 +182,7 @@ export default function CompaniesPageClient({
         {isPending ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {Array.from({ length: 8 }).map((_, index) => (
-              <div
-                key={index}
-                className="relative bg-white dark:bg-[#0f2436] rounded-2xl border border-[#E0F5FB] dark:border-[#1e3a4f] shadow-sm p-5 space-y-4"
-              >
-                {/* Cover area skeleton */}
-                <div className="h-20 -mx-5 -mt-5 rounded-t-2xl bg-slate-200/50 dark:bg-slate-800/50 animate-pulse" />
-                
-                {/* Logo area */}
-                <div className="-mt-12 relative z-10">
-                  <Skeleton className="w-14 h-14 rounded-xl border-2 border-white dark:border-[#1e3a4f]" />
-                </div>
-
-                {/* Title & Industry */}
-                <div className="space-y-2">
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-
-                {/* Badges */}
-                <div className="flex gap-2">
-                  <Skeleton className="h-6 w-24 rounded-md" />
-                  <Skeleton className="h-6 w-16 rounded-md" />
-                </div>
-
-                {/* Location and buttons */}
-                <div className="flex items-center justify-between pt-2 border-t border-[#bec8cd]/10">
-                  <Skeleton className="h-4 w-20" />
-                  <div className="flex gap-2">
-                    <Skeleton className="h-7 w-16 rounded-lg" />
-                    <Skeleton className="h-7 w-12 rounded-lg bg-[#005a71]/30" />
-                  </div>
-                </div>
-              </div>
+              <CompanyCardSkeleton key={index} />
             ))}
           </div>
         ) : (

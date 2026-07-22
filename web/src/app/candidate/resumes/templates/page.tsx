@@ -8,6 +8,7 @@ import { FileText, ArrowRight, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { TEMPLATE_DISPLAY, TEMPLATE_MAP } from "@/template";
+import { apiUrl } from "@/lib/api-client";
 
 interface ResumeTemplate {
   id: string;
@@ -43,7 +44,7 @@ export default function TemplateGalleryPage() {
   const [creatingId, setCreatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/v1/resumes/templates", { credentials: "include" })
+    fetch(apiUrl("/api/v1/resumes/templates"), { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch templates");
         return res.json();

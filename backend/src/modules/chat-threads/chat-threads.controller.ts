@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Response } from 'express';
 import { ChatThreadsService } from './chat-threads.service';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { CreateChatThreadDto, UpdateChatThreadDto, ChatAgentTypeDto } from './dto/chat-thread.dto';
+import { ChatAgentTypeDto, CreateChatThreadDto, GenerateChatThreadTitleDto, UpdateChatThreadDto } from './dto/chat-thread.dto';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 
 @ApiTags('Chat Threads')
@@ -45,9 +46,45 @@ export class ChatThreadsController {
     generateTitle(
         @Param('id') id: string,
         @CurrentUser() user: UserSession,
-        @Body() body: { firstMessage: string },
+        @Body() body: GenerateChatThreadTitleDto,
     ) {
         return this.service.generateTitle(id, user.user.id, body.firstMessage);
+    }
+
+    @Post(':id/generate-title/stream')
+    @ApiBearerAuth('better-auth.session_token')
+    @ApiOperation({ summary: 'Stream tiêu đề cuộc trò chuyện bằng AI dựa trên tin nhắn đầu tiên' })
+    async generateTitleStream(
+        @Param('id') id: string,
+        @CurrentUser() user: UserSession,
+        @Body() body: GenerateChatThreadTitleDto,
+        @Res() res: Response,
+    ) {
+        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders?.();
+
+        const sendEvent = (event: string, data: unknown) => {
+            res.write(`event: ${event}\n`);
+            res.write(`data: ${JSON.stringify(data)}\n\n`);
+        };
+
+        try {
+            const thread = await this.service.generateTitleStream(
+                id,
+                user.user.id,
+                body.firstMessage,
+                (title) => sendEvent('partial', { title }),
+            );
+            sendEvent('final', { thread });
+        } catch (error) {
+            sendEvent('error', {
+                message: error instanceof Error ? error.message : 'Không thể tạo tiêu đề cuộc trò chuyện.',
+            });
+        } finally {
+            res.end();
+        }
     }
 
     @Delete(':id')

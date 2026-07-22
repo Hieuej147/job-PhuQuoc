@@ -128,9 +128,9 @@ class RankCandidatesTool(BaseTool):
         config: Optional[RunnableConfig] = None,
     ) -> dict:
         try:
-            # 1. Lấy JD của job
-            job_response = await self.api_client.get(f"/jobs/{job_id}")
-            job_data = _unwrap_data(job_response)
+            # Employer-facing detail can read the owner's draft/closed/archived job.
+            job = await self.api_client.get(f"/jobs/manage/{job_id}")
+            job_data = _unwrap_data(job)
             if not isinstance(job_data, dict):
                 job_data = {}
 

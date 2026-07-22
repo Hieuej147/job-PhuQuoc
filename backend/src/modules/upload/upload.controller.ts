@@ -211,9 +211,9 @@ export class UploadController {
   }
 
   @Post('post-image')
-  @Roles('CANDIDATE', 'EMPLOYER', 'ADMIN')
+  @Roles('CANDIDATE', 'EMPLOYER')
   @ApiBearerAuth('better-auth.session_token')
-  @ApiOperation({ summary: 'Upload ảnh bài viết blog', description: 'Candidate, Employer hoặc Admin upload ảnh chèn vào bài viết.' })
+  @ApiOperation({ summary: 'Upload ảnh bài viết blog', description: 'Candidate hoặc Employer upload ảnh chèn vào bài viết.' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {

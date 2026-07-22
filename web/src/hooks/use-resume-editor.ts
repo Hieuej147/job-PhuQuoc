@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { apiUrl } from "@/lib/api-client";
 
 interface SocialLink {
   platform: string;
@@ -175,7 +176,7 @@ export function useResumeEditor(templateId?: string) {
   const loadResume = useCallback(async (id: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/v1/resumes/${id}`, {
+      const res = await fetch(apiUrl(`/api/v1/resumes/${id}`), {
         credentials: "include",
       });
       if (res.ok) {

@@ -3,7 +3,6 @@ import {
   IsOptional,
   IsInt,
   IsEnum,
-  IsDateString,
   Min,
   Max,
   IsArray,
@@ -35,12 +34,13 @@ export class CreateJobDto {
   @Min(0)
   @Max(2000000000)
   salaryMax?: number;
-  @IsOptional()
+
   @IsString()
-  wardId?: string;
-  @IsOptional()
+  wardId: string;
+
   @IsString()
-  addressDetail?: string;
+  addressDetail: string;
+
   @IsOptional()
   @IsEnum(['FULL_TIME', 'PART_TIME', 'REMOTE', 'CONTRACT', 'INTERNSHIP', 'FREELANCE'])
   type?: string;
@@ -50,9 +50,6 @@ export class CreateJobDto {
   @IsOptional()
   @IsEnum(['INTERN', 'FRESHER', 'JUNIOR', 'MID', 'SENIOR', 'LEAD', 'MANAGER', 'DIRECTOR'])
   level?: string;
-  @IsOptional()
-  @IsDateString()
-  deadline?: string;
   @IsString()
   categoryId: string;
 }
@@ -98,9 +95,6 @@ export class UpdateJobDto {
   @IsOptional()
   @IsEnum(['INTERN', 'FRESHER', 'JUNIOR', 'MID', 'SENIOR', 'LEAD', 'MANAGER', 'DIRECTOR'])
   level?: string;
-  @IsOptional()
-  @IsDateString()
-  deadline?: string;
   @IsOptional()
   @IsString()
   categoryId?: string;

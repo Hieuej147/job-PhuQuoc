@@ -9,6 +9,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { FileText, Plus, Eye, Star, Trash2 } from "lucide-react";
+import { apiUrl } from "@/lib/api-client";
 
 
 interface Resume {
@@ -27,7 +28,7 @@ export default function ResumesPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchResumes = () => {
-    fetch("/api/v1/resumes/my", { credentials: "include" })
+    fetch(apiUrl("/api/v1/resumes/my"), { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
         const rawItems = d.data?.data ?? d.data ?? [];
@@ -40,7 +41,7 @@ export default function ResumesPage() {
   useEffect(() => { fetchResumes(); }, []);
 
   const handleSetDefault = async (id: string) => {
-    await fetch(`/api/v1/resumes/${id}`, {
+    await fetch(apiUrl(`/api/v1/resumes/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -52,7 +53,7 @@ export default function ResumesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Xác nhận xóa hồ sơ này?")) return;
     try {
-      const res = await fetch(`/api/v1/resumes/${id}`, { method: "DELETE", credentials: "include" });
+      const res = await fetch(apiUrl(`/api/v1/resumes/${id}`), { method: "DELETE", credentials: "include" });
       if (!res.ok) {
         const body = await res.text();
         toast.error(`Xóa thất bại (${res.status}): ${body}`);

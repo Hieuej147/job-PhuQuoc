@@ -1,7 +1,7 @@
 # Phú Quốc Jobs — Project Documentation
 
 > Tài liệu kỹ thuật toàn diện cho dự án PQJobs — nền tảng tuyển dụng đảo Phú Quốc.
-> Cập nhật: 10/07/2026
+> Cập nhật: 18/07/2026
 
 ---
 
@@ -26,8 +26,12 @@
 
 ## 1. Tổng quan dự án
 
-### 1.0 Cập nhật quan trọng 10/07/2026
+### 1.0 Cập nhật quan trọng 18/07/2026
 
+- Local topology hiện tại: frontend `http://localhost:3001`, Nginx backend reverse proxy `http://localhost`, NestJS backend nội bộ `http://localhost:3006`.
+- Browser-side FE gọi REST/Auth/SSE/Socket.IO qua Nginx: `/api/v1/*`, `/api/auth/*`, `/api/v1/realtime/events`, `/socket.io/*`. Next.js không còn generic proxy route cho `/api/v1/*` và `/api/auth/*`.
+- Next.js chỉ giữ server routes cho `/api/agent/*` và `/api/copilotkit/*`.
+- `BETTER_AUTH_URL` local là `http://localhost`; Google OAuth redirect URI cần đăng ký là `http://localhost/api/auth/callback/google`.
 - Backend vẫn là **NestJS modular monolith**, nhưng quota đã được refactor theo NestJS DI: `common/quota/quota.service.ts` là application service, còn `quota-expiry.service.ts` chỉ dành cho Inngest worker/repair và dùng Prisma trực tiếp.
 - `storage-quota.ts` đã bị xoá; import quota mới phải đi qua `quota.service`, `quota.types`, `quota.constants` hoặc `quota-policy`.
 - Prisma hiện dùng **Prisma 7** với `prisma.config.ts`; không để connection URL trong `schema.prisma`.
@@ -38,7 +42,8 @@
 - Public job routes chỉ trả job `ACTIVE`, chưa hết hạn, `archivedAt = null`. Dashboard/private route dùng `/jobs/manage/:id` hoặc application history để xem tin cũ.
 - Candidate/employer “xoá” application chỉ ẩn khỏi workspace bằng `candidateDeletedAt` / `employerDeletedAt`; record vẫn giữ, không còn xoá vật lý khi cả hai bên xoá.
 - Application chat chỉ cho gửi khi application `ACCEPTED` và chưa `chatClosedAt`; `REJECTED` chỉ xem lời nhắn read-only.
-- Chat/notification/dashboard realtime dùng NestJS Socket.IO Gateway namespace `/realtime`; REST vẫn là source of truth, socket chỉ cập nhật cache FE sau khi DB ghi thành công.
+- Realtime đã tách theo use case: notification/dashboard invalidate dùng SSE `GET /api/v1/realtime/events`; application chat dùng NestJS Socket.IO namespace `/realtime`. REST vẫn là source of truth, realtime chỉ cập nhật/invalidate cache FE sau khi DB ghi thành công.
+- Public `/jobs` và `/companies` dùng SSR initial data. Khi search/filter/sort/pagination mới hiện shadcn `Skeleton`; list không giữ card cũ bên dưới loading. Card list đã bỏ các effect hover translate/shadow/transition gây nhảy layout.
 - Quota upgrade có package/purchase theo thời hạn: `QuotaPackage`, `QuotaPurchase`, `UserQuotaPlan`; Inngest có event `quota.plan.activated` và repair hết hạn hằng ngày.
 - Quota upgrade FE đi qua checkout page mock `/quota/checkout?session_id=...`; modal nâng gói chỉ tạo checkout và redirect, không complete ngầm.
 - Ảnh đại diện candidate, logo công ty và ảnh bìa công ty đều crop trên FE trước khi upload. Company cover lưu `Company.coverImage/coverImagePublicId` và upload qua `/api/v1/upload/company-cover`.
@@ -70,7 +75,10 @@
 ├─────────────────────────────────────────────────────────────────┤
 │                        BACKEND (NestJS 11)                       │
 │  TypeScript 5.7 + Prisma 7 + better-auth + Inngest + Stripe     │
-│  Port: 3000                                                     │
+│  Internal port: 3006                                             │
+├─────────────────────────────────────────────────────────────────┤
+│                        EDGE / DEV REVERSE PROXY                  │
+│  Nginx public backend entrypoint: http://localhost          │
 ├─────────────────────────────────────────────────────────────────┤
 │                        DATA LAYER                                │
 │  PostgreSQL 16 (port 5435) + Redis 7 (port 6381)                │
@@ -95,20 +103,22 @@
                     │                         │
                     │  SSR pages (public)     │
                     │  CSR pages (dashboard)  │
-                    │  BFF Proxy routes       │
+                    │  AI BFF routes only     │
                     └──┬──────┬──────┬───────┘
                        │      │      │
           ┌────────────┘      │      └────────────┐
           ▼                   ▼                    ▼
-  ┌───────────────┐  ┌───────────────┐  ┌─────────────────┐
-  │  /api/auth/*  │  │  /api/v1/*    │  │ /api/copilotkit │
-  │  (Auth proxy) │  │  (API proxy)  │  │ (CopilotKit RT) │
-  └───────┬───────┘  └───────┬───────┘  └────────┬────────┘
-          │                  │                    │
-          ▼                  ▼                    ▼
+  ┌───────────────────────────────┐    ┌──────────────────┐
+  │ Nginx Reverse Proxy :80     │    │ /api/copilotkit  │
+  │ /api/v1/*  -> NestJS          │    │ /api/agent/*     │
+  │ /api/auth/* -> Better Auth    │    │ Next.js routes   │
+  │ /api/v1/realtime/events -> SSE│    └────────┬─────────┘
+  │ /socket.io/* -> Socket.IO chat│             │
+  └───────────┬───────────────────┘             │
+              ▼                                 ▼
   ┌───────────────────────────────┐    ┌──────────────────┐
   │     NestJS Backend            │    │  Python AI Agent  │
-  │        (port 3000)            │    │    (port 8125)    │
+  │        (port 3006)            │    │    (port 8125)    │
   │                               │    │                   │
   │  Auth → Roles → Controller    │    │  LangGraph Agent  │
   │  Prisma → PostgreSQL          │    │  8 tools          │
@@ -117,7 +127,7 @@
   └───────────┬───────────────────┘    └────────┬──────────┘
               │                                  │
               │         ┌────────────────────────┘
-              │         │  Agent tools gọi qua BFF proxy
+              │         │  Agent tools gọi qua Next.js server route
               ▼         ▼
   ┌───────────────────────────────┐
   │      PostgreSQL 16            │
@@ -132,7 +142,7 @@
 
 ```
 job-phuquoc/
-├── backend/                    # NestJS API (port 3000)
+├── backend/                    # NestJS API (internal port 3006)
 │   └── src/
 │       ├── prisma/             # @Global PrismaService
 │       ├── auth/               # better-auth config + guards
@@ -140,7 +150,7 @@ job-phuquoc/
 │       ├── inngest/            # event system
 │       └── modules/            # 15 feature modules
 ├── web/                        # Next.js (port 3001) + Python Agent (port 8125)
-│   ├── src/app/                # App Router pages + BFF proxy
+│   ├── src/app/                # App Router pages + AI server routes
 │   ├── src/components/         # UI components
 │   ├── src/features/ai/        # CopilotKit tools, renderers
 │   ├── src/hooks/              # Custom hooks
@@ -970,14 +980,14 @@ QueryAuditDto:
 
 | Route | File | Mô tả |
 |-------|------|--------|
-| `/jobs` | `src/app/jobs/page.tsx` | Danh sách việc làm. Filter, search, pagination. JSON-LD ItemList |
+| `/jobs` | `src/app/jobs/page.tsx` | Danh sách việc làm. SSR initial data; search/filter/sort/pagination hiện shadcn Skeleton rồi render card khi data mới sẵn sàng. JSON-LD ItemList |
 | `/jobs/[slug]` | `src/app/jobs/[slug]/page.tsx` | Chi tiết việc làm. Related jobs. JSON-LD JobPosting + Breadcrumb |
 
 #### Công ty
 
 | Route | File | Mô tả |
 |-------|------|--------|
-| `/companies` | `src/app/companies/page.tsx` | Danh sách công ty. JSON-LD ItemList |
+| `/companies` | `src/app/companies/page.tsx` | Danh sách công ty. SSR initial data; route transition search/filter/sort/pagination hiện grid shadcn Skeleton. JSON-LD ItemList |
 | `/companies/[slug]` | `src/app/companies/[slug]/page.tsx` | Chi tiết công ty. Jobs của công ty. JSON-LD Organization |
 
 #### Blog
@@ -1044,25 +1054,29 @@ QueryAuditDto:
 | `/employer/notifications` | `src/app/employer/notifications/page.tsx` | Thông báo |
 | `/employer/settings` | `src/app/employer/settings/page.tsx` | Cài đặt (theme toggle) |
 
-### 5.2 BFF Proxy Routes
+### 5.2 Backend Proxy & Next.js Server Routes
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                     NEXT.JS BFF PROXY                            │
+│                  CURRENT BROWSER/API ROUTING                     │
 ├──────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  Browser (with cookies)                                          │
 │      │                                                           │
-│      ├── /api/auth/[...slug]    → BACKEND:3000/api/auth/*        │
-│      │   - better-auth endpoints (sign-in, sign-up, OTP, etc.)   │
-│      │   - Forward Set-Cookie headers                            │
+│      ├── http://localhost/api/auth/* → NestJS /api/auth/*   │
+│      │   - Better Auth endpoints (sign-in, sign-up, OTP, OAuth)  │
 │      │                                                           │
-│      ├── /api/v1/[...slug]      → BACKEND:3000/api/v1/*          │
+│      ├── http://localhost/api/v1/*   → NestJS /api/v1/*     │
 │      │   - Business API (jobs, companies, applications, etc.)    │
-│      │   - Forward Set-Cookie headers                            │
 │      │                                                           │
-│      ├── /api/agent/[...slug]   → BACKEND:3000/api/v1/*          │
-│      │   - Agent tool calls (with auth verification)             │
+│      ├── http://localhost/api/v1/realtime/events → NestJS SSE    │
+│      │   - notification/dashboard invalidate events              │
+│      │                                                           │
+│      ├── http://localhost/socket.io/* → NestJS Socket.IO         │
+│      │   - namespace /realtime cho application chat              │
+│      │                                                           │
+│      ├── /api/agent/[...slug]   → Next.js server route           │
+│      │   - Agent tool calls to BACKEND_URL/api/v1/*              │
 │      │   - Step 1: Check cookie exists → 401 if missing          │
 │      │   - Step 2: Verify cookie via /api/v1/auth/me             │
 │      │   - Step 3: Forward to backend                            │
@@ -1159,8 +1173,8 @@ QueryAuditDto:
 | `features/dashboard/queries.ts` | TanStack Query hooks cho candidate/employer dashboard summary |
 | `features/notifications/queries.ts` | TanStack Query hooks cho notification list, unread count, mark read/read-all |
 | `features/notifications/utils.ts` | Notification href/icon mapping |
-| `features/realtime/realtime-provider.tsx` | Socket.IO provider cập nhật notification/dashboard cache |
-| `features/realtime/use-application-chat-realtime.ts` | Join/leave application room và merge message realtime vào cache |
+| `features/realtime/realtime-provider.tsx` | SSE provider nhận notification/dashboard events và cập nhật/invalidate TanStack Query cache |
+| `features/realtime/use-application-chat-realtime.ts` | Socket.IO join/leave application room và merge message chat realtime vào cache |
 | `features/seo/structured-data.ts` | SEO JSON-LD generators: Organization, WebSite, JobPosting, Article, Breadcrumb, LocalBusiness |
 
 ---
@@ -1353,7 +1367,7 @@ class RecruiterState(CopilotKitState):
 │  CopilotKitProvider (frontend)                               │
 │      │                                                      │
 │      ▼                                                      │
-│  POST /api/copilotkit (Next.js BFF)                         │
+│  POST /api/copilotkit (Next.js server route)                 │
 │      │  [inject cookie into forwardedProps]                  │
 │      ▼                                                      │
 │  Python Agent (FastAPI :8125)                                │
@@ -1362,10 +1376,10 @@ class RecruiterState(CopilotKitState):
 │      │  [chat_node: LLM with tools]                         │
 │      │  [tool_node / custom nodes: execute tools]            │
 │      ▼                                                      │
-│  Tool calls → /api/agent/* (Next.js BFF)                    │
+│  Tool calls → /api/agent/* (Next.js server route)            │
 │      │  [verify cookie via /api/v1/auth/me]                  │
 │      ▼                                                      │
-│  Backend API (:3000)                                         │
+│  Backend API (:3006 internal)                                │
 │      │                                                      │
 │      ▼                                                      │
 │  Agent returns result → CopilotKit renders                   │
@@ -1411,13 +1425,13 @@ class RecruiterState(CopilotKitState):
 User nhập email + password
     │
     ▼
-POST /api/auth/sign-in/email  (qua BFF proxy)
+POST http://localhost/api/auth/sign-in/email
     │
     ▼
 better-auth tạo session → Set-Cookie: better-auth.session_token
     │
     ▼
-BFF proxy forward Set-Cookie → Browser
+Better Auth Set-Cookie → Browser
     │
     ▼
 GET /api/v1/auth/me → lấy role
@@ -1466,6 +1480,9 @@ authClient.signIn.social({ provider: "google", callbackURL })
     │
     ▼
 Google login page
+    │
+    ▼
+Google redirects to http://localhost/api/auth/callback/google
     │
     ▼
 Redirect → /auth/callback
@@ -1838,7 +1855,7 @@ Stage 2 (runner): python:3.12-slim
 |---------|--------|-----|
 | backend | `dist/src/main.js` | `backend/` |
 | frontend | `next dev -p 3001` | `web/` |
-| inngest | `npx inngest-cli dev -u http://localhost:3000/api/inngest` | root |
+| inngest | `npx inngest-cli dev -u http://localhost:3006/api/inngest` | root |
 | agent | `scripts/run-agent.sh` | `web/` |
 
 ### 11.5 Environment Variables
@@ -1850,7 +1867,7 @@ Stage 2 (runner): python:3.12-slim
 | `DATABASE_URL` | YES | PostgreSQL connection string |
 | `REDIS_URL` | YES | Redis connection string |
 | `BETTER_AUTH_SECRET` | YES | Auth secret (min 32 chars) |
-| `BETTER_AUTH_URL` | YES | Auth base URL (http://localhost:3000) |
+| `BETTER_AUTH_URL` | YES | Public auth base URL qua reverse proxy (http://localhost) |
 | `FRONTEND_URL` | YES | CORS origin (http://localhost:3001) |
 | `AGENT_URL` | YES | AI agent URL (http://localhost:8125) |
 | `INNGEST_DEV` | YES (dev) | Inngest dev mode flag |
@@ -1869,14 +1886,16 @@ Stage 2 (runner): python:3.12-slim
 
 | Variable | Required | Mô tả |
 |----------|----------|--------|
-| `BACKEND_URL` | YES | Backend URL cho SSR (http://localhost:3000) |
+| `BACKEND_URL` | YES | Backend URL cho SSR/server route nội bộ (http://localhost:3006) |
+| `NEXT_PUBLIC_API_URL` | YES | Public backend reverse proxy cho browser (http://localhost) |
+| `NEXT_PUBLIC_REALTIME_URL` | YES | Public realtime reverse proxy cho browser: SSE notification/dashboard và Socket.IO chat (http://localhost) |
 | `AGENT_URL` | YES | Agent URL (http://localhost:8125) |
 | `OPENAI_API_KEY` | YES | LLM API key |
 
 #### Agent (web/agent/core/config.py)
 
 Đọc từ `web/.env`:
-- `BACKEND_URL` (default: http://localhost:3000/api/v1)
+- `BACKEND_URL` (default: http://localhost:3006/api/v1)
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL` (default: gpt-4o-mini)
 - `AGENT_PORT` (default: 8125)
@@ -1970,7 +1989,7 @@ pnpm dev
 ### 13.2 Run Individual Services
 
 ```bash
-# Backend (port 3000)
+# Backend (internal port 3006)
 cd backend && pnpm dev
 
 # Frontend (port 3001)
@@ -2199,9 +2218,7 @@ web/
 │   │   │   ├── notifications/page.tsx
 │   │   │   └── settings/page.tsx
 │   │   └── api/
-│   │       ├── auth/[...slug]/route.ts      # Auth proxy
-│   │       ├── v1/[...slug]/route.ts        # API proxy
-│   │       ├── agent/[...slug]/route.ts     # Agent proxy (with auth)
+│   │       ├── agent/[...slug]/route.ts     # Agent proxy/server route (with auth)
 │   │       └── copilotkit/[[...slug]]/route.ts # CopilotKit runtime
 │   ├── components/
 │   │   ├── common/                      # Header, Footer, SearchBar

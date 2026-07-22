@@ -4,9 +4,11 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { uploadPostImage } from '@/features/blog/upload-post-image';
 import { 
   Select, 
   SelectContent, 
+  SelectGroup,
   SelectItem, 
   SelectTrigger, 
   SelectValue 
@@ -67,14 +69,19 @@ export function PostMetadataForm({
 }: MetadataFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [isSlugManual, setIsSlugManual] = useState(false);
+  // Khi edit, giữ nguyên slug hiện tại để không làm đổi URL của bài đã lưu
+  // chỉ vì title được hydrate hoặc chỉnh sửa. Trang tạo mới vẫn tự sinh slug.
+  const [isSlugManual, setIsSlugManual] = useState(isEdit);
 
   // Sync title with slug automatically unless user edited slug manually
   useEffect(() => {
-    if (!isSlugManual && title) {
-      setSlug(slugify(title));
-    }
-  }, [title, isSlugManual, setSlug]);
+    if (isSlugManual || !title) return;
+
+    const nextSlug = slugify(title);
+    // `setSlug` được truyền inline từ page nên đổi identity mỗi render. Guard
+    // giá trị trước khi set để effect không tạo vòng lặp update vô hạn.
+    if (slug !== nextSlug) setSlug(nextSlug);
+  }, [title, slug, isSlugManual, setSlug]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -86,31 +93,14 @@ export function PostMetadataForm({
     }
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
 
     try {
-      const res = await fetch('/api/v1/upload/post-image', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error('Upload cover failed');
-      }
-
-      const body = await res.json();
-      const imageUrl = body.url || body.data?.url;
-
-      if (!imageUrl) {
-        throw new Error('No URL returned from upload');
-      }
-
+      const imageUrl = await uploadPostImage(file);
       setCoverImage(imageUrl);
       toast.success('Upload ảnh bìa thành công!');
     } catch (error) {
       console.error(error);
-      toast.error('Có lỗi xảy ra khi upload ảnh bìa.');
+      toast.error(error instanceof Error ? error.message : 'Có lỗi xảy ra khi upload ảnh bìa.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -238,11 +228,13 @@ export function PostMetadataForm({
                 <SelectValue placeholder="Chọn danh mục" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id} className="focus:bg-cyan-500/10 focus:text-cyan-700">
-                    {cat.name}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id} className="focus:bg-cyan-500/10 focus:text-cyan-700">
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>

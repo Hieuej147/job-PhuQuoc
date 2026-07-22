@@ -17,7 +17,7 @@ sequenceDiagram
     participant Ollama as Dịch vụ Ollama
     participant Backend as NestJS API
     participant DB as PostgreSQL (pgvector)
-    
+
     Candidate->>Agent: Nhập từ khóa (VD: "lập trình React")
     Agent->>Ollama: POST /api/embeddings (Chuyển keyword thành vector nhúng)
     Ollama-->>Agent: Trả về danh sách Vector nhúng [0.15, -0.23, ...]
@@ -39,7 +39,7 @@ sequenceDiagram
     actor Candidate as Ứng viên
     participant Agent as Candidate Agent
     participant Backend as NestJS API
-    
+
     Candidate->>Agent: Yêu cầu xem lại các CV đã tạo
     Agent->>Backend: GET /resumes/my (gửi kèm token xác thực)
     Backend-->>Agent: Trả về JSON danh sách CV (id, title, templateId, isDefault)
@@ -76,7 +76,7 @@ sequenceDiagram
     actor Recruiter as Nhà tuyển dụng
     participant Agent as Recruiter Agent
     participant Backend as NestJS API
-    
+
     Recruiter->>Agent: Yêu cầu xem ứng viên của Job ID "X"
     Agent->>Backend: GET /applications/job/X (kèm limit, status lọc nếu có)
     Backend-->>Agent: Trả về danh sách ứng viên (tên, email, trạng thái, cover letter)
@@ -94,7 +94,7 @@ sequenceDiagram
     actor Recruiter as Nhà tuyển dụng
     participant Agent as Recruiter Agent
     participant Backend as NestJS API
-    
+
     Recruiter->>Agent: Muốn đăng tin tuyển dụng mới
     Agent->>Backend: GET /categories
     Backend-->>Agent: Trả về danh sách ngành nghề (id, name, slug)
@@ -111,7 +111,7 @@ Quản lý luồng lưu trữ dữ liệu CV của ứng viên.
 ```mermaid
 graph TD
     A[Bắt đầu] --> B{Đã có resume_id?}
-    
+
     %% Tạo mới CV
     B -- Không (Tạo mới) --> C{Đã chọn template_id?}
     C -- Chưa --> D[Báo lỗi: Yêu cầu chọn template trước]
@@ -119,7 +119,7 @@ graph TD
     E --> F[Gửi API: POST /resumes]
     F --> G[Trả về kết quả thành công: ID và tiêu đề CV mới]
     G --> H[Render Card báo tạo CV thành công lên trình duyệt]
-    
+
     %% Cập nhật CV
     B -- Có (Cập nhật) --> I[Gửi API: GET /resumes/resume_id để lấy dữ liệu cũ]
     I --> J{replace_lists = True?}
@@ -139,16 +139,16 @@ Bắt buộc gọi trước khi tạo mới CV nhằm xác định giao diện h
 graph TD
     A[Bắt đầu] --> B[Gọi API: GET /resumes/templates]
     B --> C{Lần gọi đầu tiên (Style/Index đều trống)?}
-    
+
     C -- Đúng --> D[Trả về danh sách mẫu kèm cờ need_user_choice=True]
     D --> E[AI liệt kê danh sách đánh số thứ tự và hỏi ý kiến ứng viên]
-    
+
     C -- Sai --> F{User chọn theo Số thứ tự index?}
     F -- Đúng --> G[Khớp mẫu theo vị trí trong danh sách]
     F -- Không --> H{User chọn theo tên style?}
     H -- Đúng --> I[So khớp ký tự gần đúng trong tên/mô tả mẫu]
     H -- Không --> J[Nếu user đồng ý cho AI tự chọn -> Lấy mẫu mặc định đầu tiên]
-    
+
     G & I & J --> K{Khớp thành công?}
     K -- Đúng --> L[Trả về template_id và template_name]
     K -- Không --> D
@@ -165,7 +165,7 @@ sequenceDiagram
     actor Recruiter as Nhà tuyển dụng
     participant Agent as Recruiter Agent
     participant Backend as NestJS API
-    
+
     Recruiter->>Agent: Xác nhận thông tin tin tuyển dụng (tiêu đề, lương, mô tả...)
     Agent->>Backend: POST /jobs (kèm category_id đã chọn)
     Backend-->>Agent: Trả về JSON thông tin job được tạo (Trạng thái: DRAFT)
@@ -183,7 +183,7 @@ sequenceDiagram
     actor Recruiter as Nhà tuyển dụng
     participant Agent as Recruiter Agent
     participant Backend as NestJS API
-    
+
     Recruiter->>Agent: Duyệt (hoặc từ chối) hồ sơ ứng viên A
     Agent->>Backend: PATCH /applications/{application_id}/status (status = ACCEPTED/REJECTED)
     Backend-->>Agent: Trả về trạng thái thành công
@@ -205,7 +205,7 @@ graph TD
     C -- rejection --> E[Áp dụng template thư từ chối ứng viên]
     C -- offer --> F[Áp dụng template thư mời nhận việc]
     C -- follow_up --> G[Áp dụng template nhắc nhở ứng tuyển]
-    
+
     D & E & F & G --> H[Điền tên ứng viên, vị trí tuyển dụng, công ty và thông tin bổ sung]
     H --> I[Đóng gói kết quả gồm Tiêu đề email và Nội dung thư hoàn chỉnh]
     I --> J[AI in nội dung email nháp ra màn hình chat để nhà tuyển dụng copy]
@@ -221,14 +221,14 @@ graph TD
     A[Bắt đầu] --> B[Trích xuất dashboard dữ liệu trong context gửi từ Frontend]
     B --> C[Phân tích danh sách checklist kiểm tra hồ sơ]
     C --> D[Kiểm tra danh sách CV hiện có, công việc đã lưu, đơn đã ứng tuyển]
-    
+
     %% Phân tích các bước
     D --> E{Checklist chưa hoàn thành hoặc chưa có CV?}
     E -- Đúng --> F[Gợi ý: Hoàn thiện thông tin hồ sơ còn thiếu và Tạo CV mới]
     E -- Sai --> G{Đang có công việc đã lưu?}
     G -- Có --> H[Gợi ý: Xem lại các công việc đã lưu để nộp đơn ứng tuyển]
     G -- Không --> I[Gợi ý: Tìm kiếm các công việc phù hợp với kỹ năng]
-    
+
     F & H & I --> J[Tổng hợp thành 3-5 hành động ưu tiên khuyên làm tiếp theo]
     J --> K[AI diễn đạt thành văn bản tư vấn gửi ứng viên]
 ```

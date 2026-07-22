@@ -1,3 +1,4 @@
+import { apiUrl } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +38,7 @@ export function ApplicationCvDialog({
 
   const handleOpenCvNewTab = () => {
     if (payload?.type === "uploaded" && applicationId) {
-      window.open(`/api/v1/applications/${applicationId}/resume-file`, "_blank", "noopener,noreferrer");
+      window.open(apiUrl(`/api/v1/applications/${applicationId}/resume-file`), "_blank", "noopener,noreferrer");
       return;
     }
     if (payload?.type === "resume" && applicationId) {
@@ -90,7 +91,7 @@ export function ApplicationCvDialog({
           ) : payload?.type === "uploaded" ? (
             applicationId ? (
               <iframe
-                src={`/api/v1/applications/${applicationId}/resume-file`}
+                src={apiUrl(`/api/v1/applications/${applicationId}/resume-file`)}
                 title="CV PDF ứng viên"
                 className="mx-auto h-[75vh] w-full max-w-5xl rounded-lg border border-slate-300 bg-white"
               />

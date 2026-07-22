@@ -26,8 +26,10 @@ export class EmailIntegrationService {
 
     private get redirectUri(): string {
         // Cố định theo đúng URI đã khai báo trên Google Cloud Console — không lấy
-        // từ BACKEND_URL biến thiên, tránh Google từ chối vì URI không khớp.
-        return `${process.env.BETTER_AUTH_URL || 'http://localhost:3000'}/api/v1/email-integration/callback`;
+        // từ BACKEND_URL nội bộ, tránh Google từ chối vì URI không khớp. Trong
+        // topology hiện tại callback public đi qua Nginx ở port 80.
+        const publicBackendUrl = process.env.BACKEND_PUBLIC_URL || process.env.BETTER_AUTH_URL || 'http://localhost';
+        return `${publicBackendUrl.replace(/\/$/, '')}/api/v1/email-integration/callback`;
     }
 
     private get clientId(): string {

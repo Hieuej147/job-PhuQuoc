@@ -13,6 +13,8 @@ class CreateJobInput(BaseModel):
     title: str = Field(description="Tiêu đề tin tuyển dụng")
     description: str = Field(description="Mô tả công việc chi tiết")
     category_id: str = Field(description="ID danh mục ngành nghề (lấy từ get_categories)")
+    ward_id: str = Field(description="ID khu vực/phường/xã làm việc (lấy từ get_work_locations)")
+    address_detail: str = Field(description="Địa chỉ làm việc chi tiết, ví dụ tên tòa nhà, đường, khu du lịch")
     type: str = Field(
         description="Loại hình: FULL_TIME, PART_TIME, REMOTE, CONTRACT, INTERNSHIP, FREELANCE"
     )
@@ -55,7 +57,7 @@ class CreateJobTool(BaseTool):
     name = "create_job"
     description = (
         "Tạo tin tuyển dụng mới ở trạng thái DRAFT. "
-        "Dùng SAU KHI đã có category_id từ get_categories và đã xác nhận "
+        "Dùng SAU KHI đã có category_id từ get_categories, ward_id từ get_work_locations "
         "đầy đủ thông tin với nhà tuyển dụng. "
         "Job tạo xong ở trạng thái DRAFT — CHƯA hiển thị công khai và CHƯA có hạn "
         "nộp hồ sơ; nhà tuyển dụng cần vào trang thanh toán, chọn gói đăng tin để "
@@ -71,6 +73,8 @@ class CreateJobTool(BaseTool):
         title: str,
         description: str,
         category_id: str,
+        ward_id: str,
+        address_detail: str,
         type: str,
         experience: Optional[str] = None,
         level: Optional[str] = None,
@@ -85,6 +89,8 @@ class CreateJobTool(BaseTool):
                 "title": title,
                 "description": description,
                 "categoryId": category_id,
+                "wardId": ward_id,
+                "addressDetail": address_detail,
                 "type": type,
                 "quantity": quantity,
             }
@@ -124,7 +130,6 @@ class CreateJobTool(BaseTool):
                 "error": str(e),
                 "message": "Không thể tạo tin tuyển dụng. Vui lòng thử lại.",
             }
-
     def as_node(self):
         tool_instance = self
 
@@ -146,6 +151,8 @@ class CreateJobTool(BaseTool):
                 title=args.get("title"),
                 description=args.get("description"),
                 category_id=args.get("category_id"),
+                ward_id=args.get("ward_id"),
+                address_detail=args.get("address_detail"),
                 type=args.get("type"),
                 experience=args.get("experience"),
                 level=args.get("level"),

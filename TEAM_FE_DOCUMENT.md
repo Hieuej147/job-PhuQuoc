@@ -1,6 +1,6 @@
 # Phú Quốc Jobs — Tài liệu cho Team FE
 
-*Cập nhật: 2026-07-09*
+*Cập nhật: 2026-07-18*
 
 ---
 
@@ -32,8 +32,13 @@
 | Events | Inngest | 4.4 |
 | Payment | Stripe | 22.2 |
 
-### Cập nhật FE cần nhớ 2026-07-09
+### Cập nhật FE cần nhớ 2026-07-18
 
+- FE mở ở `http://localhost:3001`, browser-side REST/Auth/SSE/Socket.IO gọi backend qua Nginx reverse proxy `http://localhost`.
+- Next.js không còn generic BFF proxy cho `/api/v1/*` và `/api/auth/*`. Hai route `web/src/app/api/v1/[...slug]/route.ts` và `web/src/app/api/auth/[...slug]/route.ts` đã bị xoá.
+- Next.js chỉ giữ BFF/server route cho `/api/agent/*` và `/api/copilotkit/*`.
+- FE dùng `apiUrl()` trong `web/src/lib/api-client.ts`; client-side ưu tiên `NEXT_PUBLIC_API_URL`, server-side dùng `BACKEND_URL`.
+- Better Auth core routes là `/api/auth/*`; Google OAuth callback local là `http://localhost/api/auth/callback/google`.
 - Public job APIs chỉ trả job `ACTIVE`, chưa hết hạn, `archivedAt = null`. Dashboard/edit/checkout phải dùng private route `/api/v1/jobs/manage/:id`.
 - Tạo/sửa job không còn field “Hạn nộp”. `deadline` chỉ set sau checkout theo số ngày đăng.
 - Job content vẫn là Markdown text; editor FE chỉ tạo Markdown, không gửi HTML raw.
@@ -41,7 +46,10 @@
 - Employer bấm xoá job là **ẩn mềm khỏi workspace** qua `DELETE /api/v1/jobs/:id/employer`; FE employer không có tab “Lưu trữ”/“Khôi phục”. Record vẫn giữ `archivedAt` cho admin/support sau này.
 - Application delete chỉ ẩn khỏi workspace từng phía, không hard delete và không phải “rút đơn”.
 - Candidate đã apply vẫn xem được lịch sử job qua `GET /api/v1/applications/:id/job` kể cả khi job đã đóng/hết hạn/lưu trữ.
-- Chat application dùng REST + TanStack Query làm source of truth, nhận realtime qua Socket.IO `/realtime`. Chỉ `ACCEPTED` mới chat hai chiều; `REJECTED` chỉ xem lời nhắn read-only.
+- Public `/jobs` dùng SSR initial data; khi search/filter/sort/pagination mới hiện shadcn `Skeleton`, không giữ card cũ dưới loading. Job card đã bỏ hover shadow/translate/transition gây nhảy layout.
+- Public `/companies` dùng SSR initial data + route transition; khi search/filter/sort/pagination mới hiện grid shadcn `Skeleton`, không render card cũ trong lúc pending. Company card/list đã bỏ fade-up/hover translate/shadow ở danh sách chính.
+- Notification và dashboard invalidate dùng SSE `GET /api/v1/realtime/events` qua `RealtimeProvider`; REST/TanStack Query vẫn là source of truth.
+- Chat application dùng REST + TanStack Query làm source of truth, nhận realtime qua Socket.IO namespace `/realtime` khi dialog mở. Chỉ `ACCEPTED` mới chat hai chiều; `REJECTED` chỉ xem lời nhắn read-only.
 - Quota UI dùng `/api/v1/quota/me`, `/quota/packages`, `/quota/checkout`, `/quota/mock-complete`; package có thời hạn và Inngest tự downgrade khi hết hạn.
 - BE quota code đã tách DI: FE không bị ảnh hưởng contract, nhưng không còn file backend `storage-quota.ts`.
 
@@ -53,18 +61,23 @@ graph TB
         FE["Next.js Frontend (Port 3001)<br/>─────────────────<br/>• Public Pages (SSR)<br/>• Candidate Dashboard (CSR)<br/>• Employer Dashboard (CSR)<br/>• AI CV Assistant (CopilotKit)"]
     end
 
-    subgraph BFF["🔄 BFF Proxy (Next.js API Routes)"]
-        V1["/api/v1/[...slug]<br/>→ Backend /api/v1/*"]
-        AUTH["/api/auth/[...slug]<br/>→ Backend /api/auth/*"]
+    subgraph RP["🧭 Nginx Backend Reverse Proxy (Port 80)"]
+        V1["/api/v1/*<br/>→ NestJS /api/v1/*"]
+        AUTH["/api/auth/*<br/>→ Better Auth on NestJS"]
+        SSE["/api/v1/realtime/events<br/>→ SSE notification/dashboard"]
+        SOCK["/socket.io/*<br/>→ Socket.IO chat transport"]
+    end
+
+    subgraph BFF["🔄 Next.js Server Routes"]
         AGENT["/api/agent/[...slug]<br/>→ Backend /api/v1/* + cookie verify"]
         CK["/api/copilotkit<br/>→ Python Agent"]
     end
 
-    subgraph MW["🛡️ Middleware"]
-        MID["middleware.ts<br/>─────────────────<br/>• /candidate/** → check cookie<br/>• /employer/** → check cookie<br/>• role check in layouts<br/>• /auth/** handled by pages"]
+    subgraph MW["🛡️ Next.js Route Protection"]
+        MID["web/src/proxy.ts + layouts<br/>─────────────────<br/>• /candidate/** → check cookie<br/>• /employer/** → check cookie<br/>• role check in layouts<br/>• /auth/** handled by pages"]
     end
 
-    subgraph BE["⚙️ Backend NestJS (Port 3000)"]
+    subgraph BE["⚙️ Backend NestJS (Port 3006)"]
         GUARD["Guard Chain<br/>─────────────────<br/>ThrottlerGuard → AuthGuard → RolesGuard"]
         MOD["15 Feature Modules<br/>─────────────────<br/>auth, users, companies, jobs,<br/>applications, resumes, notifications,<br/>categories, address, blogs,<br/>blog-categories, saved, pricing,<br/>payments, audit"]
         INFRA["6 Global Modules<br/>─────────────────<br/>PrismaModule, CacheModule,<br/>EmailModule, LoggerModule,<br/>InngestModule, SharedModule"]
@@ -80,12 +93,12 @@ graph TB
         ING["Inngest<br/>─────────────────<br/>Event Bus<br/>12 async functions"]
     end
 
-    FE -->|"fetch + cookie"| V1
-    FE -->|"auth"| AUTH
+    FE -->|"UI route navigation"| MID
+    FE -->|"REST/Auth/SSE/Socket.IO"| RP
     FE -->|"CopilotKit"| CK
-    V1 --> MID
-    AUTH --> MID
-    MID --> GUARD
+    V1 --> GUARD
+    AUTH --> GUARD
+    SOCK --> GUARD
     GUARD --> MOD
     MOD --> INFRA
     INFRA --> PG
@@ -94,6 +107,8 @@ graph TB
     CK --> PY
     AGENT --> GUARD
 ```
+
+> Lưu ý: Nginx không đi qua Next.js route protection. Nhánh UI đi qua `web/src/proxy.ts`/layouts của Next.js; nhánh API/Auth/SSE/Socket.IO đi qua Nginx rồi vào thẳng NestJS guards/controllers.
 
 ### Cấu trúc Monorepo
 
@@ -134,7 +149,7 @@ job-phuquoc/
 │   │   ├── hooks/             # Custom hooks
 │   │   ├── lib/               # Utilities
 │   │   ├── types/             # Định nghĩa Type/Interface dùng chung
-│   │   └── middleware.ts      # Route protection
+│   │   └── proxy.ts           # Route protection
 │   └── agent/                 # Python AI Agent
 ├── docker/                     # Docker compose
 ├── scripts/                    # Backup & seed scripts
@@ -164,7 +179,7 @@ Backend vẫn là **modular monolith**, nhưng các module quan trọng đã b�
 - API response không phụ thuộc vào việc gửi notification/event thành công nếu side effect là non-critical.
 - Apply job, accept/reject application, complete payment có thể phát sinh Inngest event ở phía BE.
 - Job embedding sync là background work sau payment activation thành công hoặc sau khi sửa job đang ACTIVE; FE không nên chờ embedding xong. Tạo job DRAFT không chạy embedding.
-- FE tiếp tục gọi same-origin BFF `/api/v1/*`, `/api/auth/*`, `/api/copilotkit`; layer nội bộ BE không đổi contract API nếu không có note riêng.
+- FE gọi `/api/v1/*`, `/api/auth/*`, SSE và Socket.IO thông qua `NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_REALTIME_URL` trỏ tới Nginx reverse proxy `http://localhost`; chỉ `/api/agent/*` và `/api/copilotkit/*` còn là Next.js server routes.
 
 ### Cài đặt
 
@@ -223,7 +238,7 @@ cp docker/.env.example web/.env
 | `DATABASE_URL` | ✅ | `postgresql://pq_user:pq_pass123@localhost:5435/pq_jobs` | PostgreSQL connection string |
 | `REDIS_URL` | ✅ | `redis://localhost:6381` | Redis connection string |
 | `BETTER_AUTH_SECRET` | ✅ | — | Secret key (32+ ký tự). Generate: `openssl rand -base64 32` |
-| `BETTER_AUTH_URL` | ✅ | `http://localhost:3000` | Backend URL |
+| `BETTER_AUTH_URL` | ✅ | `http://localhost` | Public auth base URL qua Nginx reverse proxy |
 | `FRONTEND_URL` | ✅ | `http://localhost:3001` | Frontend URL (cho CORS) |
 | `AGENT_URL` | ✅ | `http://localhost:8125` | Python AI agent URL |
 | `OLLAMA_URL` | Optional | `http://127.0.0.1:11434` | Ollama URL dùng sinh vector |
@@ -233,7 +248,7 @@ cp docker/.env.example web/.env
 | `EMAIL_FROM` | Optional | `onboarding@resend.dev` | Email sender |
 | `GOOGLE_CLIENT_ID` | Optional | — | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Optional | — | Google OAuth client secret |
-| `GOOGLE_CALLBACK_URL` | Optional | `${FRONTEND_URL}/api/auth/callback/google` | Google OAuth redirect URI qua Next.js BFF |
+| `GOOGLE_CALLBACK_URL` | Optional | `${BETTER_AUTH_URL}/api/auth/callback/google` | Google OAuth redirect URI qua backend reverse proxy |
 | `STRIPE_SECRET_KEY` | Optional | — | Stripe secret key |
 | `STRIPE_PUBLISHABLE_KEY` | Optional | — | Stripe publishable key |
 | `STRIPE_WEBHOOK_SECRET` | Optional | — | Stripe webhook secret |
@@ -242,7 +257,9 @@ cp docker/.env.example web/.env
 
 | Biến | Bắt buộc | Giá trị mặc định | Mô tả |
 |------|----------|-------------------|-------|
-| `BACKEND_URL` | ✅ | `http://localhost:3000` | Backend URL (SSR calls) |
+| `BACKEND_URL` | ✅ | `http://localhost:3006` | Backend URL cho SSR/server route nội bộ |
+| `NEXT_PUBLIC_API_URL` | ✅ | `http://localhost` | Public backend reverse proxy cho browser REST/Auth |
+| `NEXT_PUBLIC_REALTIME_URL` | ✅ | `http://localhost` | Public realtime base URL cho SSE notification/dashboard và Socket.IO chat |
 | `AGENT_URL` | ✅ | `http://localhost:8125` | Python AI agent URL |
 | `OPENAI_API_KEY` | Cần AI | — | OpenAI API key (cho AI agent) |
 | `NEXT_PUBLIC_COPILOTKIT_LICENSE_KEY` | Optional | — | CopilotKit public license key cho React provider |
@@ -298,8 +315,9 @@ pnpm build            # Build production (turbo)
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:3001 |
-| Backend | http://localhost:3000 |
-| API Docs | http://localhost:3000/docs |
+| Backend internal | http://localhost:3006 |
+| Backend reverse proxy | http://localhost |
+| API Docs | http://localhost:3006/docs |
 | PostgreSQL | localhost:5435 |
 | Redis | localhost:6381 |
 
@@ -322,7 +340,7 @@ sequenceDiagram
     participant DB as Database
 
     U->>FE: Nhập email + password
-    FE->>BE: POST /api/auth/sign-in/email
+    FE->>BE: POST http://localhost/api/auth/sign-in/email
     BE->>DB: Verify password
     BE->>DB: Create session
     BE-->>FE: Set-Cookie + {user}
@@ -916,7 +934,7 @@ erDiagram
 | 3 | POST | /api/auth/sign-out | Session | Đăng xuất |
 | 4 | GET | /api/auth/token | Session | Lấy JWT token |
 | 5 | GET | /api/auth/jwks | Public | Public keys (JWKS) |
-| 6 | POST | /api/auth/sign-in/social/google | Public | Google OAuth |
+| 6 | POST | /api/auth/sign-in/social | Public | Google OAuth |
 | 7 | POST | /api/auth/email-otp/send-verification-otp | Public | Gửi OTP xác nhận email |
 | 8 | POST | /api/auth/email-otp/verify-email | Public | Xác nhận OTP |
 | 9 | POST | /api/auth/email-otp/request-password-reset | Public | Gửi OTP reset password |
@@ -1275,9 +1293,11 @@ modules/<name>/
 
 ### Realtime chat, notification và dashboard
 
-- FE kết nối Socket.IO tới backend namespace `/realtime` thông qua `RealtimeProvider`.
-- Socket chỉ đẩy event realtime; REST API vẫn là source of truth cho chat, notification và dashboard.
-- Chat application mở dialog thì emit `application.join { applicationId }`, đóng dialog thì `application.leave`.
-- Notification không polling mặc định nữa; server emit `notification.created`, `notification.read`, `notification.all_read`, `notification.unread_count.changed`.
-- Dashboard không stream payload lớn; server emit `dashboard.invalidate`, FE invalidate query `["dashboard"]` để refetch đúng lúc.
-- Nếu socket disconnect, FE giữ dữ liệu cũ và fallback bằng refetch khi focus/reconnect.
+- FE tách realtime theo use case:
+  - `RealtimeProvider` mở SSE tới `GET /api/v1/realtime/events` để nhận notification và dashboard invalidate.
+  - `useApplicationChatRealtime` chỉ mở Socket.IO namespace `/realtime` khi dialog chat application đang mở.
+- Realtime chỉ đẩy event nhẹ; REST API và TanStack Query vẫn là source of truth cho chat, notification và dashboard.
+- Chat application mở dialog thì Socket.IO emit `application.join { applicationId }`, đóng dialog thì `application.leave`.
+- Notification không polling mặc định nữa; SSE emit `notification.created`, `notification.read`, `notification.all_read`, `notification.unread_count.changed`.
+- Dashboard không stream payload lớn; SSE emit `dashboard.invalidate`, FE invalidate query `["dashboard"]` để refetch đúng lúc.
+- Nếu SSE/Socket disconnect, FE giữ dữ liệu cũ và fallback bằng refetch khi focus/reconnect.

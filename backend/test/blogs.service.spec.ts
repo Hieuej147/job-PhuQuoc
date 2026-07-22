@@ -75,7 +75,7 @@ describe('BlogsService', () => {
 
   describe('findBySlug', () => {
     it('should return blog without incrementing views and cache', async () => {
-      const mockBlog = { id: '1', title: 'Blog 1', slug: 'blog-1', views: 10 };
+      const mockBlog = { id: '1', title: 'Blog 1', slug: 'blog-1', views: 10, isPublished: true };
       prismaMock.blogPost.findUnique.mockResolvedValue(mockBlog);
 
       const result = await service.findBySlug('blog-1') as any;
@@ -102,11 +102,52 @@ describe('BlogsService', () => {
 
       await expect(service.findBySlug('nonexistent')).rejects.toThrow('Blog not found');
     });
+
+    it('should not expose a draft through the public slug endpoint', async () => {
+      prismaMock.blogPost.findUnique.mockResolvedValue({
+        id: '1',
+        slug: 'draft-blog',
+        authorId: 'author1',
+        isPublished: false,
+      });
+
+      await expect(service.findBySlug('draft-blog')).rejects.toThrow('Blog not found');
+      expect(cacheMock.set).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findEditableBySlug', () => {
+    it('should allow the author to load their draft for editing', async () => {
+      const draft = {
+        id: '1',
+        slug: 'draft-blog',
+        authorId: 'author1',
+        isPublished: false,
+      };
+      prismaMock.blogPost.findUnique.mockResolvedValue(draft);
+
+      const result = await service.findEditableBySlug('draft-blog', 'author1', Role.CANDIDATE);
+
+      expect(result).toEqual(draft);
+    });
+
+    it('should reject a different non-admin user', async () => {
+      prismaMock.blogPost.findUnique.mockResolvedValue({
+        id: '1',
+        slug: 'draft-blog',
+        authorId: 'author1',
+        isPublished: false,
+      });
+
+      await expect(
+        service.findEditableBySlug('draft-blog', 'author2', Role.CANDIDATE),
+      ).rejects.toThrow('Bạn không có quyền chỉnh sửa bài viết này');
+    });
   });
 
   describe('incrementView', () => {
     it('should increment views and invalidate cache', async () => {
-      const mockBlog = { id: '1', title: 'Blog 1', slug: 'blog-1', views: 10 };
+      const mockBlog = { id: '1', title: 'Blog 1', slug: 'blog-1', views: 10, isPublished: true };
       prismaMock.blogPost.findUnique.mockResolvedValue(mockBlog);
       prismaMock.blogPost.update.mockResolvedValue({ ...mockBlog, views: 11 });
 
@@ -117,7 +158,7 @@ describe('BlogsService', () => {
         where: { slug: 'blog-1' },
         data: { views: { increment: 1 } },
       });
-      expect(cacheMock.del).toHaveBeenCalledWith('blogs:slug:blog-1');
+      expect(cacheMock.del).toHaveBeenCalledWith('blogs:public-slug:blog-1');
       expect(cacheMock.delPattern).toHaveBeenCalledWith('blogs:*');
     });
   });

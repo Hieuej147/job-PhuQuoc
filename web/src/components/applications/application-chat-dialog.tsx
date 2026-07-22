@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MessageCircle, RefreshCw, Send } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,12 +12,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { QuotaUpgradeDialog } from "@/components/quota/quota-upgrade-dialog";
 import { ApiError } from "@/lib/api-client";
 import {
+  ApplicationChatComposer,
+  ApplicationChatUsageBanner,
+  ApplicationMessageList,
+} from "@/components/applications/application-chat-parts";
+import {
   type ApplicationMessage,
   type ApplicationMessageSenderRole,
+  DEFAULT_APPLICATION_MESSAGE_USAGE,
   useApplicationMessages,
   useMarkApplicationMessagesRead,
   useSendApplicationMessage,
@@ -59,7 +64,9 @@ export function ApplicationChatDialog({
   const messagesQuery = useApplicationMessages(applicationId, open);
   const markReadMutation = useMarkApplicationMessagesRead(applicationId);
   const sendMessageMutation = useSendApplicationMessage(applicationId, currentRole);
-  const messages = messagesQuery.data ?? [];
+  const messagesState = messagesQuery.data ?? { messages: [], usage: DEFAULT_APPLICATION_MESSAGE_USAGE };
+  const messages = messagesState.messages;
+  const usage = messagesState.usage;
   useApplicationChatRealtime(applicationId, open);
 
   const readonlyMessage = useMemo(() => {
@@ -70,7 +77,10 @@ export function ApplicationChatDialog({
     return "Cuộc trò chuyện đang ở chế độ xem.";
   }, [applicationStatus, chatClosedAt, readOnlyReason]);
 
-  const canSend = useMemo(() => !readOnly && draft.trim().length > 0 && draft.trim().length <= 2000, [draft, readOnly]);
+  const canSend = useMemo(
+    () => !readOnly && usage.remaining > 0 && draft.trim().length > 0 && draft.trim().length <= usage.maxLength,
+    [draft, readOnly, usage.maxLength, usage.remaining],
+  );
   const loading = messagesQuery.isLoading;
   const sending = sendMessageMutation.isPending;
 
@@ -123,7 +133,7 @@ export function ApplicationChatDialog({
       toast.success("Đã gửi tin nhắn");
     } catch (error) {
       if (error instanceof ApiError && error.code === "QUOTA_EXCEEDED") {
-        const details = error.details as { resource?: string; used?: number; limit?: number } | undefined;
+        const details = error.details as { resource?: string; used?: number; limit?: number; remaining?: number } | undefined;
         setQuota({ resource: details?.resource, used: details?.used, limit: details?.limit });
         toast.error("Dung lượng đã đầy, cần nâng gói để tiếp tục.");
       }
@@ -141,98 +151,45 @@ export function ApplicationChatDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl gap-4 p-0">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5 text-[#005a71]" />
-            {title}
-          </DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
+          <div className="border-b px-6 py-4 dark:border-slate-800">
+            <DialogTitle className="flex items-center gap-2">
+              <span className="rounded-full bg-[#0e7490]/10 p-2 text-[#0e7490]">
+                <MessageCircle className="h-5 w-5" />
+              </span>
+              {title}
+            </DialogTitle>
+            {description && <DialogDescription className="mt-1">{description}</DialogDescription>}
+          </div>
         </DialogHeader>
 
-        <div
-          ref={listRef}
-          className="max-h-[420px] min-h-[260px] space-y-3 overflow-y-auto rounded-lg border bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950"
-        >
-          {loading ? (
-            <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-              Đang tải tin nhắn...
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="flex h-48 items-center justify-center text-center text-sm text-muted-foreground">
-              Chưa có tin nhắn nào trong đơn ứng tuyển này.
-            </div>
-          ) : (
-            messages.map((message) => {
-              const mine = message.senderRole === currentRole;
-              return (
-                <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-                      mine
-                        ? "bg-[#005a71] text-white"
-                        : "border bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap break-words">{message.body}</p>
-                    <p className={`mt-1 text-[11px] ${mine ? "text-white/70" : "text-muted-foreground"}`}>
-                      {new Date(message.createdAt).toLocaleString("vi-VN")}
-                    </p>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        <div className="space-y-2">
-          {readOnly ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200">
-              {readonlyMessage}
-            </div>
-          ) : (
-            <>
-              <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:border-sky-900/70 dark:bg-sky-950/40 dark:text-sky-100">
-                Hãy trao đổi ngắn trong app vì số lượt chat có giới hạn. Nếu cần trao đổi dài hoặc chính thức hơn, hãy chuyển sang Email.
-              </div>
-              <Textarea
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                onKeyDown={handleDraftKeyDown}
-                placeholder="Nhập tin nhắn ngắn về lịch phỏng vấn hoặc thông tin bổ sung..."
-                maxLength={2000}
-                rows={3}
-              />
-            </>
-          )}
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{readOnly ? "Chế độ chỉ xem" : `${draft.trim().length}/2000 ký tự`}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="xs"
-              onClick={() => {
+        <div className="space-y-3 px-6">
+          <ApplicationChatUsageBanner usage={usage} readOnly={readOnly} />
+          <ApplicationMessageList messages={messages} currentRole={currentRole} loading={loading} listRef={listRef} />
+          <ApplicationChatComposer
+            draft={draft}
+            maxLength={usage.maxLength}
+            canSend={canSend}
+            sending={sending}
+            loading={loading}
+            applicationId={applicationId}
+            readOnly={readOnly}
+            readOnlyMessage={readonlyMessage}
+            onDraftChange={setDraft}
+            onKeyDown={handleDraftKeyDown}
+            onRefresh={() => {
                 shouldScrollRef.current = isNearBottom();
                 messagesQuery.refetch();
               }}
-              disabled={loading || !applicationId}
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Làm mới
-            </Button>
-          </div>
+            onSend={handleSend}
+          />
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="border-t px-6 py-4 dark:border-slate-800">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Đóng
           </Button>
-          {!readOnly && (
-            <Button type="button" onClick={handleSend} disabled={!canSend || sending}>
-              <Send className="h-4 w-4" />
-              {sending ? "Đang gửi..." : "Gửi"}
-            </Button>
-          )}
         </DialogFooter>
       </DialogContent>
       <QuotaUpgradeDialog

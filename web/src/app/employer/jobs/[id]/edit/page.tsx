@@ -9,6 +9,7 @@ import { JobForm } from "@/features/employer-jobs/components/job-form";
 import { EMPTY_JOB_FORM } from "@/features/employer-jobs/constants";
 import { getCategories, getManagedJob, updateJob } from "@/features/employer-jobs/api";
 import { buildJobPayload, jobToForm, validateJobForm } from "@/features/employer-jobs/utils";
+import { getWorkLocations, type WorkLocation } from "@/features/locations/api";
 import type { JobCategory, JobFormState } from "@/features/employer-jobs/types";
 
 export default function EditJobPage() {
@@ -18,6 +19,7 @@ export default function EditJobPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<JobCategory[]>([]);
+  const [workLocations, setWorkLocations] = useState<WorkLocation[]>([]);
   const [status, setStatus] = useState("");
   const [form, setForm] = useState<JobFormState>(EMPTY_JOB_FORM);
 
@@ -30,8 +32,10 @@ export default function EditJobPage() {
           getManagedJob(jobId),
           getCategories().catch(() => null),
         ]);
+        const locationsPayload = await getWorkLocations().catch(() => []);
         if (!mounted) return;
         setCategories(categoriesPayload ? (Array.isArray(categoriesPayload) ? categoriesPayload : categoriesPayload.items || []) : []);
+        setWorkLocations(Array.isArray(locationsPayload) ? locationsPayload : []);
         setStatus(job.status ?? "");
         setForm(jobToForm(job));
       } catch (error) {
@@ -97,6 +101,7 @@ export default function EditJobPage() {
       <JobForm
         form={form}
         categories={categories}
+        workLocations={workLocations}
         submitting={saving}
         submitLabel="Lưu thay đổi"
         submittingLabel="Đang lưu..."

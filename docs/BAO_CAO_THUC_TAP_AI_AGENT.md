@@ -42,12 +42,12 @@ Hệ thống AI Agent được thiết kế nhằm giải quyết các rào cả
 
 Để xây dựng hệ thống AI Agent này, các công nghệ và khái niệm cốt lõi sau đã được áp dụng:
 
-*   **LangGraph & StateGraph:** Là thư viện xây dựng các ứng dụng Stateful Multi-Actor với LLM. Quy trình xử lý của Agent được định nghĩa dưới dạng một đồ thị có hướng (`StateGraph`). 
+*   **LangGraph & StateGraph:** Là thư viện xây dựng các ứng dụng Stateful Multi-Actor với LLM. Quy trình xử lý của Agent được định nghĩa dưới dạng một đồ thị có hướng (`StateGraph`).
     *   `Node` (Nút): Là các hàm Python thực hiện một bước xử lý logic cụ thể (như xác thực, gọi LLM, thực thi công cụ).
     *   `Edge` (Cạnh): Chỉ định hướng đi cố định giữa các Node.
     *   `Conditional Edge` (Cạnh điều kiện): Đóng vai trò định tuyến (router) để rẽ nhánh luồng đi dựa trên kết quả đầu ra của Node trước đó (ví dụ: chuyển đến `tool_node` nếu LLM yêu cầu gọi tool, hoặc kết thúc đồ thị nếu LLM trả lời văn bản thông thường).
     *   `Command`: Đối tượng trong LangGraph dùng để cập nhật trạng thái (`State`) và điều khiển luồng đi động giữa các Node.
-*   **CopilotKit & AG-UI Protocol:** 
+*   **CopilotKit & AG-UI Protocol:**
     *   `CopilotKit` là framework mã nguồn mở giúp kết nối đồ thị Agent ở backend với giao diện React ở frontend.
     *   `AG-UI` (Agent-Guided UI) là giao thức đồng bộ trạng thái ứng dụng thời gian thực. Trạng thái của đồ thị Agent (như tiến trình, trạng thái xử lý) được truyền tải về Frontend qua Server-Sent Events (SSE) để cập nhật giao diện, đồng thời cho phép LLM gọi các Frontend Tools và render các UI Component tùy biến (`useRenderTool`).
 *   **Agent, Tool & Tool Calling:**
@@ -97,7 +97,7 @@ sequenceDiagram
 ```
 
 ### 3.2. Vai trò của từng lớp kiến trúc
-1.  **Web Client (Frontend React):** 
+1.  **Web Client (Frontend React):**
     *   Tích hợp Widget chat (`global-ai-chat-widget.tsx`).
     *   Đo lường và thu thập context trang web (ví dụ: người dùng đang xem trang nào, bảng dữ liệu nào) để gửi kèm request.
     *   Đăng ký các bộ render giao diện (`useRenderTool`, `useTemplateRenderer`) để vẽ các thẻ UI tương tác đẹp mắt (như danh sách công việc `JobListCard`, preview CV bằng iframe `CVPreviewInline`) khi nhận được kết quả dạng JSON từ tool, mang lại trải nghiệm premium thay vì văn bản thô.
@@ -186,7 +186,7 @@ Lớp `BaseAgent` ([web/agent/agents/base_agent.py](file:///f:/WebPhuQuoc/job-Ph
 ```
 
 *   **`auth_node`:** Đọc thông tin cookie và JWT token được chuyển tiếp trong `config.configurable`. Nó cập nhật thông tin này vào `state["authorization"]` và gọi `self.api_client.set_cookie` / `set_auth_token` để chuẩn bị cho các đợt gọi API tiếp theo. Đồng thời, nó phân tích context từ CopilotKit để lấy `user_id` thật của người dùng và chuyển tiếp sang `chat_node`.
-*   **`chat_node`:** 
+*   **`chat_node`:**
     1.  Kiểm tra xem có tin nhắn mới của người dùng hay không. Nếu không, nó kết thúc luôn (`__end__`) để giao diện hiển thị câu chào mừng mặc định.
     2.  Đọc cookie từ state và thiết lập lại cho `api_client` nhằm đảm bảo an toàn đa luồng.
     3.  Tạo prompt hệ thống hoàn chỉnh bằng cách gọi `_get_system_prompt` và kết hợp thông tin người dùng cùng dashboard context từ frontend.
@@ -410,7 +410,7 @@ Trong quá trình phát triển và tích hợp hệ thống AI Agent, nhiều t
 ### 10.3. Lỗi vượt quá giới hạn token ngữ cảnh (OpenAIContextOverflowError)
 *   **Vấn đề:** Khi nhà tuyển dụng yêu cầu xếp hạng ứng viên cho các công việc có lượng hồ sơ lớn, prompt gửi lên LLM vượt quá giới hạn token (Context Overflow) và làm crash yêu cầu.
 *   **Nguyên nhân:** Đưa toàn bộ dữ liệu CV thô, chi tiết của hàng chục ứng viên vào prompt phân tích.
-*   **Cách giải quyết:** 
+*   **Cách giải quyết:**
     1.  Đặt giới hạn phân tích tối đa `MAX_CANDIDATES_TO_ANALYZE = 30` ứng viên trong một lượt.
     2.  Chỉ trích xuất các trường thông tin cần thiết nhất (học vấn, kinh nghiệm, kỹ năng, bằng cấp) và chuyển đổi thành chuỗi JSON rút gọn qua hàm `_format_resume_field` thay vì gửi toàn bộ object dữ liệu CV cồng kềnh.
 

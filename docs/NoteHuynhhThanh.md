@@ -30,7 +30,7 @@
 ### 5. Tối ưu trang Blog (FE & BE) với dữ liệu thật
 
 - **Vấn đề**: Người dùng lo ngại dữ liệu trên trang Blog bị làm giả (mock data tĩnh).
-- **Phân tích**: Thực tế Frontend đang gọi đến `http://localhost:3000/api/v1/blogs` và `api/v1/blog-categories` của Backend để lấy danh sách bài viết chuẩn từ Database PostgreSQL.
+- **Phân tích**: Thực tế Frontend lấy dữ liệu từ Backend qua API `/api/v1/blogs` và `/api/v1/blog-categories` để lấy danh sách bài viết chuẩn từ Database PostgreSQL. Ở local hiện tại, browser đi qua Nginx reverse proxy `http://localhost`, còn server-side Next gọi trực tiếp backend `http://localhost:3006`.
 - **Giải pháp**:
   - Gỡ bỏ một số con số tĩnh trên UI (như `148 yêu thích`, `8 phút đọc`, `350+ vị trí tuyển dụng`). Thay bằng tính toán logic dựa trên độ dài `blog.content` hoặc để số liệu là `0` để chờ cập nhật thật.
   - Viết chú thích (Comment Header) cực kỳ rõ ràng ở đầu các tệp: `page.tsx`, `BlogPageClient.tsx`, `BlogDetailClient.tsx`, `BlogCard.tsx`, và `blogs.controller.ts` để giải thích luồng trao đổi dữ liệu từ Backend đến Frontend để bạn dễ dàng theo dõi.

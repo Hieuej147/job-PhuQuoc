@@ -6,6 +6,7 @@ import { Node, mergeAttributes } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import StarterKit from "@tiptap/starter-kit";
+import { uploadPostImage } from "@/features/blog/upload-post-image";
 import {
   Bold,
   Heading2,
@@ -104,24 +105,9 @@ export function BlogEditor({
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     setUploading(true);
     try {
-      const response = await fetch("/api/v1/upload/post-image", {
-        method: "POST",
-        body: formData,
-      });
-      const body = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(body.message || "Upload ảnh thất bại");
-      }
-
-      const url = body?.data?.url || body?.url;
-      if (!url) throw new Error("Upload ảnh không trả về URL");
-
+      const url = await uploadPostImage(file);
       editor
         ?.chain()
         .focus()

@@ -7,6 +7,8 @@ import {
     renameChatThread,
     touchChatThread,
     generateThreadTitle,
+    streamThreadTitle,
+    type ChatThread,
 } from "./api";
 
 export function useChatThreads(agentType: ChatAgentType) {
@@ -17,6 +19,18 @@ export function useChatThreads(agentType: ChatAgentType) {
         queryKey,
         queryFn: () => fetchChatThreads(agentType),
     });
+
+    const setThreadTitle = (id: string, title: string) => {
+        queryClient.setQueryData<ChatThread[]>(queryKey, (threads) =>
+            threads?.map((thread) => (thread.id === id ? { ...thread, title } : thread)) ?? threads,
+        );
+    };
+
+    const setThread = (nextThread: ChatThread) => {
+        queryClient.setQueryData<ChatThread[]>(queryKey, (threads) =>
+            threads?.map((thread) => (thread.id === nextThread.id ? nextThread : thread)) ?? threads,
+        );
+    };
 
     const createMutation = useMutation({
         mutationFn: (title?: string) => createChatThread(agentType, title),
@@ -53,6 +67,23 @@ export function useChatThreads(agentType: ChatAgentType) {
         onSuccess: () => queryClient.invalidateQueries({ queryKey }),
     });
 
+    const streamTitleMutation = useMutation({
+        mutationFn: async ({ id, firstMessage }: { id: string; firstMessage: string }) => {
+            try {
+                const finalThread = await streamThreadTitle(id, firstMessage, {
+                    onPartial: (title) => setThreadTitle(id, title),
+                    onFinal: (thread) => setThread(thread),
+                });
+                return finalThread;
+            } catch {
+                const fallbackThread = await generateThreadTitle(id, firstMessage);
+                setThread(fallbackThread);
+                return fallbackThread;
+            }
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    });
+
     return {
         threads: query.data ?? [],
         isLoading: query.isLoading,
@@ -61,5 +92,6 @@ export function useChatThreads(agentType: ChatAgentType) {
         deleteThread: deleteMutation.mutateAsync,
         touchThread: touchMutation.mutateAsync,
         generateTitle: generateTitleMutation.mutateAsync,
+        generateTitleStream: streamTitleMutation.mutateAsync,
     };
 }

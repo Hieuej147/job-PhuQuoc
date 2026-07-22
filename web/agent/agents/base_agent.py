@@ -268,9 +268,18 @@ class BaseAgent(ABC):
 
             model_with_tools = self.llm.bind_tools(all_tools, **ainvoke_kwargs) if all_tools else self.llm
 
-            response = await model_with_tools.ainvoke(
-                [SystemMessage(content=full_prompt), *sanitized_messages], config,
-            )
+            try:
+                response = await model_with_tools.ainvoke(
+                    [SystemMessage(content=full_prompt), *sanitized_messages], config,
+                )
+            except Exception:
+                logger.exception("Agent chat node failed")
+                response = AIMessage(
+                    content=(
+                        "Trợ lý đang gặp lỗi khi xử lý yêu cầu này. "
+                        "Bạn vui lòng thử lại sau ít phút hoặc kiểm tra kết nối agent/backend."
+                    )
+                )
 
             return Command(update={"messages": response})
 

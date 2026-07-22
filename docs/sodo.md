@@ -51,31 +51,31 @@ graph TD
     CPK -->|2. Gửi HTTP Request kèm context| API_Route
     API_Route --> Runtime
     Runtime -->|3. Chuyển tiếp (Proxy) State| LG
-    
+
     LG --> Auth
     Auth -->|4. Lưu Cookie/JWT & gán user_id vào State| Chat
     Chat -->|5. Gọi LLM kèm Bind Tools| Router
-    
+
     Router -->|6a. Trả về text chat thông thường| CPK
     Router -->|6b. Yêu cầu chạy Frontend Tool| CPK
     Router -->|6c. Gọi Tool của Candidate| CustomNodes
     Router -->|6d. Gọi Tool của Recruiter| StdToolNode
-    
+
     CustomNodes -->|7a. Phát trạng thái/tiến độ thời gian thực| CPK
     CustomNodes -->|7b. Request API| APIClient
     StdToolNode -->|7c. Request API| APIClient
-    
+
     APIClient -->|8. Gọi endpoints bảo mật| Backend
     CustomNodes -.->|9. Lấy vector keyword| Ollama
     Ollama -.->|Tìm vector tương đồng| DB
     Backend -.->|Truy vấn dữ liệu| DB
-    
+
     APIClient -->|10. Trả kết quả JSON| CustomNodes
     APIClient -->|10. Trả kết quả JSON| StdToolNode
-    
+
     CustomNodes -->|11. Đóng gói ToolMessage| Chat
     StdToolNode -->|11. Đóng gói ToolMessage| Chat
-    
+
     CPK -->|12. Trực quan hóa dữ liệu| RDR
     RDR -->|Hiển thị Card đẹp mắt| UI
 ```

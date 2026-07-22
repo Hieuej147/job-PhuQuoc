@@ -12,7 +12,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 import { PinoLoggerService } from '../common/logger/pino-logger.service';
-import { RealtimeService } from './realtime.service';
+import { RealtimeSocketService } from './realtime-socket.service';
 import { SocketAuthService } from './socket-auth.service';
 import type { RealtimeUser } from './realtime.types';
 
@@ -33,12 +33,12 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   constructor(
     private readonly config: ConfigService,
     private readonly logger: PinoLoggerService,
-    private readonly realtime: RealtimeService,
+    private readonly realtimeSocket: RealtimeSocketService,
     private readonly socketAuth: SocketAuthService,
   ) {}
 
   async afterInit(server: GatewaySocketServer) {
-    this.realtime.bindServer(server);
+    this.realtimeSocket.bindServer(server);
     await this.tryUseRedisAdapter(server);
     this.logger.log('Realtime gateway initialized at /realtime', 'RealtimeGateway');
   }
@@ -80,16 +80,6 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   ) {
     if (body?.applicationId) await socket.leave(`application:${body.applicationId}`);
     return { ok: true };
-  }
-
-  @SubscribeMessage('notifications.subscribe')
-  subscribeNotifications(@ConnectedSocket() socket: AuthedSocket) {
-    return { ok: Boolean(socket.data.user) };
-  }
-
-  @SubscribeMessage('dashboard.subscribe')
-  subscribeDashboard(@ConnectedSocket() socket: AuthedSocket) {
-    return { ok: Boolean(socket.data.user) };
   }
 
   private async tryUseRedisAdapter(server: GatewaySocketServer) {

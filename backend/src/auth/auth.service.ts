@@ -46,7 +46,7 @@ export type RequestPasswordResetResult =
 @Injectable()
 export class AuthService {
   private readonly authUrl =
-    process.env.BETTER_AUTH_URL || 'http://localhost:3000';
+    process.env.BETTER_AUTH_URL || 'http://localhost';
   private readonly origin =
     process.env.FRONTEND_URL || this.authUrl;
 

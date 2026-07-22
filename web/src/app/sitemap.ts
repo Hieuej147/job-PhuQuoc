@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://pqjobs.vn";
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3006";
 
 async function fetchJson(path: string) {
   try {

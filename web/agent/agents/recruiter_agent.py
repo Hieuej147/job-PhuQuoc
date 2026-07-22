@@ -9,6 +9,7 @@ from tools.recruiter.rank_candidates import RankCandidatesTool
 from tools.recruiter.update_application_status import UpdateApplicationStatusTool
 from tools.recruiter.draft_email import DraftEmailTool
 from tools.recruiter.get_categories import GetCategoriesTool
+from tools.recruiter.get_work_locations import GetWorkLocationsTool
 from tools.recruiter.create_job import CreateJobTool
 from tools.shared.create_blog_post import CreateBlogPostTool
 
@@ -33,6 +34,7 @@ class RecruiterAgent(BaseAgent):
             UpdateApplicationStatusTool(api_client=self.api_client),
             DraftEmailTool(),
             GetCategoriesTool(api_client=self.api_client),
+            GetWorkLocationsTool(api_client=self.api_client),
             CreateJobTool(api_client=self.api_client),
             CreateBlogPostTool(api_client=self.api_client),
         ]
@@ -85,7 +87,6 @@ class RecruiterAgent(BaseAgent):
 
     def _get_state_class(self) -> type:
         return RecruiterState
-
     # Giống CandidateAgent: bắt buộc MỌI tool BACKEND đi qua custom node
     # (as_node) thay vì ToolNode chuẩn của LangChain. Lý do: ToolNode chuẩn chỉ
     # truyền đúng tham số theo args_schema cho run(), KHÔNG có state/config —
@@ -105,6 +106,7 @@ class RecruiterAgent(BaseAgent):
             "update_application_status": "update_application_status_node",
             "draft_email": "draft_email_node",
             "get_categories": "get_categories_node",
+            "get_work_locations": "get_work_locations_node",
             "create_job": "create_job_node",
             "create_blog_post": "create_blog_post_node",
         }

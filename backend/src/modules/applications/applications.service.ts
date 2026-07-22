@@ -402,7 +402,11 @@ export class ApplicationsService {
       include: { sender: { select: { id: true, name: true, image: true } } },
     });
 
-    return { items: messages, total: messages.length };
+    return {
+      items: messages,
+      total: messages.length,
+      usage: this.getApplicationMessageUsage(messages.length),
+    };
   }
 
   async sendMessage(applicationId: string, userId: string, body: string) {
@@ -488,6 +492,7 @@ export class ApplicationsService {
         resource: 'applicationMessages',
         limit: APPLICATION_MESSAGE_LIMIT,
         used: count,
+        remaining: 0,
       });
     }
 
@@ -549,6 +554,15 @@ export class ApplicationsService {
 
   private chatPresenceKey(applicationId: string, userId: string) {
     return `application-chat:open:${applicationId}:${userId}`;
+  }
+
+  private getApplicationMessageUsage(used: number) {
+    return {
+      used,
+      limit: APPLICATION_MESSAGE_LIMIT,
+      remaining: Math.max(0, APPLICATION_MESSAGE_LIMIT - used),
+      maxLength: APPLICATION_MESSAGE_MAX_LENGTH,
+    };
   }
 
   private async refreshChatPresence(applicationId: string, userId: string) {

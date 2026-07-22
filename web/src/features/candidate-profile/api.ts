@@ -1,8 +1,8 @@
-import { apiPatch, unwrapApiPayload } from "@/lib/api-client";
+import { apiPatch, unwrapApiPayload, apiUrl } from "@/lib/api-client";
 import type { CandidateProfilePayload } from "./types";
 
 export async function getProfileResume() {
-  const response = await fetch("/api/v1/resumes/profile", { credentials: "include" });
+  const response = await fetch(apiUrl("/api/v1/resumes/profile"), { credentials: "include" });
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new Error(body?.message || "Không thể tải hồ sơ");
   return unwrapApiPayload<any>(body);
@@ -16,7 +16,7 @@ export async function uploadCandidateAvatar(file: File) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch("/api/v1/upload/candidate-avatar", {
+  const response = await fetch(apiUrl("/api/v1/upload/candidate-avatar"), {
     method: "POST",
     credentials: "include",
     body: formData,

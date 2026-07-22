@@ -6,6 +6,7 @@ import { TEMPLATE_MAP } from "@/template";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { toTemplateResume, toTemplateUser } from "@/lib/resume-template-data";
+import { apiUrl } from "@/lib/api-client";
 
 export default function EditResumePage() {
   const params = useParams();
@@ -16,7 +17,7 @@ export default function EditResumePage() {
   useEffect(() => {
     const loadResume = async () => {
       try {
-        const response = await fetch(`/api/v1/resumes/${id}`, { credentials: "include" });
+        const response = await fetch(apiUrl(`/api/v1/resumes/${id}`), { credentials: "include" });
         if (!response.ok) throw new Error("Failed to load CV");
         const json = await response.json();
         const r = json.data?.data ?? json.data ?? json;

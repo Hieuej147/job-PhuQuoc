@@ -9,6 +9,7 @@ import { JobForm } from "@/features/employer-jobs/components/job-form";
 import { EMPTY_JOB_FORM } from "@/features/employer-jobs/constants";
 import { createJob, getCategories, getManagedJob } from "@/features/employer-jobs/api";
 import { buildJobPayload, jobToForm, validateJobForm } from "@/features/employer-jobs/utils";
+import { getWorkLocations, type WorkLocation } from "@/features/locations/api";
 import type { JobCategory, JobFormState } from "@/features/employer-jobs/types";
 
 export default function CreateJobPage() {
@@ -18,11 +19,18 @@ export default function CreateJobPage() {
   const [cloneSourceTitle, setCloneSourceTitle] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<JobCategory[]>([]);
+  const [workLocations, setWorkLocations] = useState<WorkLocation[]>([]);
   const [form, setForm] = useState<JobFormState>(EMPTY_JOB_FORM);
 
   useEffect(() => {
-    getCategories()
-      .then((payload) => setCategories(Array.isArray(payload) ? payload : payload.items || []))
+    Promise.all([
+      getCategories(),
+      getWorkLocations().catch(() => []),
+    ])
+      .then(([categoriesPayload, locationsPayload]) => {
+        setCategories(Array.isArray(categoriesPayload) ? categoriesPayload : categoriesPayload.items || []);
+        setWorkLocations(Array.isArray(locationsPayload) ? locationsPayload : []);
+      })
       .catch(() => {});
   }, []);
 
@@ -98,6 +106,7 @@ export default function CreateJobPage() {
       <JobForm
         form={form}
         categories={categories}
+        workLocations={workLocations}
         submitting={loading}
         submitLabel="Đăng tin"
         submittingLabel="Đang tạo..."

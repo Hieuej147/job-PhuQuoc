@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEmployerDashboardSummary } from "@/features/dashboard/queries";
 import { useUnreadNotifications } from "@/features/notifications/queries";
+import { apiUrl } from "@/lib/api-client";
 
 interface WardData {
   name?: string;
@@ -77,7 +78,7 @@ export function EmployerSidebar() {
   ];
 
   const handleLogout = () => {
-    fetch("/api/auth/sign-out", { method: "POST", credentials: "include" }).then(() => {
+    fetch(apiUrl("/api/auth/sign-out"), { method: "POST", credentials: "include" }).then(() => {
       window.location.href = "/auth/login";
     });
   };

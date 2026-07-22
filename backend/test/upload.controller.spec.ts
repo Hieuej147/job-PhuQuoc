@@ -1,5 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { describe, expect, it, vi } from 'vitest';
+import { ROLES_KEY } from '../src/auth/decorators/roles.decorator';
 import { UploadController } from '../src/modules/upload/upload.controller';
 
 const userSession = {
@@ -57,6 +59,38 @@ describe('UploadController', () => {
       data: {
         companyId: 'company-1',
         logo: 'https://res.cloudinary.com/demo/logo.png',
+      },
+    });
+  });
+
+  it('allows only candidate and employer roles to upload blog post images', () => {
+    const reflector = new Reflector();
+    const roles = reflector.get<string[]>(ROLES_KEY, UploadController.prototype.uploadPostImage);
+
+    expect(roles).toEqual(['CANDIDATE', 'EMPLOYER']);
+  });
+
+  it('delegates valid blog post image upload to service', async () => {
+    const file = createFile();
+    const uploadPostImage = vi.fn().mockResolvedValue({
+      message: 'Upload ảnh thành công',
+      url: 'https://res.cloudinary.com/demo/post.png',
+      data: {
+        url: 'https://res.cloudinary.com/demo/post.png',
+        publicId: 'post-id',
+      },
+    });
+    const controller = new UploadController({ uploadPostImage } as any);
+
+    const result = await controller.uploadPostImage(file, userSession);
+
+    expect(uploadPostImage).toHaveBeenCalledWith('employer-1', file);
+    expect(result).toEqual({
+      message: 'Upload ảnh thành công',
+      url: 'https://res.cloudinary.com/demo/post.png',
+      data: {
+        url: 'https://res.cloudinary.com/demo/post.png',
+        publicId: 'post-id',
       },
     });
   });

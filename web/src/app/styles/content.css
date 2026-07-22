@@ -1,0 +1,138 @@
+/*
+ * Showcase highlight for suggestion pills.
+ */
+[data-copilotkit] button[data-slot="suggestion-pill"].a2ui-highlight {
+  border-color: var(--cpk-lilac-400);
+  background: color-mix(in srgb, var(--cpk-lilac-400) 15%, var(--background));
+}
+
+[data-copilotkit] button[data-slot="suggestion-pill"].opengenui-highlight {
+  border-color: var(--cpk-mint-400);
+  background: color-mix(in srgb, var(--cpk-mint-400) 15%, var(--background));
+}
+
+.highlight-box {
+  background: linear-gradient(
+    135deg,
+    rgba(14, 116, 144, 0.06),
+    rgba(13, 148, 136, 0.04)
+  );
+  border: 1px solid rgba(14, 116, 144, 0.2);
+  border-radius: 0.875rem;
+  padding: 1.25rem 1.5rem;
+  margin: 1.25rem 0;
+}
+
+.dark .highlight-box {
+  background: linear-gradient(
+    135deg,
+    rgba(14, 116, 144, 0.12),
+    rgba(13, 148, 136, 0.08)
+  );
+  border-color: rgba(103, 232, 249, 0.2);
+}
+
+.highlight-box p {
+  margin: 0 !important;
+  font-style: italic;
+  color: #005a71 !important;
+}
+
+.dark .highlight-box p {
+  color: #67e8f9 !important;
+}
+
+.article-body {
+  font-size: 0.9375rem;
+  line-height: 1.85;
+  color: #1e293b;
+}
+
+.dark .article-body {
+  color: #cbd5e1;
+}
+
+.article-body h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #005a71;
+  margin: 1.75rem 0 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid #0e7490;
+}
+
+.dark .article-body h2 {
+  color: #67e8f9;
+  border-color: #0e7490;
+}
+
+.article-body h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #005a71;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.dark .article-body h3 {
+  color: #67e8f9;
+}
+
+.article-body p {
+  margin-bottom: 0.875rem;
+}
+
+.article-body ul {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0.75rem 0 1rem !important;
+}
+
+.article-body ul li {
+  padding: 0.35rem 0 0.35rem 1.5rem !important;
+  position: relative !important;
+}
+
+.article-body ul li::before {
+  content: "→" !important;
+  position: absolute !important;
+  left: 0 !important;
+  color: #0e7490 !important;
+  font-weight: 700 !important;
+}
+
+.dark .article-body ul li::before {
+  color: #67e8f9 !important;
+}
+
+.article-body strong {
+  color: #005a71;
+  font-weight: 700;
+}
+
+.dark .article-body strong {
+  color: #67e8f9;
+}
+
+.blog-image {
+  margin: 1.5rem auto;
+  text-align: center;
+}
+
+.blog-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 0.75rem;
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

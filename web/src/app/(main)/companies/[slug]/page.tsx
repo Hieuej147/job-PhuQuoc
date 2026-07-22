@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import CompanyDetailClient from "./CompanyDetailClient"
 import { organizationJsonLd, breadcrumbJsonLd } from "@/features/seo/structured-data"
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000"
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3006"
 
 async function fetchCompany(slug: string) {
   try {

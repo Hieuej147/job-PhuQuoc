@@ -24,11 +24,10 @@ export default function CompanyList({
     <>
       {/* Company grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {mappedCompanies.map((company, index) => (
+        {mappedCompanies.map((company) => (
           <CompanyCard
             key={company.id}
             company={company}
-            index={index}
             isFollowed={savedCompanyIds.has(company.id)}
           />
         ))}
@@ -41,11 +40,11 @@ export default function CompanyList({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 mt-8 fade-up">
+        <div className="flex justify-center items-center gap-2 mt-8">
           <button
             onClick={() => updateURL({ page: String(Math.max(1, currentPage - 1)) })}
             disabled={currentPage <= 1}
-            className="p-2 rounded-xl border border-gray-200 dark:border-[#1a3d5c] text-gray-600 dark:text-[#cbd5e1] hover:border-[#0E7490] dark:hover:border-[#67e8f9] hover:text-[#0E7490] dark:hover:text-[#67e8f9] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+            className="p-2 rounded-xl border border-gray-200 dark:border-[#1a3d5c] text-gray-600 dark:text-[#cbd5e1] hover:border-[#0E7490] dark:hover:border-[#67e8f9] hover:text-[#0E7490] dark:hover:text-[#67e8f9] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
             aria-label="Trang trước"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -92,7 +91,7 @@ export default function CompanyList({
                 <button
                   key={pageNumber}
                   onClick={() => updateURL({ page: String(pageNumber) })}
-                  className={`w-9 h-9 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+                  className={`w-9 h-9 rounded-xl text-sm font-semibold cursor-pointer ${
                     isActive
                       ? "bg-[#0E7490] text-white dark:bg-[#67e8f9] dark:text-[#071a2b] shadow-md"
                       : "border border-gray-200 dark:border-[#1a3d5c] text-gray-600 dark:text-[#cbd5e1] hover:border-[#0E7490] dark:hover:border-[#67e8f9] hover:text-[#0E7490] dark:hover:text-[#67e8f9]"
@@ -107,7 +106,7 @@ export default function CompanyList({
           <button
             onClick={() => updateURL({ page: String(Math.min(totalPages, currentPage + 1)) })}
             disabled={currentPage >= totalPages}
-            className="p-2 rounded-xl border border-gray-200 dark:border-[#1a3d5c] text-gray-600 dark:text-[#cbd5e1] hover:border-[#0E7490] dark:hover:border-[#67e8f9] hover:text-[#0E7490] dark:hover:text-[#67e8f9] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+            className="p-2 rounded-xl border border-gray-200 dark:border-[#1a3d5c] text-gray-600 dark:text-[#cbd5e1] hover:border-[#0E7490] dark:hover:border-[#67e8f9] hover:text-[#0E7490] dark:hover:text-[#67e8f9] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
             aria-label="Trang tiếp"
           >
             <ChevronRight className="w-4 h-4" />
@@ -128,7 +127,7 @@ export default function CompanyList({
         <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
           <Link
             href="/register"
-            className="px-8 py-3.5 bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold rounded-full transition-colors shadow-lg whitespace-nowrap text-center"
+            className="px-8 py-3.5 bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold rounded-full shadow-lg whitespace-nowrap text-center"
           >
             Đăng ký công ty
           </Link>

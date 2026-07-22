@@ -16,9 +16,30 @@ export interface ApplicationMessage {
   sender?: { id: string; name?: string | null; image?: string | null };
 }
 
+export interface ApplicationMessageUsage {
+  used: number;
+  limit: number;
+  remaining: number;
+  maxLength: number;
+}
+
+export interface ApplicationMessagesState {
+  messages: ApplicationMessage[];
+  usage: ApplicationMessageUsage;
+}
+
 interface MessageListResponse {
   items?: ApplicationMessage[];
+  total?: number;
+  usage?: Partial<ApplicationMessageUsage>;
 }
+
+export const DEFAULT_APPLICATION_MESSAGE_USAGE: ApplicationMessageUsage = {
+  used: 0,
+  limit: 100,
+  remaining: 100,
+  maxLength: 2000,
+};
 
 export const applicationMessagesQueryKey = (applicationId: string | null | undefined) => [
   "applications",
@@ -32,16 +53,36 @@ function sortMessages(messages: ApplicationMessage[]) {
   );
 }
 
+function normalizeUsage(usage: Partial<ApplicationMessageUsage> | undefined, used: number): ApplicationMessageUsage {
+  const limit = usage?.limit ?? DEFAULT_APPLICATION_MESSAGE_USAGE.limit;
+  return {
+    used: usage?.used ?? used,
+    limit,
+    remaining: usage?.remaining ?? Math.max(0, limit - used),
+    maxLength: usage?.maxLength ?? DEFAULT_APPLICATION_MESSAGE_USAGE.maxLength,
+  };
+}
+
+function normalizeMessagesState(payload: MessageListResponse | ApplicationMessage[]): ApplicationMessagesState {
+  const items = Array.isArray(payload) ? payload : payload.items ?? [];
+  const messages = sortMessages(items);
+  return {
+    messages,
+    usage: normalizeUsage(Array.isArray(payload) ? undefined : payload.usage, messages.length),
+  };
+}
+
 export function useApplicationMessages(applicationId: string | null, open: boolean) {
   return useQuery({
     queryKey: applicationMessagesQueryKey(applicationId),
     queryFn: async () => {
-      if (!applicationId) return [];
+      if (!applicationId) {
+        return { messages: [], usage: DEFAULT_APPLICATION_MESSAGE_USAGE };
+      }
       const payload = await apiGet<MessageListResponse | ApplicationMessage[]>(
         `/api/v1/applications/${applicationId}/messages`,
       );
-      const items = Array.isArray(payload) ? payload : payload.items ?? [];
-      return sortMessages(items);
+      return normalizeMessagesState(payload);
     },
     enabled: open && Boolean(applicationId),
     staleTime: 1000,
@@ -72,10 +113,11 @@ export function useSendApplicationMessage(
       return apiPost<ApplicationMessage>(`/api/v1/applications/${applicationId}/messages`, { body });
     },
     onMutate: async (body) => {
-      if (!applicationId) return { previousMessages: [] as ApplicationMessage[], optimisticId: "" };
+      if (!applicationId) return { previousState: undefined as ApplicationMessagesState | undefined, optimisticId: "" };
 
       await queryClient.cancelQueries({ queryKey });
-      const previousMessages = queryClient.getQueryData<ApplicationMessage[]>(queryKey) ?? [];
+      const previousState = queryClient.getQueryData<ApplicationMessagesState>(queryKey);
+      const previousMessages = previousState?.messages ?? [];
       const optimisticId = `optimistic-${Date.now()}`;
       const optimisticMessage: ApplicationMessage = {
         id: optimisticId,
@@ -86,19 +128,34 @@ export function useSendApplicationMessage(
         createdAt: new Date().toISOString(),
       };
 
-      queryClient.setQueryData<ApplicationMessage[]>(queryKey, sortMessages([...previousMessages, optimisticMessage]));
-      return { previousMessages, optimisticId };
+      queryClient.setQueryData<ApplicationMessagesState>(queryKey, {
+        messages: sortMessages([...previousMessages, optimisticMessage]),
+        usage: previousState
+          ? {
+              ...previousState.usage,
+              used: previousState.usage.used + 1,
+              remaining: Math.max(0, previousState.usage.remaining - 1),
+            }
+          : DEFAULT_APPLICATION_MESSAGE_USAGE,
+      });
+      return { previousState, optimisticId };
     },
     onError: (_error, _body, context) => {
       if (!applicationId || !context) return;
-      queryClient.setQueryData(queryKey, context.previousMessages);
+      queryClient.setQueryData(queryKey, context.previousState);
     },
     onSuccess: (message, _body, context) => {
       if (!applicationId) return;
-      queryClient.setQueryData<ApplicationMessage[]>(queryKey, (current = []) => {
-        const withoutOptimistic = current.filter((item) => item.id !== context?.optimisticId);
-        if (withoutOptimistic.some((item) => item.id === message.id)) return sortMessages(withoutOptimistic);
-        return sortMessages([...withoutOptimistic, message]);
+      queryClient.setQueryData<ApplicationMessagesState>(queryKey, (current) => {
+        const currentState = current ?? { messages: [], usage: DEFAULT_APPLICATION_MESSAGE_USAGE };
+        const withoutOptimistic = currentState.messages.filter((item) => item.id !== context?.optimisticId);
+        if (withoutOptimistic.some((item) => item.id === message.id)) {
+          return { ...currentState, messages: sortMessages(withoutOptimistic) };
+        }
+        return {
+          ...currentState,
+          messages: sortMessages([...withoutOptimistic, message]),
+        };
       });
     },
     onSettled: () => {

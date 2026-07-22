@@ -1,8 +1,9 @@
-// Võ Thành Phú
 "use client"
 
+// Võ Thành Phú
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { apiUrl } from "@/lib/api-client";
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
 import { QuotaUpgradeDialog } from "@/components/quota/quota-upgrade-dialog"
@@ -12,11 +13,10 @@ import { CompanyLogo } from "@/components/company/company-logo"
 
 interface CompanyCardProps {
   company: Company
-  index?: number
   isFollowed?: boolean
 }
 
-export default function CompanyCard({ company, index = 0, isFollowed = false }: CompanyCardProps) {
+export default function CompanyCard({ company, isFollowed = false }: CompanyCardProps) {
   const { user } = useAuth()
   const router = useRouter()
   const [followed, setFollowed] = useState(isFollowed)
@@ -35,7 +35,7 @@ export default function CompanyCard({ company, index = 0, isFollowed = false }: 
     }
     setFollowLoading(true);
     try {
-      const res = await fetch(`/api/v1/saved/companies/${company.id}`, {
+      const res = await fetch(apiUrl(`/api/v1/saved/companies/${company.id}`), {
         method: "POST",
         credentials: "include",
       });
@@ -63,13 +63,12 @@ export default function CompanyCard({ company, index = 0, isFollowed = false }: 
   const jobCount = company.jobCount || 0
   const isHot = company.isHot || false
   const isFeatured = company.isFeatured || false
-  const staggerClass = `stagger-${(index % 8) + 1}`
 
   return (
     <>
       <Link
         href={`/companies/${company.slug}`}
-        className={`fade-up ${staggerClass} relative bg-white dark:bg-[#0f2436] rounded-2xl border border-[#E0F5FB] dark:border-[#1e3a4f] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block cursor-pointer`}
+        className="relative block cursor-pointer rounded-2xl border border-[#E0F5FB] bg-white shadow-sm dark:border-[#1e3a4f] dark:bg-[#0f2436]"
       >
       {/* Featured ribbon */}
       {isFeatured && (
@@ -132,14 +131,14 @@ export default function CompanyCard({ company, index = 0, isFollowed = false }: 
             <button
               onClick={handleToggleFollow}
               disabled={followLoading}
-              className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all border whitespace-nowrap disabled:opacity-60 ${followed
+              className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border whitespace-nowrap disabled:opacity-60 ${followed
                 ? "bg-[#67E8F9] text-[#0C2231] border-[#67E8F9]"
                 : "border-[#bec8cd]/40 dark:border-gray-600 text-[#3f484c] dark:text-gray-300 hover:border-[#005a71] hover:text-[#005a71]"
                 }`}
             >
               {followLoading ? "..." : followed ? "✓ Đang theo" : "+ Theo dõi"}
             </button>
-            <span className="text-[11px] font-semibold bg-[#005a71] text-white px-2.5 py-1 rounded-lg hover:bg-[#0e7490] transition-all whitespace-nowrap">
+            <span className="text-[11px] font-semibold bg-[#005a71] text-white px-2.5 py-1 rounded-lg hover:bg-[#0e7490] whitespace-nowrap">
               Xem
             </span>
           </div>

@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { AuthUser } from "@/lib/auth";
+import { apiUrl } from "@/lib/api-client";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -26,7 +27,7 @@ export function AuthProvider({
   const refresh = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/v1/auth/me", { credentials: "include" });
+      const res = await fetch(apiUrl("/api/v1/auth/me"), { credentials: "include" });
       if (!res.ok) {
         setUser(null);
         return null;
