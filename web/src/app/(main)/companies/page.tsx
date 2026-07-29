@@ -63,22 +63,22 @@ async function fetchIndustries() {
   }
 }
 
-async function CompaniesPageContent({
+async function CompaniesListStream({
   searchParams,
+  totalJobs,
+  industries
 }: {
   searchParams: Promise<{ search?: string; industry?: string; sort?: string; page?: string }>;
+  totalJobs: number;
+  industries: string[];
 }) {
   const resolvedSearchParams = await searchParams;
-  const [companiesData, totalJobs, industries] = await Promise.all([
-    fetchCompanies({
-      search: resolvedSearchParams.search,
-      industry: resolvedSearchParams.industry,
-      sort: resolvedSearchParams.sort,
-      page: resolvedSearchParams.page,
-    }),
-    fetchJobsCount(),
-    fetchIndustries()
-  ]);
+  const companiesData = await fetchCompanies({
+    search: resolvedSearchParams.search,
+    industry: resolvedSearchParams.industry,
+    sort: resolvedSearchParams.sort,
+    page: resolvedSearchParams.page,
+  });
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -113,14 +113,19 @@ async function CompaniesPageContent({
   );
 }
 
-export default function CompaniesPage({
+export default async function CompaniesPage({
   searchParams,
 }: {
   searchParams: Promise<{ search?: string; industry?: string; sort?: string; page?: string }>;
 }) {
+  const [totalJobs, industries] = await Promise.all([
+    fetchJobsCount(),
+    fetchIndustries()
+  ]);
+
   return (
     <Suspense fallback={<Loading />}>
-      <CompaniesPageContent searchParams={searchParams} />
+      <CompaniesListStream searchParams={searchParams} totalJobs={totalJobs} industries={industries} />
     </Suspense>
   );
 }

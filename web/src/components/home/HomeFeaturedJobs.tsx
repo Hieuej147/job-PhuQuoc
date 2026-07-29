@@ -10,6 +10,30 @@ interface HomeFeaturedJobsProps {
 }
 
 export default function HomeFeaturedJobs({ jobs = [] }: HomeFeaturedJobsProps) {
+  if (jobs.length === 0) {
+    return (
+      <section className="py-6 pb-24 bg-primary-foreground border-y border-slate-200/50">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <div className="flex items-end justify-between mb-10 pt-10">
+            <div>
+              <h2 className="text-[28px] md:text-[32px] font-bold text-[#005a71]">
+                Việc làm nổi bật hôm nay
+              </h2>
+              <p className="text-slate-400 text-[13px] mt-1.5">
+                Cơ hội tốt nhất vừa được cập nhật
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-64 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-6 pb-24 bg-primary-foreground border-y border-slate-200/50">
       <div className="max-w-7xl mx-auto px-4 md:px-8">
