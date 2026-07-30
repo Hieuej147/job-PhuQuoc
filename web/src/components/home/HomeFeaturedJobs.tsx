@@ -24,10 +24,8 @@ export default function HomeFeaturedJobs({ jobs = [] }: HomeFeaturedJobsProps) {
               </p>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-64 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60 animate-pulse" />
-            ))}
+          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 px-6 py-10 text-center text-sm text-slate-500">
+            Hiện chưa có việc làm nổi bật nào được cập nhật.
           </div>
         </div>
       </section>

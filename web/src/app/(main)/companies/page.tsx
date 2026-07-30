@@ -65,20 +65,20 @@ async function fetchIndustries() {
 
 async function CompaniesListStream({
   searchParams,
-  totalJobs,
-  industries
 }: {
   searchParams: Promise<{ search?: string; industry?: string; sort?: string; page?: string }>;
-  totalJobs: number;
-  industries: string[];
 }) {
   const resolvedSearchParams = await searchParams;
-  const companiesData = await fetchCompanies({
-    search: resolvedSearchParams.search,
-    industry: resolvedSearchParams.industry,
-    sort: resolvedSearchParams.sort,
-    page: resolvedSearchParams.page,
-  });
+  const [companiesData, totalJobs, industries] = await Promise.all([
+    fetchCompanies({
+      search: resolvedSearchParams.search,
+      industry: resolvedSearchParams.industry,
+      sort: resolvedSearchParams.sort,
+      page: resolvedSearchParams.page,
+    }),
+    fetchJobsCount(),
+    fetchIndustries(),
+  ]);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -118,14 +118,9 @@ export default async function CompaniesPage({
 }: {
   searchParams: Promise<{ search?: string; industry?: string; sort?: string; page?: string }>;
 }) {
-  const [totalJobs, industries] = await Promise.all([
-    fetchJobsCount(),
-    fetchIndustries()
-  ]);
-
   return (
     <Suspense fallback={<Loading />}>
-      <CompaniesListStream searchParams={searchParams} totalJobs={totalJobs} industries={industries} />
+      <CompaniesListStream searchParams={searchParams} />
     </Suspense>
   );
 }

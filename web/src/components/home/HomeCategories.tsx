@@ -23,10 +23,8 @@ export default function HomeCategories({ categories = [] }: HomeCategoriesProps)
             Tìm kiếm cơ hội phù hợp nhất với kỹ năng và đam mê của bạn tại Phú Quốc.
           </p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-32 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60 animate-pulse" />
-          ))}
+        <div className="rounded-2xl border border-dashed border-primary/40 bg-primary-foreground px-6 py-10 text-center text-sm text-muted-foreground">
+          Hiện chưa có ngành nghề nào được cập nhật.
         </div>
       </section>
     );
