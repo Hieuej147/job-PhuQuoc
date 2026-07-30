@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { CandidateSidebar } from "@/components/layout/candidate-sidebar";
 import { getServerAuthUser } from "@/lib/server-auth";
+import { cookies, headers } from "next/headers";
 
 export default async function CandidateLayout({
   children,

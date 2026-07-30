@@ -10,7 +10,10 @@ import { Metadata } from "next";
 import { LandingPageIframe } from "@/components/blog/LandingPageIframe";
 import BlogDetailClient from "@/components/blog/BlogDetailClient";
 import { BlogViewTracker } from "@/components/blog/BlogViewTracker";
-import { articleJsonLd, breadcrumbJsonLd } from "@/features/seo/structured-data";
+import {
+  articleJsonLd,
+  breadcrumbJsonLd,
+} from "@/features/seo/structured-data";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3006";
 
@@ -33,7 +36,7 @@ async function fetchBlog(slug: string) {
 
 async function fetchRelatedBlogs(categorySlug: string, currentId: string) {
   try {
-    await new Promise((r) => setTimeout(r, 5000));
+    // await new Promise((r) => setTimeout(r, 5000));
     const res = await fetch(
       `${BACKEND_URL}/api/v1/blogs?limit=4&category=${categorySlug}`,
       {
@@ -52,7 +55,7 @@ async function fetchRelatedBlogs(categorySlug: string, currentId: string) {
 
 async function fetchPopularBlogs() {
   try {
-    await new Promise((r) => setTimeout(r, 5000));
+    // await new Promise((r) => setTimeout(r, 5000));
     const res = await fetch(
       `${BACKEND_URL}/api/v1/blogs?limit=3&orderBy=views`,
       {

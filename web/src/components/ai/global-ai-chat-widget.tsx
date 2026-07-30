@@ -1,9 +1,18 @@
 "use client";
 
-import { CopilotChat, useConfigureSuggestions } from "@copilotkit/react-core/v2";
+import {
+  CopilotChat,
+  useConfigureSuggestions,
+} from "@copilotkit/react-core/v2";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowLeft,
   History,
@@ -37,7 +46,10 @@ const HIDDEN_ROUTE_PATTERNS = [
   /^\/applications\/[^/]+\/resume\/print$/,
 ];
 
-const DASHBOARD_ROUTE_PATTERNS = [/^\/candidate\/dashboard/, /^\/employer\/dashboard/];
+const DASHBOARD_ROUTE_PATTERNS = [
+  /^\/candidate\/dashboard/,
+  /^\/employer\/dashboard/,
+];
 const SIDEBAR_WIDTH_CSS = "min(440px, 92vw)";
 
 function WidgetThreadTracker({
@@ -80,7 +92,9 @@ function ThreadListBody({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
         <History className="size-8 text-gray-300 dark:text-[#1E5F74]" />
-        <p className="text-sm font-medium text-muted-foreground">Chưa có cuộc trò chuyện nào</p>
+        <p className="text-sm font-medium text-muted-foreground">
+          Chưa có cuộc trò chuyện nào
+        </p>
       </div>
     );
   }
@@ -165,7 +179,10 @@ function WidgetSidebar({
     [agentId, meta.title, meta.welcome],
   );
 
-  useConfigureSuggestions({ suggestions: AI_AGENT_SUGGESTIONS[agentId] });
+  useConfigureSuggestions({
+    suggestions: AI_AGENT_SUGGESTIONS[agentId],
+    available: "always",
+  });
 
   const handleCreateThread = () => {
     createNewThread();
@@ -256,11 +273,13 @@ function WidgetSidebar({
             <WidgetThreadTracker
               agentId={agentId}
               threadId={activeThreadId}
-              onTouch={(id) => touchThread(id).catch(() => { })}
+              onTouch={(id) => touchThread(id).catch(() => {})}
               onGenerateTitle={(id, content) =>
-                generateTitleStream({ id, firstMessage: content }).catch((error) => {
-                  console.warn("Generate thread title failed", error);
-                })
+                generateTitleStream({ id, firstMessage: content }).catch(
+                  (error) => {
+                    console.warn("Generate thread title failed", error);
+                  },
+                )
               }
             />
             <CopilotChat
@@ -284,19 +303,43 @@ function WidgetSidebar({
   );
 }
 
-function CandidateSidebarBody({ topOffset, onClose }: { topOffset: number; onClose: () => void }) {
+function CandidateSidebarBody({
+  topOffset,
+  onClose,
+}: {
+  topOffset: number;
+  onClose: () => void;
+}) {
   useJobSearchRenderer();
   useTemplateRenderer();
   useCvToolsRenderer();
   useBlogPostRenderer();
 
-  return <WidgetSidebar agentId="candidate" topOffset={topOffset} onClose={onClose} />;
+  return (
+    <WidgetSidebar
+      agentId="candidate"
+      topOffset={topOffset}
+      onClose={onClose}
+    />
+  );
 }
 
-function RecruiterSidebarBody({ topOffset, onClose }: { topOffset: number; onClose: () => void }) {
+function RecruiterSidebarBody({
+  topOffset,
+  onClose,
+}: {
+  topOffset: number;
+  onClose: () => void;
+}) {
   useJobToolsRenderer();
   useBlogPostRenderer();
-  return <WidgetSidebar agentId="recruiter" topOffset={topOffset} onClose={onClose} />;
+  return (
+    <WidgetSidebar
+      agentId="recruiter"
+      topOffset={topOffset}
+      onClose={onClose}
+    />
+  );
 }
 
 function OpenBubble({ onOpen }: { onOpen: () => void }) {
@@ -336,13 +379,26 @@ export function AiChatShell({
   }, []);
 
   const agentId: AiAgentId | null =
-    user?.role === "CANDIDATE" ? "candidate" : user?.role === "EMPLOYER" ? "recruiter" : null;
+    user?.role === "CANDIDATE"
+      ? "candidate"
+      : user?.role === "EMPLOYER"
+        ? "recruiter"
+        : null;
 
-  const isHiddenRoute = HIDDEN_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
-  const isDashboardRoute = DASHBOARD_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
-  const isOnFullPageAiRoute = agentId != null && pathname === FULL_PAGE_AI_ROUTE[agentId];
+  const isHiddenRoute = HIDDEN_ROUTE_PATTERNS.some((pattern) =>
+    pattern.test(pathname),
+  );
+  const isDashboardRoute = DASHBOARD_ROUTE_PATTERNS.some((pattern) =>
+    pattern.test(pathname),
+  );
+  const isOnFullPageAiRoute =
+    agentId != null && pathname === FULL_PAGE_AI_ROUTE[agentId];
   const shouldShowPopup =
-    isAuthenticated && !!agentId && !isHiddenRoute && !isDashboardRoute && !isOnFullPageAiRoute;
+    isAuthenticated &&
+    !!agentId &&
+    !isHiddenRoute &&
+    !isDashboardRoute &&
+    !isOnFullPageAiRoute;
 
   return (
     <>
@@ -350,7 +406,10 @@ export function AiChatShell({
 
       <div
         className="transition-[margin-right] duration-300 ease-in-out"
-        style={{ marginRight: shouldShowPopup && isOpen ? SIDEBAR_WIDTH_CSS : undefined }}
+        style={{
+          marginRight:
+            shouldShowPopup && isOpen ? SIDEBAR_WIDTH_CSS : undefined,
+        }}
       >
         {children}
       </div>
@@ -358,9 +417,15 @@ export function AiChatShell({
       {shouldShowPopup &&
         (isOpen ? (
           agentId === "candidate" ? (
-            <CandidateSidebarBody topOffset={headerHeight} onClose={() => setIsOpen(false)} />
+            <CandidateSidebarBody
+              topOffset={headerHeight}
+              onClose={() => setIsOpen(false)}
+            />
           ) : (
-            <RecruiterSidebarBody topOffset={headerHeight} onClose={() => setIsOpen(false)} />
+            <RecruiterSidebarBody
+              topOffset={headerHeight}
+              onClose={() => setIsOpen(false)}
+            />
           )
         ) : (
           <OpenBubble onOpen={() => setIsOpen(true)} />

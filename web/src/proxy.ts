@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const COOKIE_NAME = "better-auth.session_token";
+const SECURE_COOKIE_NAME = "__Secure-better-auth.session_token";
 
 export function proxy(request: NextRequest) {
-  const sessionCookie = request.cookies.get(COOKIE_NAME);
+  const sessionCookie = request.cookies.get(COOKIE_NAME) || request.cookies.get(SECURE_COOKIE_NAME);
   const isLoggedIn = !!sessionCookie?.value;
   const path = request.nextUrl.pathname;
 

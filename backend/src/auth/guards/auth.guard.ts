@@ -43,7 +43,10 @@ export class AuthGuard implements CanActivate {
     }
 
     // Priority 2: Session cookie (for web FE)
-    const sessionCookie = request.cookies?.["better-auth.session_token"];
+    const sessionCookie =
+      request.cookies?.["better-auth.session_token"] ||
+      request.cookies?.["__Secure-better-auth.session_token"];
+      
     if (sessionCookie) {
       return this.verifySession(request);
     }

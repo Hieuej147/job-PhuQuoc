@@ -26,6 +26,7 @@ export const auth = betterAuth({
     frontendUrl,
     authBaseUrl,
     "http://localhost:3006",
+    "http://127.0.0.1:3006",
     "http://localhost:3000",
   ],
 
@@ -34,7 +35,9 @@ export const auth = betterAuth({
     // requireEmailVerification: process.env.NODE_ENV === "production",
     requireEmailVerification: true,
   },
-
+  // verification: {
+  //   storeInDatabase: true,
+  // },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -52,8 +55,7 @@ export const auth = betterAuth({
           id: user.id,
           email: user.email,
           name: user.name,
-          role:
-            ((user as Record<string, unknown>).role as string) || null,
+          role: ((user as Record<string, unknown>).role as string) || null,
         }),
         expirationTime: "24h",
       },
