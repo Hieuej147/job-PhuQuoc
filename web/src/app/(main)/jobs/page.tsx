@@ -65,7 +65,10 @@ async function fetchStats() {
   }
 }
 
-export default async function JobsPage({
+import { Suspense } from "react";
+import Loading from "./loading";
+
+async function JobsPageContent({
   searchParams,
 }: {
   searchParams: Promise<{ search?: string; ward?: string; category?: string }>;
@@ -74,7 +77,6 @@ export default async function JobsPage({
   const [categories, stats] = await Promise.all([fetchCategories(), fetchStats()]);
 
   const category = resolvedSearchParams.category || "";
-
   const ward = resolvedSearchParams.ward || "";
 
   const jobsData = await fetchJobs({
@@ -111,5 +113,17 @@ export default async function JobsPage({
         stats={stats}
       />
     </>
+  );
+}
+
+export default function JobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string; ward?: string; category?: string }>;
+}) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <JobsPageContent searchParams={searchParams} />
+    </Suspense>
   );
 }

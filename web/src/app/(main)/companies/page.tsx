@@ -63,7 +63,7 @@ async function fetchIndustries() {
   }
 }
 
-async function CompaniesPageContent({
+async function CompaniesListStream({
   searchParams,
 }: {
   searchParams: Promise<{ search?: string; industry?: string; sort?: string; page?: string }>;
@@ -77,7 +77,7 @@ async function CompaniesPageContent({
       page: resolvedSearchParams.page,
     }),
     fetchJobsCount(),
-    fetchIndustries()
+    fetchIndustries(),
   ]);
 
   const jsonLd = {
@@ -113,14 +113,14 @@ async function CompaniesPageContent({
   );
 }
 
-export default function CompaniesPage({
+export default async function CompaniesPage({
   searchParams,
 }: {
   searchParams: Promise<{ search?: string; industry?: string; sort?: string; page?: string }>;
 }) {
   return (
     <Suspense fallback={<Loading />}>
-      <CompaniesPageContent searchParams={searchParams} />
+      <CompaniesListStream searchParams={searchParams} />
     </Suspense>
   );
 }
