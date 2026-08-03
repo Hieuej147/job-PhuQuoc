@@ -31,6 +31,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { QuotaModule } from "./common/quota/quota.module";
 import { ChatThreadsModule } from "./modules/chat-threads/chat-threads.module";
 import { EmailIntegrationModule } from "./modules/email-integration/email-integration.module";
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { EmailIntegrationModule } from "./modules/email-integration/email-integr
     QuotaModule,
     ChatThreadsModule,
     EmailIntegrationModule,
+    ReportsModule,
   ],
   providers: [
     {

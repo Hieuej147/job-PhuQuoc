@@ -31,7 +31,9 @@ import {
 import RelatedJobs from "@/components/jobs/RelatedJobs";
 import JobStickyBarMobile from "@/components/jobs/JobStickyBarMobile";
 import DeadlineCard from "@/components/jobs/DeadlineCard";
-
+import { ReportModal } from "@/components/common/ReportModal";
+import { Button } from "@/components/ui/button";
+import { Flag } from "lucide-react";
 interface JobData {
   id: string;
   slug: string;
@@ -119,6 +121,7 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
   const router = useRouter();
   const { user } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isApplied, setIsApplied] = useState(false);
 
   useEffect(() => {
@@ -270,6 +273,13 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
               website={job.company.website || ""}
             />
             <JobShareSidebar jobTitle={job.title} />
+
+            <div className="bg-card border rounded-xl p-5 text-center">
+              <p className="text-sm text-muted-foreground mb-3">Bạn thấy tin tuyển dụng này có vấn đề?</p>
+              <Button variant="outline" className="w-full text-muted-foreground hover:text-destructive" onClick={() => setIsReportModalOpen(true)}>
+                <Flag className="w-4 h-4 mr-2" /> Báo cáo việc làm
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -279,6 +289,14 @@ export default function JobDetailClient({ job, relatedJobs }: JobDetailClientPro
       <JobStickyBarMobile onApply={applyFlow.openApplyModal} onBookmark={toggleSave} isBookmarked={isSaved} isApplied={isApplied} />
 
       <JobApplyModal jobTitle={job.title} companyName={job.company.name} applyFlow={applyFlow} />
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        entityType="job"
+        entityId={job.id}
+        entityTitle={job.title}
+      />
     </div>
   );
 }

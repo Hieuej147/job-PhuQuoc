@@ -8,7 +8,9 @@ import { toast } from "sonner";
 import { Blog } from "@/types/blog";
 import { BlogContentRender } from "./BlogContentRender";
 import { trackBlogView } from "@/features/blog-detail/api";
-
+import { ReportModal } from "@/components/common/ReportModal";
+import { Button } from "@/components/ui/button";
+import { Flag, ArrowUpRight, Calendar, User, Eye, Share2, Facebook, Twitter, Linkedin, Link as LinkIcon, Bookmark } from "lucide-react";
 interface BlogDetailClientProps {
   blog: Blog;
   categoryName: string;
@@ -31,6 +33,7 @@ export default function BlogDetailClient({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [email, setEmail] = useState("");
   const [viewCount, setViewCount] = useState(blog.views || 0);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const hasTrackedView = useRef(false);
 
   // Extract headings for TOC
@@ -520,9 +523,25 @@ export default function BlogDetailClient({
                 ))}
               </div>
             </div>
+
+            {/* 5. Report */}
+            <div className="bg-white dark:bg-[#0d2137] border border-[#e0f5fb] dark:border-[#1a3d5c] rounded-2xl p-5 shadow-sm text-center">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Bài viết này có vấn đề?</p>
+              <Button variant="outline" className="w-full text-muted-foreground hover:text-destructive" onClick={() => setIsReportModalOpen(true)}>
+                <Flag className="w-4 h-4 mr-2" /> Báo cáo bài viết
+              </Button>
+            </div>
           </div>
         </div>
       </div>
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        entityType="blog"
+        entityId={blog.id}
+        entityTitle={blog.title}
+      />
     </div>
   );
 }
