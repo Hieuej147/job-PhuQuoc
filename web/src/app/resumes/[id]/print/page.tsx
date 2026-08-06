@@ -47,6 +47,7 @@ export default function PublicPrintResumePage() {
 
   useEffect(() => {
     if (loading || !resume) return;
+    document.title = "";
     const shouldPrint = new URLSearchParams(window.location.search).get("print") === "1";
     if (!shouldPrint) return;
     const timer = window.setTimeout(() => window.print(), 300);
@@ -100,20 +101,17 @@ export default function PublicPrintResumePage() {
           @page {
             size: A4;
             margin: 0;
+          *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            scrollbar-width: none !important;
           }
           html, body {
             margin: 0 !important;
             padding: 0 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
             overflow: visible !important;
             height: auto !important;
             min-height: 0 !important;
-          }
-          /* Hide scrollbars and show overflow content when printing */
-          * {
-            overflow: visible !important;
-            scrollbar-width: none !important;
           }
           *::-webkit-scrollbar {
             display: none !important;
@@ -122,7 +120,8 @@ export default function PublicPrintResumePage() {
           header,
           footer,
           .print-toolbar,
-          .print\:hidden,
+          [class*="print-toolbar"],
+          [class*="print:hidden"],
           [class*="copilotkit"],
           [class*="CopilotKit"],
           [id*="copilotkit"],
@@ -243,7 +242,8 @@ export default function PublicPrintResumePage() {
       </div>
       <div className="resume-print-page">
         {(() => {
-          const SelectedTemplate = TEMPLATE_MAP[resume.template?.id || ""] || TEMPLATE_MAP["tpl-minimal-03"];
+          const tId = (resume as any).templateId || resume.template?.id || "tpl-minimal-03";
+          const SelectedTemplate = TEMPLATE_MAP[tId] || TEMPLATE_MAP["tpl-minimal-03"];
           return <SelectedTemplate user={user} resume={resumeData} readOnly={true} />;
         })()}
       </div>

@@ -45,6 +45,7 @@ export default function EmployerApplicationResumePrintPage() {
 
   useEffect(() => {
     if (loading || payload?.type !== "resume") return;
+    document.title = "";
     const shouldPrint = new URLSearchParams(window.location.search).get("print") === "1";
     if (!shouldPrint) return;
     const timer = window.setTimeout(() => window.print(), 300);
@@ -103,17 +104,20 @@ export default function EmployerApplicationResumePrintPage() {
         }
         @media print {
           @page { size: A4; margin: 0; }
+          *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
           }
           header,
           footer,
           .print-toolbar,
-          .print\:hidden,
+          [class*="print-toolbar"],
+          [class*="print:hidden"],
           [class*="copilotkit"],
           [class*="CopilotKit"],
           [id*="copilotkit"],
@@ -217,7 +221,8 @@ export default function EmployerApplicationResumePrintPage() {
       </div>
       <div className="resume-print-page py-8 print:py-0">
         {(() => {
-          const TemplateComponent = TEMPLATE_MAP[resume.template?.id || ""] || TEMPLATE_MAP["tpl-minimal-03"];
+          const tId = (resume as any).templateId || resume.template?.id || "tpl-minimal-03";
+          const TemplateComponent = TEMPLATE_MAP[tId] || TEMPLATE_MAP["tpl-minimal-03"];
           return <TemplateComponent user={user} resume={resumeData} readOnly={true} />;
         })()}
       </div>

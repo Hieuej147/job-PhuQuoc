@@ -1,3 +1,4 @@
+import { TEMPLATE_MAP } from "@/template";
 import { apiUrl } from "@/lib/api-client";
 import {
   Dialog,
@@ -33,6 +34,14 @@ export function ApplicationCvDialog({
   const { selectedResumeUser, selectedResumeData } = buildResumeDocumentData(selectedResume);
 
   const handlePrintCv = () => {
+    if (applicationId && payload?.type === "resume") {
+      window.open(`/applications/${applicationId}/resume/print?print=1`, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (payload?.type === "uploaded" && applicationId) {
+      window.open(apiUrl(`/api/v1/applications/${applicationId}/resume-file`), "_blank", "noopener,noreferrer");
+      return;
+    }
     window.print();
   };
 
@@ -104,11 +113,27 @@ export function ApplicationCvDialog({
             )
           ) : selectedResume && selectedResumeUser && selectedResumeData ? (
             <div className="employer-cv-print-area">
-              <ResumePrintDocument
-                user={selectedResumeUser}
-                resume={selectedResumeData}
-                templateId={selectedResume.template?.id}
-              />
+              {(() => {
+                const tId = (selectedResume as any).templateId || selectedResume.template?.id || "tpl-minimal-03";
+                const TemplateComponent = TEMPLATE_MAP[tId];
+                if (TemplateComponent) {
+                  return (
+                    <TemplateComponent
+                      user={selectedResumeUser}
+                      resume={selectedResumeData}
+                      resumeId={selectedResume.id}
+                      readOnly={true}
+                    />
+                  );
+                }
+                return (
+                  <ResumePrintDocument
+                    user={selectedResumeUser}
+                    resume={selectedResumeData}
+                    templateId={tId}
+                  />
+                );
+              })()}
             </div>
           ) : (
             <div className="flex h-[60vh] items-center justify-center">
