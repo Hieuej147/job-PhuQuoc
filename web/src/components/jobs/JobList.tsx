@@ -62,8 +62,8 @@ export default function JobList({
   onBookmark,
 }: JobListProps) {
 
-  // 1. Trường hợp đang tải dữ liệu: chỉ render skeleton, không giữ danh sách cũ phía dưới.
-  if (isLoading) {
+  // 1. Trường hợp đang tải dữ liệu lần đầu tiên (chưa có danh sách cũ)
+  if (isLoading && jobs.length === 0) {
     return (
       <div className="space-y-4">
         {[...Array(4)].map((_, index) => (
@@ -73,8 +73,8 @@ export default function JobList({
     );
   }
 
-  // 2. Trường hợp danh sách công việc trống: Hiển thị giao diện thông báo
-  if (jobs.length === 0) {
+  // 2. Trường hợp không tải và danh sách công việc trống: Hiển thị giao diện thông báo
+  if (!isLoading && jobs.length === 0) {
     return (
       <div className="bg-white dark:bg-[#0d2137] rounded-2xl border border-[#E0F5FB] dark:border-[#1a3d5c] p-12 text-center flex flex-col items-center justify-center">
         <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
@@ -87,7 +87,15 @@ export default function JobList({
   }
 
   return (
-    <div>
+    <div className={`relative transition-opacity duration-200 ${isLoading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex items-start justify-center pt-12 bg-white/20 dark:bg-black/20 backdrop-blur-[1px] rounded-2xl">
+          <div className="bg-[#0E7490] text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg animate-pulse flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+            Đang cập nhật kết quả lọc...
+          </div>
+        </div>
+      )}
       {/* 3. Hiển thị danh sách các thẻ việc làm JobCard */}
       <div className="space-y-4" id="job-list">
         {jobs.map((job) => (
