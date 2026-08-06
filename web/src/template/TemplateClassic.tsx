@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { downloadResumePdf } from "@/lib/resume-pdf";
+import { apiUrl } from "@/lib/api-client";
 
 /**
  * TemplateClassic — Phong cách thanh lịch, truyền thống và sang trọng
@@ -39,7 +40,7 @@ export default function TemplateClassic({ user = {} as Partial<UserData>, resume
         const method = isNew ? "POST" : "PATCH";
 
         try {
-            const response = await fetch(url, {
+            const response = await fetch(apiUrl(url), {
                 method: method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

@@ -105,3 +105,4 @@ logs/inngest-error.log
 logs/inngest-out.log
 .codex/
 .playwright-mcp/
+.env.local-backup

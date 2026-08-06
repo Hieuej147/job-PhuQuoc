@@ -19,8 +19,11 @@ function loadEnvFile(envFile, { override = false } = {}) {
     });
 }
 
-loadEnvFile(path.join(repoRoot, "backend", ".env"));
+// The agent owns `web/.env`. Load it first so an older backend key cannot
+// silently win when both files define OPENAI_API_KEY. Backend values remain
+// available as a fallback for shared settings that are not defined by web.
 loadEnvFile(path.join(root, ".env"));
+loadEnvFile(path.join(repoRoot, "backend", ".env"));
 
 function pickPython() {
   // Ưu tiên uv run nếu có sẵn — đảm bảo đúng môi trường venv, tránh lệch PATH/DLL trên Windows

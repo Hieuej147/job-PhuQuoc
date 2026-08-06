@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { downloadResumePdf } from "@/lib/resume-pdf";
+import { apiUrl } from "@/lib/api-client";
 
 /**
  * TemplateFuturistic — Phong cách tương lai, tối tân (Tech/Dark Mode), sử dụng Google Material Symbols
@@ -39,7 +40,7 @@ export default function TemplateFuturistic({ user = {} as Partial<UserData>, res
         const method = isNew ? "POST" : "PATCH";
 
         try {
-            const response = await fetch(url, {
+            const response = await fetch(apiUrl(url), {
                 method: method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

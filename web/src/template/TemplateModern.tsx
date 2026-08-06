@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { downloadResumePdf } from "@/lib/resume-pdf";
+import { apiUrl } from "@/lib/api-client";
 
 /**
  * TemplateModern — Phong cách hiện đại, bold, single-column (Form nhập liệu)
@@ -40,7 +41,7 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
         const method = isNew ? "POST" : "PATCH";
 
         try {
-            const response = await fetch(url, {
+            const response = await fetch(apiUrl(url), {
                 method: method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

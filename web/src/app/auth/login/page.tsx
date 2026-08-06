@@ -127,9 +127,7 @@ function LoginForm() {
     >
       <div className="bg-primary-foreground rounded-3xl border border-primary shadow-xl p-8 animate-in delay-100">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#0C4A6E] mb-1">
-            Chào mừng trở lại! 👋
-          </h1>
+          <h1 className="text-2xl font-bold mb-1">Chào mừng trở lại! 👋</h1>
           <p className="text-sm text-muted-foreground">
             Đăng nhập để tiếp tục hành trình tìm việc
           </p>

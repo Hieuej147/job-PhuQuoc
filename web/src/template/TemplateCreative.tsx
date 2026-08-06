@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { downloadResumePdf } from "@/lib/resume-pdf";
+import { apiUrl } from "@/lib/api-client";
 
 /**
  * TemplateCreative — Phong cách sáng tạo, trẻ trung, sử dụng Google Material Symbols
@@ -39,7 +40,7 @@ export default function TemplateCreative({ user = {} as Partial<UserData>, resum
         const method = isNew ? "POST" : "PATCH";
 
         try {
-            const response = await fetch(url, {
+            const response = await fetch(apiUrl(url), {
                 method: method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

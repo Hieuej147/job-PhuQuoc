@@ -23,7 +23,9 @@ export async function uploadCandidateAvatar(file: File) {
   });
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new Error(body?.message || "Lỗi khi upload ảnh.");
-  const avatarUrl = body?.data?.avatar ?? body?.avatar;
+  // ResponseTransformInterceptor wraps the upload service result in `data`,
+  // while the service itself returns `{ data: { avatar } }`.
+  const avatarUrl = body?.data?.data?.avatar ?? body?.data?.avatar ?? body?.avatar;
   if (!avatarUrl) throw new Error("Upload ảnh thất bại.");
   return avatarUrl as string;
 }
