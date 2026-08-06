@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { downloadResumePdf } from "@/lib/resume-pdf";
+import { apiUrl } from "@/lib/api-client";
 
 /**
  * TemplateElegant — Phong cách sang trọng, tối giản, thanh lịch, sử dụng Google Material Symbols
@@ -39,7 +40,7 @@ export default function TemplateElegant({ user = {} as Partial<UserData>, resume
         const method = isNew ? "POST" : "PATCH";
 
         try {
-            const response = await fetch(url, {
+            const response = await fetch(apiUrl(url), {
                 method: method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

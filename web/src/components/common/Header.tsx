@@ -167,7 +167,7 @@ export default function Header() {
           {/* ACTIONS */}
           <div className="flex items-center gap-1.5 relative">
             {/* Theme toggle using DropdownMenu */}
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
                   className="p-2 rounded-full text-muted-foreground hover:bg-accent transition-colors outline-none"
@@ -276,7 +276,7 @@ export default function Header() {
                 </Popover>
 
                 {/* User Dropdown */}
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <button className="ml-2 rounded-full outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
                       <Avatar className="h-8 w-8">

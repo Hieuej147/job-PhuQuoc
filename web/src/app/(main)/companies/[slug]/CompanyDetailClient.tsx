@@ -3,7 +3,7 @@
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { useState, useMemo, useEffect, use, Suspense } from "react"
 import Link from "next/link"
-import { Share2 } from "lucide-react"
+import { Share2, Flag } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
 import { CompanyLogo } from "@/components/company/company-logo"
@@ -12,6 +12,8 @@ import { QuotaUpgradeDialog } from "@/components/quota/quota-upgrade-dialog"
 import { timeAgo } from "@/lib/utils/date"
 import { formatSalary, jobTypeLabel } from "@/lib/utils/format"
 import { apiUrl } from "@/lib/api-client";
+import { ReportModal } from "@/components/common/ReportModal";
+import { Button } from "@/components/ui/button";
 
 const SIZE_LABELS: Record<string, string> = {
   SIZE_1_50: "1-50 nhân viên",
@@ -45,6 +47,7 @@ export default function CompanyDetailClient({ company, jobsPromise }: Props) {
   const [activeTab, setActiveTab] = useState("overview")
   const [following, setFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [quota, setQuota] = useState<{ resource?: string; used?: number; limit?: number } | null>(null)
 
   useEffect(() => {
@@ -258,6 +261,12 @@ export default function CompanyDetailClient({ company, jobsPromise }: Props) {
               <h3 className="font-bold text-sm text-[#005a71] mb-4">Công ty tương tự</h3>
               <p className="text-sm text-gray-500">Sẽ sớm cập nhật.</p>
             </div>
+            <div className="bg-white dark:bg-[#0f2436] border border-[#E0F5FB] dark:border-[#1e3a4f] rounded-2xl p-5 text-center">
+              <p className="text-sm text-gray-500 mb-3">Bạn thấy công ty này có vấn đề?</p>
+              <Button variant="outline" className="w-full text-muted-foreground hover:text-destructive" onClick={() => setIsReportModalOpen(true)}>
+                <Flag className="w-4 h-4 mr-2" /> Báo cáo công ty
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -267,6 +276,14 @@ export default function CompanyDetailClient({ company, jobsPromise }: Props) {
         resource={quota?.resource}
         used={quota?.used}
         limit={quota?.limit}
+      />
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        entityType="company"
+        entityId={company.id}
+        entityTitle={company.name}
       />
     </div>
   )
