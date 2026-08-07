@@ -197,10 +197,10 @@ export const auth = betterAuth({
     },
   },
 
-  secondaryStorage: redisStorage({
-    client: redis,
-    keyPrefix: "better-auth:",
-  }),
+  // secondaryStorage: redisStorage({
+  //   client: redis,
+  //   keyPrefix: "better-auth:",
+  // }),
 
   advanced: {
     database: {

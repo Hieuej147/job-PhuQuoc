@@ -43,6 +43,7 @@ export default function TemplateCreative({ user = {} as Partial<UserData>, resum
             const response = await fetch(apiUrl(url), {
                 method: method,
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     title: resumeData.title || "CV của tôi",
                     templateId: "tpl-creative-04",

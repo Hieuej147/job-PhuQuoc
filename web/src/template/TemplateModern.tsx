@@ -44,6 +44,7 @@ export default function TemplateModern({ user = {} as Partial<UserData>, resume 
             const response = await fetch(apiUrl(url), {
                 method: method,
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     title: resumeData.title || "CV của tôi",
                     templateId: "tpl-modern-01",
