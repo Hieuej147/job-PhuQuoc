@@ -316,69 +316,35 @@ async function main() {
   console.log('Seeded companies');
 
   // ===== Jobs =====
-  await Promise.all([
-    prisma.job.create({
-      data: {
-        id: 'job_001',
-        title: 'Lễ tân khách sạn',
-        slug: 'le-tan-khach-san',
-        description: 'Tuyển lễ tân khách sạn, yêu cầu tiếng Anh giao tiếp',
-        requirements: 'Tiếng Anh giao tiếp, ngoại hình ưa nhìn',
-        benefits: 'Lương thưởng, bảo hiểm, ăn trưa',
-        quantity: 2,
-        salaryMin: 8000000,
-        salaryMax: 12000000,
-        wardId: wards[0].id,
-        type: 'FULL_TIME',
-        experience: 'UNDER_1_YEAR',
-        level: 'FRESHER',
-        status: 'ACTIVE',
-        deadline: new Date('2026-06-30'),
-        categoryId: categories[0].id,
-        companyId: company.id,
-      },
-    }),
-    prisma.job.create({
-      data: {
-        id: 'job_002',
-        title: 'Frontend Developer',
-        slug: 'frontend-developer',
-        description: 'Tuyển Frontend Developer làm việc remote',
-        requirements: 'React, TypeScript, 2 năm kinh nghiệm',
-        benefits: 'Lương cao, flexible time, remote',
-        quantity: 1,
-        salaryMin: 15000000,
-        salaryMax: 25000000,
-        type: 'REMOTE',
-        experience: 'ONE_TO_THREE_YEARS',
-        level: 'MID',
-        status: 'ACTIVE',
-        deadline: new Date('2026-07-15'),
-        categoryId: categories[2].id,
-        companyId: company.id,
-      },
-    }),
-    prisma.job.create({
-      data: {
-        id: 'job_003',
-        title: 'Hướng dẫn viên du lịch',
-        slug: 'huong-dan-vien-du-lich',
-        description: 'Tuyển HDV du lịch part-time',
-        requirements: 'Tiếng Anh, kiến thức về Phú Quốc',
-        benefits: 'Lương theo tour, tip',
-        quantity: 5,
-        salaryMin: 5000000,
-        salaryMax: 15000000,
-        wardId: wards[1].id,
-        type: 'PART_TIME',
-        experience: 'NO_EXPERIENCE',
-        level: 'INTERN',
-        status: 'ACTIVE',
-        categoryId: categories[1].id,
-        companyId: company.id,
-      },
-    }),
-  ]);
+  const sampleJobData: any[] = [
+    { id: 'job_001', title: 'Lễ tân khách sạn 5 sao', slug: 'le-tan-khach-san-5-sao', description: 'Tuyển lễ tân khách sạn 5 sao tại Dương Đông', requirements: 'Tiếng Anh giao tiếp tốt', benefits: 'Lương thưởng, bảo hiểm, ăn trưa', quantity: 2, salaryMin: 8000000, salaryMax: 12000000, wardId: wards[0].id, type: 'FULL_TIME', experience: 'UNDER_1_YEAR', level: 'FRESHER', status: 'ACTIVE', categoryId: categories[0].id, companyId: company.id },
+    { id: 'job_002', title: 'Frontend Developer (ReactJS / Next.js)', slug: 'frontend-developer-reactjs', description: 'Tuyển Frontend Developer làm việc remote', requirements: 'React, TypeScript, 2 năm kinh nghiệm', benefits: 'Lương cao, flexible time, remote', quantity: 1, salaryMin: 15000000, salaryMax: 25000000, type: 'REMOTE', experience: 'ONE_TO_THREE_YEARS', level: 'MID', status: 'ACTIVE', categoryId: categories[2].id, companyId: company.id },
+    { id: 'job_003', title: 'Hướng dẫn viên du lịch Phú Quốc', slug: 'huong-dan-vien-du-lich-phu-quoc', description: 'Tuyển HDV du lịch part-time', requirements: 'Tiếng Anh, kiến thức về Phú Quốc', benefits: 'Lương theo tour, tip', quantity: 5, salaryMin: 5000000, salaryMax: 15000000, wardId: wards[1].id, type: 'PART_TIME', experience: 'NO_EXPERIENCE', level: 'INTERN', status: 'ACTIVE', categoryId: categories[1].id, companyId: company.id },
+    { id: 'job_004', title: 'Đầu bếp Á - Âu (Bếp Trưởng)', slug: 'dau-bep-a-au-bep-truong', description: 'Tuyển đầu bếp có kinh nghiệm nhà hàng resort', requirements: 'Kinh nghiệm 3 năm làm bếp', benefits: 'Bao ăn ở, thưởng doanh số', quantity: 2, salaryMin: 18000000, salaryMax: 30000000, wardId: wards[0].id, type: 'FULL_TIME', experience: 'THREE_TO_FIVE_YEARS', level: 'SENIOR', status: 'ACTIVE', categoryId: categories[0].id, companyId: company.id },
+    { id: 'job_005', title: 'Nhân viên Phục vụ Nhà hàng', slug: 'nhan-vien-phuc-vu-nha-hang', description: 'Tuyển nhân viên chạy bàn, phục vụ F&B', requirements: 'Nhanh nhẹn, trung thực', benefits: 'Lương + Tip + Phụ cấp ăn uống', quantity: 10, salaryMin: 6000000, salaryMax: 9000000, wardId: wards[1].id, type: 'FULL_TIME', experience: 'NO_EXPERIENCE', level: 'FRESHER', status: 'ACTIVE', categoryId: categories[0].id, companyId: company.id },
+    { id: 'job_006', title: 'Pha chế Bartender / Barista', slug: 'pha-che-bartender-barista', description: 'Pha chế đồ uống, cocktail cho quầy Bar resort', requirements: 'Có chứng chỉ pha chế hoặc kinh nghiệm 1 năm', benefits: 'Thưởng tip cao, môi trường năng động', quantity: 3, salaryMin: 9000000, salaryMax: 14000000, wardId: wards[0].id, type: 'FULL_TIME', experience: 'UNDER_1_YEAR', level: 'FRESHER', status: 'ACTIVE', categoryId: categories[0].id, companyId: company.id },
+    { id: 'job_007', title: 'Quản lý Khách sạn / Resort Manager', slug: 'quan-ly-khach-san-resort-manager', description: 'Quản lý vận hành toàn bộ Resort', requirements: 'Kinh nghiệm 5 năm quản lý nghỉ dưỡng', benefits: 'Lương thỏa thuận + Xe đưa đón + Thưởng', quantity: 1, salaryMin: 35000000, salaryMax: 60000000, wardId: wards[0].id, type: 'FULL_TIME', experience: 'OVER_FIVE_YEARS', level: 'MANAGER', status: 'ACTIVE', categoryId: categories[0].id, companyId: company.id },
+    { id: 'job_008', title: 'Nhân viên Buồng phòng (Housekeeping)', slug: 'nhan-vien-buong-phong-housekeeping', description: 'Dọn dẹp phòng khách sạn nghỉ dưỡng', requirements: 'Sức khỏe tốt, chăm chỉ', benefits: 'Có chỗ ở cho nhân viên, phụ cấp', quantity: 8, salaryMin: 7000000, salaryMax: 10000000, wardId: wards[2].id, type: 'FULL_TIME', experience: 'NO_EXPERIENCE', level: 'FRESHER', status: 'ACTIVE', categoryId: categories[0].id, companyId: company.id },
+    { id: 'job_009', title: 'Chuyên viên Digital Marketing & SEO', slug: 'chuyen-vien-digital-marketing-seo', description: 'Chạy quảng cáo Facebook, Google Ads, SEO website', requirements: 'Am hiểu Ads, SEO, Content Marketing', benefits: 'Lương thưởng theo chiến dịch', quantity: 2, salaryMin: 12000000, salaryMax: 20000000, type: 'REMOTE', experience: 'ONE_TO_THREE_YEARS', level: 'MID', status: 'ACTIVE', categoryId: categories[2].id, companyId: company.id },
+    { id: 'job_010', title: 'Kế toán tổng hợp Resort', slug: 'ke-toan-tong-hop-resort', description: 'Theo dõi doanh thu, chi phí, báo cáo thuế', requirements: 'Bằng đại học chuyên ngành Kế toán, 2 năm kinh nghiệm', benefits: 'Chế độ đầy đủ theo luật lao động', quantity: 1, salaryMin: 12000000, salaryMax: 18000000, wardId: wards[0].id, type: 'FULL_TIME', experience: 'ONE_TO_THREE_YEARS', level: 'MID', status: 'ACTIVE', categoryId: categories[4].id, companyId: company.id },
+    { id: 'job_011', title: 'Nhân viên Bán hàng Tour & Vé cáp treo', slug: 'nhan-vien-ban-hang-tour-ve-cap-treo', description: 'Tư vấn bán tour tham quan đảo, vé vui chơi', requirements: 'Giao tiếp tốt, vui vẻ', benefits: 'Hoa hồng doanh số bán vé rất cao', quantity: 4, salaryMin: 7000000, salaryMax: 16000000, wardId: wards[1].id, type: 'FULL_TIME', experience: 'NO_EXPERIENCE', level: 'FRESHER', status: 'ACTIVE', categoryId: categories[3].id, companyId: company.id },
+    { id: 'job_012', title: 'Tài xế lái xe tour 16 chỗ / 29 chỗ', slug: 'tai-xe-lai-xe-tour-16-cho', description: 'Chở khách tham quan các điểm du lịch Phú Quốc', requirements: 'Bằng D/E, thuộc đường Phú Quốc', benefits: 'Lương cứng + Phụ cấp chuyến + Tip', quantity: 3, salaryMin: 10000000, salaryMax: 18000000, wardId: wards[3].id, type: 'FULL_TIME', experience: 'ONE_TO_THREE_YEARS', level: 'MID', status: 'ACTIVE', categoryId: categories[1].id, companyId: company.id },
+    { id: 'job_013', title: 'Kỹ sư Điện - Bảo trì Resort', slug: 'ky-su-dien-bao-tri-resort', description: 'Bảo trì hệ thống điện, điều hòa, máy phát điện', requirements: 'Tốt nghiệp Trung cấp/Cao đẳng Điện', benefits: 'Lương ổn định, trực ca có phụ cấp', quantity: 2, salaryMin: 9000000, salaryMax: 14000000, wardId: wards[0].id, type: 'FULL_TIME', experience: 'UNDER_1_YEAR', level: 'FRESHER', status: 'ACTIVE', categoryId: categories[5].id, companyId: company.id },
+    { id: 'job_014', title: 'Kỹ thuật viên Spa & Massage', slug: 'ky-thuat-vien-spa-massage', description: 'Thực hiện liệu trình chăm sóc sức khỏe, massage cho khách', requirements: 'Có chứng chỉ spa hoặc tay nghề tốt', benefits: 'Lương cứng + % tour liệu trình + Tip', quantity: 6, salaryMin: 10000000, salaryMax: 22000000, wardId: wards[2].id, type: 'FULL_TIME', experience: 'UNDER_1_YEAR', level: 'FRESHER', status: 'ACTIVE', categoryId: categories[6].id, companyId: company.id },
+    { id: 'job_015', title: 'Backend Developer (Node.js / NestJS)', slug: 'backend-developer-nodejs-nestjs', description: 'Phát triển hệ thống API backend microservices', requirements: 'Node.js, NestJS, PostgreSQL, Redis', benefits: 'Lương thỏa thuận hấp dẫn, WFH', quantity: 2, salaryMin: 18000000, salaryMax: 32000000, type: 'REMOTE', experience: 'THREE_TO_FIVE_YEARS', level: 'SENIOR', status: 'ACTIVE', categoryId: categories[2].id, companyId: company.id },
+    { id: 'job_016', title: 'Nhân viên Bảo vệ Resort / Night Guard', slug: 'nhan-vien-bao-ve-resort-night-guard', description: 'Đảm bảo an ninh trật tự khu nghỉ dưỡng', requirements: 'Sức khỏe tốt, trung thực, ưu tiên bộ đội xuất ngũ', benefits: 'Bao ăn ở, đồng phục miễn phí', quantity: 4, salaryMin: 7500000, salaryMax: 10000000, wardId: wards[0].id, type: 'FULL_TIME', experience: 'NO_EXPERIENCE', level: 'FRESHER', status: 'ACTIVE', categoryId: categories[0].id, companyId: company.id },
+    { id: 'job_017', title: 'Giáo viên Tiếng Anh Trung tâm', slug: 'giao-vien-tieng-anh-trung-tam', description: 'Giảng dạy tiếng Anh giao tiếp cho người đi làm', requirements: 'IELTS 6.5+ hoặc bằng Sư phạm Tiếng Anh', benefits: 'Lương theo giờ giảng linh hoạt', quantity: 3, salaryMin: 8000000, salaryMax: 15000000, wardId: wards[0].id, type: 'PART_TIME', experience: 'UNDER_1_YEAR', level: 'FRESHER', status: 'ACTIVE', categoryId: categories[7].id, companyId: company.id },
+  ];
+
+  await Promise.all(
+    sampleJobData.map((job) =>
+      prisma.job.upsert({
+        where: { id: job.id },
+        update: { ...job, deadline: new Date('2026-12-31') },
+        create: { ...job, deadline: new Date('2026-12-31') },
+      })
+    )
+  );
 
   console.log('Seeded jobs');
 

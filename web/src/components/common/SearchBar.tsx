@@ -14,16 +14,31 @@ interface Ward {
   slug: string;
 }
 
+interface JobSuggestion {
+  id: string;
+  title: string;
+  slug: string;
+  companyName?: string;
+}
+
 export default function SearchBar() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState(ALL_LOCATION);
   const [keyword, setKeyword] = useState("");
   const [style, setStyle] = useState<React.CSSProperties>({});
+  const [suggestStyle, setSuggestStyle] = useState<React.CSSProperties>({});
   const [wards, setWards] = useState<Ward[]>([]);
 
+  // Suggestion states
+  const [suggestions, setSuggestions] = useState<JobSuggestion[]>([]);
+  const [isSuggestLoading, setIsSuggestLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const searchBarRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const suggestDropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch wards from API
   useEffect(() => {
@@ -34,6 +49,80 @@ export default function SearchBar() {
         setWards(items);
       })
       .catch(() => { });
+  }, []);
+
+  // Calculate suggest dropdown position relative to the main search bar
+  const calcSuggestPosition = useCallback(() => {
+    if (!searchBarRef.current) return;
+    const r = searchBarRef.current.getBoundingClientRect();
+    setSuggestStyle({
+      position: "fixed",
+      top: r.bottom + 8,
+      left: r.left,
+      width: r.width,
+      zIndex: 9999,
+    });
+  }, []);
+
+  // Debounced job search suggestions (500ms)
+  useEffect(() => {
+    const query = keyword.trim();
+    if (query.length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsSuggestLoading(true);
+      fetch(apiUrl(`/api/v1/jobs?search=${encodeURIComponent(query)}&limit=6`), {
+        credentials: "include",
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          const items = d.data?.items || d.data || [];
+          setSuggestions(items);
+          calcSuggestPosition();
+          setShowSuggestions(true);
+        })
+        .catch(() => {
+          setSuggestions([]);
+        })
+        .finally(() => {
+          setIsSuggestLoading(false);
+        });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [keyword, calcSuggestPosition]);
+
+  // Recalculate position on scroll/resize when suggestions are visible
+  useEffect(() => {
+    if (!showSuggestions) return;
+    calcSuggestPosition();
+    const handleScrollOrResize = () => calcSuggestPosition();
+    window.addEventListener("scroll", handleScrollOrResize, { passive: true });
+    window.addEventListener("resize", handleScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [showSuggestions, calcSuggestPosition]);
+
+  // Hide suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        searchBarRef.current?.contains(target) ||
+        suggestDropdownRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setShowSuggestions(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const options = [ALL_LOCATION, ...wards.map(w => ({ id: w.id, name: w.name, slug: w.slug }))];
@@ -55,7 +144,7 @@ export default function SearchBar() {
     setIsOpen((v) => !v);
   };
 
-  // Close on outside click or scroll
+  // Close location dropdown on outside click or scroll
   useEffect(() => {
     if (!isOpen) return;
 
@@ -78,6 +167,7 @@ export default function SearchBar() {
   }, [isOpen]);
 
   const handleSearch = () => {
+    setShowSuggestions(false);
     const params = new URLSearchParams();
     if (keyword) params.set("search", keyword);
     if (selected.slug) params.set("ward", selected.slug);
@@ -116,17 +206,75 @@ export default function SearchBar() {
     </div>
   ) : null;
 
+  const suggestDropdown = showSuggestions && (suggestions.length > 0 || isSuggestLoading) ? (
+    <div
+      ref={suggestDropdownRef}
+      style={suggestStyle}
+      className="bg-white border border-slate-100 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.16)] py-2 overflow-hidden max-h-80 overflow-y-auto"
+    >
+      {isSuggestLoading ? (
+        <div className="px-5 py-3 text-xs text-slate-400 flex items-center gap-2">
+          <div className="w-3.5 h-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <span>Đang tìm kiếm gợi ý việc làm...</span>
+        </div>
+      ) : suggestions.length === 0 ? (
+        <div className="px-5 py-3 text-xs text-slate-400">Không tìm thấy việc làm phù hợp</div>
+      ) : (
+        <>
+          <div className="px-5 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/60 border-b border-slate-100">
+            Gợi ý việc làm
+          </div>
+          <div className="py-1">
+            {suggestions.map((job) => (
+              <button
+                key={job.id}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setShowSuggestions(false);
+                  setKeyword(job.title);
+                  const params = new URLSearchParams();
+                  params.set("search", job.title);
+                  if (selected.slug) params.set("ward", selected.slug);
+                  router.push(`/jobs?${params.toString()}`);
+                }}
+                className="w-full flex items-center justify-between px-5 py-3 hover:bg-amber-50/70 text-left transition-colors cursor-pointer group border-b border-slate-50 last:border-0"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <Search className="w-4 h-4 text-slate-400 group-hover:text-amber-500 shrink-0 transition-colors" />
+                  <span className="text-[13.5px] font-medium text-slate-700 group-hover:text-amber-600 truncate">
+                    {job.title}
+                  </span>
+                </div>
+                {job.companyName && (
+                  <span className="text-[11.5px] font-normal text-slate-400 group-hover:text-amber-700/60 shrink-0 ml-3 truncate max-w-[180px]">
+                    {job.companyName}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  ) : null;
+
   return (
-    <div className="bg-white p-2 rounded-2xl md:rounded-full shadow-2xl flex flex-col md:flex-row items-center max-w-4xl mx-auto w-full relative z-30">
-      {/* Keyword */}
-      <div className="flex-1 flex items-center pl-4 md:pl-6 pr-4 w-full">
+    <div ref={searchBarRef} className="bg-white p-2 rounded-2xl md:rounded-full shadow-2xl flex flex-col md:flex-row items-center max-w-4xl mx-auto w-full relative z-30">
+      {/* Keyword Input */}
+      <div className="flex-1 flex items-center pl-4 md:pl-6 pr-4 w-full relative">
         <Search className="w-5 h-5 text-slate-400 mr-2 md:mr-3 shrink-0" />
         <input
           type="text"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
+          onFocus={() => {
+            if (keyword.trim().length >= 1 && suggestions.length > 0) {
+              calcSuggestPosition();
+              setShowSuggestions(true);
+            }
+          }}
           onKeyDown={(e) => {
-            // enter thì search lun không cần đợi nhắn nút
             if (e.key === "Enter") {
               handleSearch();
             }
@@ -155,8 +303,9 @@ export default function SearchBar() {
         </button>
       </div>
 
-      {/* Dropdown via portal */}
+      {/* Dropdowns via portals */}
       {typeof window !== "undefined" && createPortal(dropdown, document.body)}
+      {typeof window !== "undefined" && createPortal(suggestDropdown, document.body)}
 
       {/* Search Button */}
       <button
@@ -169,3 +318,5 @@ export default function SearchBar() {
     </div>
   );
 }
+
+

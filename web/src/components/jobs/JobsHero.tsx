@@ -1,34 +1,26 @@
 "use client";
 
-import { apiUrl } from "@/lib/api-client";
-/**
- * @file JobsHero.tsx
- * @description Component banner tìm kiếm chính của trang danh sách việc làm.
- * @note [HuynhhThanh] Đã loại bỏ các Quick Tags hardcode và thay bằng dữ liệu thực tế (categories) lấy từ cơ sở dữ liệu để đảm bảo tính đồng bộ và linh hoạt.
- * 
- * Các phân hệ chức năng:
- * 1. Tiêu đề & Thống kê: Tiêu đề động và thống kê số lượng bài đăng việc làm hiện có trên hệ thống.
- * 2. Form tìm kiếm (Search Form):
- *    - Ô nhập từ khóa (Từ khóa công việc, kỹ năng, tên công ty).
- *    - Ô chọn vị trí địa lý (Phú Quốc phân chia theo xã/phường/vùng).
- *    - Ô chọn nhóm ngành nghề tuyển dụng chính.
- *    - Nút kích hoạt tìm kiếm chính.
- * 3. Thẻ gợi ý tìm nhanh (Quick Tags): Danh sách các từ khóa hot nhất để người dùng click chọn tìm nhanh mà không cần gõ phím.
- */
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { Search, MapPin, Briefcase } from "lucide-react";
+import { apiUrl } from "@/lib/api-client";
 
-// Định nghĩa kiểu dữ liệu cho props của JobsHero
 interface JobsHeroProps {
-  totalJobs: number; // Tổng số việc làm hiển thị trên hệ thống để đưa vào nhãn thống kê
+  totalJobs: number;
   categories: { id: string; name: string; slug: string }[];
   initialKeyword?: string;
   initialLocation?: string;
   initialIndustry?: string;
-  onSearch: (keyword: string, location: string, industry: string) => void; // Hàm callback kích hoạt khi nhấn Tìm kiếm
+  onSearch: (keyword: string, location: string, industry: string) => void;
 }
 
+interface JobSuggestion {
+  id: string;
+  title: string;
+  slug: string;
+  companyName?: string;
+}
 
 export default function JobsHero({
   totalJobs,
@@ -38,13 +30,22 @@ export default function JobsHero({
   initialIndustry = "",
   onSearch,
 }: JobsHeroProps) {
-  // Quản lý trạng thái nhập liệu của từ khóa, khu vực và ngành nghề
+  const router = useRouter();
   const [keyword, setKeyword] = useState(initialKeyword);
   const [location, setLocation] = useState(initialLocation);
   const [industry, setIndustry] = useState(initialIndustry);
   const [wards, setWards] = useState<{ id: string; name: string; slug: string }[]>([]);
 
-  // Đồng bộ hóa khi props thay đổi
+  // Suggestion states
+  const [suggestions, setSuggestions] = useState<JobSuggestion[]>([]);
+  const [isSuggestLoading, setIsSuggestLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestStyle, setSuggestStyle] = useState<React.CSSProperties>({});
+
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+  const suggestDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sync state with props
   useEffect(() => {
     setKeyword(initialKeyword);
   }, [initialKeyword]);
@@ -68,27 +69,148 @@ export default function JobsHero({
       .catch(() => { });
   }, []);
 
-  // Kích hoạt hàm tìm kiếm chính và truyền ngược lại cho trang chủ xử lý
+  // Calculate position for suggestions portal
+  const calcSuggestPosition = useCallback(() => {
+    if (!searchBoxRef.current) return;
+    const r = searchBoxRef.current.getBoundingClientRect();
+    setSuggestStyle({
+      position: "fixed",
+      top: r.bottom + 8,
+      left: r.left,
+      width: r.width,
+      zIndex: 9999,
+    });
+  }, []);
+
+  // Debounced job search suggestions (500ms)
+  useEffect(() => {
+    const query = keyword.trim();
+    if (query.length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsSuggestLoading(true);
+      fetch(apiUrl(`/api/v1/jobs?search=${encodeURIComponent(query)}&limit=6`), {
+        credentials: "include",
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          const items = d.data?.items || d.data || [];
+          setSuggestions(items);
+          calcSuggestPosition();
+          setShowSuggestions(true);
+        })
+        .catch(() => {
+          setSuggestions([]);
+        })
+        .finally(() => {
+          setIsSuggestLoading(false);
+        });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [keyword, calcSuggestPosition]);
+
+  // Recalculate position on scroll/resize
+  useEffect(() => {
+    if (!showSuggestions) return;
+    calcSuggestPosition();
+    const handleScrollOrResize = () => calcSuggestPosition();
+    window.addEventListener("scroll", handleScrollOrResize, { passive: true });
+    window.addEventListener("resize", handleScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [showSuggestions, calcSuggestPosition]);
+
+  // Hide suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        searchBoxRef.current?.contains(target) ||
+        suggestDropdownRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setShowSuggestions(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleSearch = () => {
+    setShowSuggestions(false);
     onSearch(keyword, location, industry);
   };
 
-  // Hàm xử lý tìm kiếm nhanh khi người dùng click vào nhãn gợi ý (Quick Tag)
   const handleQuickTag = (tag: string) => {
+    setShowSuggestions(false);
     setKeyword(tag);
     onSearch(tag, location, industry);
   };
 
+  const suggestDropdown = showSuggestions && (suggestions.length > 0 || isSuggestLoading) ? (
+    <div
+      ref={suggestDropdownRef}
+      style={suggestStyle}
+      className="bg-white border border-slate-100 dark:bg-[#0d2137] dark:border-[#1a3d5c] rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.18)] py-2 overflow-hidden max-h-80 overflow-y-auto z-50"
+    >
+      {isSuggestLoading ? (
+        <div className="px-5 py-3 text-xs text-slate-400 dark:text-gray-400 flex items-center gap-2">
+          <div className="w-3.5 h-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <span>Đang tìm kiếm gợi ý việc làm...</span>
+        </div>
+      ) : suggestions.length === 0 ? (
+        <div className="px-5 py-3 text-xs text-slate-400 dark:text-gray-400">Không tìm thấy việc làm phù hợp</div>
+      ) : (
+        <>
+          <div className="px-5 py-2 text-[11px] font-semibold text-slate-400 dark:text-gray-400 uppercase tracking-wider bg-slate-50/60 dark:bg-[#091726] border-b border-slate-100 dark:border-[#1a3d5c]">
+            Gợi ý việc làm
+          </div>
+          <div className="py-1">
+            {suggestions.map((job) => (
+              <button
+                key={job.id}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setShowSuggestions(false);
+                  setKeyword(job.title);
+                  onSearch(job.title, location, industry);
+                }}
+                className="w-full flex items-center justify-between px-5 py-3 hover:bg-amber-50/70 dark:hover:bg-[#132e48] text-left transition-colors cursor-pointer group border-b border-slate-50 dark:border-[#132c44] last:border-0"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <Search className="w-4 h-4 text-slate-400 group-hover:text-amber-500 shrink-0 transition-colors" />
+                  <span className="text-[13.5px] font-medium text-slate-700 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400 truncate">
+                    {job.title}
+                  </span>
+                </div>
+                {job.companyName && (
+                  <span className="text-[11.5px] font-normal text-slate-400 dark:text-gray-400 group-hover:text-amber-700/60 dark:group-hover:text-amber-300/80 shrink-0 ml-3 truncate max-w-[180px]">
+                    {job.companyName}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  ) : null;
+
   return (
     <section className="bg-linear-to-b from-[#0E7490] to-[#0D9488] dark:from-[#002d3d] dark:to-[#003d38] transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-10">
-
-        {/* Tiêu đề chính của Banner */}
         <h1 className="text-white font-bold text-2xl md:text-3xl mb-2">
           Tìm việc làm tại Phú Quốc
         </h1>
 
-        {/* Số lượng công việc hiện có (được định dạng số tiếng Việt) */}
         <p className="text-white/80 text-base mb-6">
           Đang hiển thị{" "}
           <span className="font-semibold text-white">
@@ -98,10 +220,9 @@ export default function JobsHero({
         </p>
 
         {/* Khung Thanh Công Cụ Tìm Kiếm */}
-        <div className="bg-white dark:bg-[#0d2137] rounded-2xl shadow-xl flex flex-col md:flex-row items-stretch overflow-hidden border border-transparent dark:border-[#1a3d5c] transition-colors duration-200">
-
+        <div ref={searchBoxRef} className="bg-white dark:bg-[#0d2137] rounded-2xl shadow-xl flex flex-col md:flex-row items-stretch overflow-hidden border border-transparent dark:border-[#1a3d5c] transition-colors duration-200 relative">
           {/* Ô nhập từ khóa (Search Keyword) */}
-          <div className="flex-1 flex items-center px-4 py-1 border-b md:border-b-0 md:border-r border-gray-100 dark:border-[#1a3d5c]">
+          <div className="flex-1 flex items-center px-4 py-1 border-b md:border-b-0 md:border-r border-gray-100 dark:border-[#1a3d5c] relative">
             <Search className="text-gray-400 dark:text-gray-500 mr-3 w-5 h-5 flex-shrink-0" />
             <input
               className="w-full border-none outline-none text-gray-800 dark:text-[#cbd5e1] placeholder-gray-400 dark:placeholder-gray-500 bg-transparent py-3 text-sm focus:ring-0 focus:outline-none"
@@ -110,6 +231,12 @@ export default function JobsHero({
               id="search-keyword"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
+              onFocus={() => {
+                if (keyword.trim().length >= 1 && suggestions.length > 0) {
+                  calcSuggestPosition();
+                  setShowSuggestions(true);
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   handleSearch();
@@ -173,6 +300,9 @@ export default function JobsHero({
           </button>
         </div>
 
+        {/* Render suggest dropdown via portal */}
+        {typeof window !== "undefined" && createPortal(suggestDropdown, document.body)}
+
         {/* Gợi ý Tìm nhanh (Quick Tags) */}
         <div className="flex flex-wrap gap-2 mt-4">
           <span className="text-white/70 text-sm mr-1 self-center">
@@ -192,3 +322,4 @@ export default function JobsHero({
     </section>
   );
 }
+
