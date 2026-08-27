@@ -38,7 +38,15 @@ const HIDDEN_ROUTE_PATTERNS = [
 ];
 
 const DASHBOARD_ROUTE_PATTERNS = [/^\/candidate\/dashboard/, /^\/employer\/dashboard/];
+
+// Route cá nhân: giữ hiển thị dạng sidebar toàn chiều cao (như trước giờ)
+const PERSONAL_ROUTE_PATTERNS = [/^\/candidate(\/|$)/, /^\/employer(\/|$)/];
+
 const SIDEBAR_WIDTH_CSS = "min(440px, 92vw)";
+const POPUP_WIDTH_CSS = "min(400px, 92vw)";
+const POPUP_HEIGHT_CSS = "min(600px, 75vh)";
+
+type WidgetVariant = "sidebar" | "popup";
 
 function WidgetThreadTracker({
   agentId,
@@ -101,11 +109,10 @@ function ThreadListBody({
                 onSelect(thread.id);
               }
             }}
-            className={`group flex w-full items-start gap-2 rounded-xl px-3 py-2 text-left transition-colors ${
-              isActive
-                ? "bg-[#005a71]/10 text-[#005a71] dark:bg-white/10 dark:text-[#67E8F9]"
-                : "text-gray-700 hover:bg-gray-100 dark:text-[#D9EAF6] dark:hover:bg-[#1E5F74]/25"
-            }`}
+            className={`group flex w-full items-start gap-2 rounded-xl px-3 py-2 text-left transition-colors ${isActive
+              ? "bg-[#005a71]/10 text-[#005a71] dark:bg-white/10 dark:text-[#67E8F9]"
+              : "text-gray-700 hover:bg-gray-100 dark:text-[#D9EAF6] dark:hover:bg-[#1E5F74]/25"
+              }`}
           >
             <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-[#1E5F74]/30 dark:text-[#94A3B8]">
               <MessageSquare className="size-4" />
@@ -136,12 +143,14 @@ function ThreadListBody({
   );
 }
 
-function WidgetSidebar({
+function WidgetPanel({
   agentId,
+  variant,
   topOffset,
   onClose,
 }: {
   agentId: AiAgentId;
+  variant: WidgetVariant;
   topOffset: number;
   onClose: () => void;
 }) {
@@ -173,12 +182,18 @@ function WidgetSidebar({
   };
 
   const isThreadsView = view === "threads";
+  const isSidebar = variant === "sidebar";
+
+  const wrapperClassName = isSidebar
+    ? "animate-in slide-in-from-right duration-300 fixed inset-y-0 right-0 z-40 flex flex-col overflow-hidden bg-white shadow-[-24px_0_70px_-30px_rgba(0,0,0,0.45)] ring-1 ring-black/5 dark:bg-[#0d2d42] dark:ring-white/10"
+    : "animate-in slide-in-from-bottom-4 fade-in duration-200 fixed bottom-24 right-5 z-40 flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.35)] ring-1 ring-black/5 dark:bg-[#0d2d42] dark:ring-white/10";
+
+  const wrapperStyle = isSidebar
+    ? { width: SIDEBAR_WIDTH_CSS, top: topOffset }
+    : { width: POPUP_WIDTH_CSS, height: POPUP_HEIGHT_CSS };
 
   return (
-    <div
-      className="animate-in slide-in-from-right duration-300 fixed inset-y-0 right-0 z-40 flex flex-col overflow-hidden bg-white shadow-[-24px_0_70px_-30px_rgba(0,0,0,0.45)] ring-1 ring-black/5 dark:bg-[#0d2d42] dark:ring-white/10"
-      style={{ width: SIDEBAR_WIDTH_CSS, top: topOffset }}
-    >
+    <div className={wrapperClassName} style={wrapperStyle}>
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e1efff] bg-white px-4 py-3.5 dark:border-[#1E5F74] dark:bg-[#12384f]">
         <div className="flex min-w-0 items-center gap-2.5">
           {isThreadsView ? (
@@ -263,16 +278,18 @@ function WidgetSidebar({
                 })
               }
             />
-            <CopilotChat
-              key={activeThreadId}
-              agentId={agentId}
-              threadId={activeThreadId}
-              messageView={progressMessageView}
-              labels={{
-                modalHeaderTitle: meta.title,
-                welcomeMessageText: meta.welcome,
-              }}
-            />
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <CopilotChat
+                key={activeThreadId}
+                agentId={agentId}
+                threadId={activeThreadId}
+                messageView={progressMessageView}
+                labels={{
+                  modalHeaderTitle: meta.title,
+                  welcomeMessageText: meta.welcome,
+                }}
+              />
+            </div>
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
@@ -284,19 +301,35 @@ function WidgetSidebar({
   );
 }
 
-function CandidateSidebarBody({ topOffset, onClose }: { topOffset: number; onClose: () => void }) {
+function CandidateSidebarBody({
+  variant,
+  topOffset,
+  onClose,
+}: {
+  variant: WidgetVariant;
+  topOffset: number;
+  onClose: () => void;
+}) {
   useJobSearchRenderer();
   useTemplateRenderer();
   useCvToolsRenderer();
   useBlogPostRenderer();
 
-  return <WidgetSidebar agentId="candidate" topOffset={topOffset} onClose={onClose} />;
+  return <WidgetPanel agentId="candidate" variant={variant} topOffset={topOffset} onClose={onClose} />;
 }
 
-function RecruiterSidebarBody({ topOffset, onClose }: { topOffset: number; onClose: () => void }) {
+function RecruiterSidebarBody({
+  variant,
+  topOffset,
+  onClose,
+}: {
+  variant: WidgetVariant;
+  topOffset: number;
+  onClose: () => void;
+}) {
   useJobToolsRenderer();
   useBlogPostRenderer();
-  return <WidgetSidebar agentId="recruiter" topOffset={topOffset} onClose={onClose} />;
+  return <WidgetPanel agentId="recruiter" variant={variant} topOffset={topOffset} onClose={onClose} />;
 }
 
 function OpenBubble({ onOpen }: { onOpen: () => void }) {
@@ -340,9 +373,12 @@ export function AiChatShell({
 
   const isHiddenRoute = HIDDEN_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
   const isDashboardRoute = DASHBOARD_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
+  const isPersonalRoute = PERSONAL_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
   const isOnFullPageAiRoute = agentId != null && pathname === FULL_PAGE_AI_ROUTE[agentId];
   const shouldShowPopup =
     isAuthenticated && !!agentId && !isHiddenRoute && !isDashboardRoute && !isOnFullPageAiRoute;
+
+  const variant: WidgetVariant = isPersonalRoute ? "sidebar" : "popup";
 
   return (
     <>
@@ -350,7 +386,9 @@ export function AiChatShell({
 
       <div
         className="transition-[margin-right] duration-300 ease-in-out"
-        style={{ marginRight: shouldShowPopup && isOpen ? SIDEBAR_WIDTH_CSS : undefined }}
+        style={{
+          marginRight: shouldShowPopup && isOpen && variant === "sidebar" ? SIDEBAR_WIDTH_CSS : undefined,
+        }}
       >
         {children}
       </div>
@@ -358,9 +396,9 @@ export function AiChatShell({
       {shouldShowPopup &&
         (isOpen ? (
           agentId === "candidate" ? (
-            <CandidateSidebarBody topOffset={headerHeight} onClose={() => setIsOpen(false)} />
+            <CandidateSidebarBody variant={variant} topOffset={headerHeight} onClose={() => setIsOpen(false)} />
           ) : (
-            <RecruiterSidebarBody topOffset={headerHeight} onClose={() => setIsOpen(false)} />
+            <RecruiterSidebarBody variant={variant} topOffset={headerHeight} onClose={() => setIsOpen(false)} />
           )
         ) : (
           <OpenBubble onOpen={() => setIsOpen(true)} />

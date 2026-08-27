@@ -75,7 +75,7 @@ function DashboardAiChat({
   );
 
   return (
-    <div className="flex h-[760px] min-h-[620px] overflow-hidden rounded-xl border border-[#e1efff] bg-white shadow-sm dark:border-[#1E5F74] dark:bg-[#0d2d42]">
+    <div className="flex h-full min-h-[500px] overflow-hidden rounded-xl border border-[#e1efff] bg-white shadow-sm dark:border-[#1E5F74] dark:bg-[#0d2d42]">
       {/* CopilotChat tự đọc biến --background chung của site (mặc định near-black ở
           dark mode) thay vì màu navy #0d2d42 mà các card khác trong dự án dùng.
           !important + target cả phần tử con để thắng chắc chắn bất kể thứ tự load CSS
@@ -110,16 +110,20 @@ function DashboardAiChat({
                 })
               }
             />
-            <CopilotChat
-              key={activeThreadId}
-              agentId={agentId}
-              threadId={activeThreadId}
-              messageView={progressMessageView}
-              labels={{
-                modalHeaderTitle: title,
-                welcomeMessageText: initialMessage,
-              }}
-            />
+            {/* THÊM MỚI: ép CopilotChat nhận đúng chiều cao xác định để nó tự
+          tách vùng tin nhắn cuộn được (bên trong) khỏi ô nhập cố định */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <CopilotChat
+                key={activeThreadId}
+                agentId={agentId}
+                threadId={activeThreadId}
+                messageView={progressMessageView}
+                labels={{
+                  modalHeaderTitle: title,
+                  welcomeMessageText: initialMessage,
+                }}
+              />
+            </div>
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">

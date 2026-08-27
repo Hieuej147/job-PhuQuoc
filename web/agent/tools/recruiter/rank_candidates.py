@@ -199,8 +199,9 @@ class RankCandidatesTool(BaseTool):
 
             # 4. Gọi LLM chấm điểm
             llm_response = await self._scoring_llm.ainvoke(
-                [SystemMessage(content=RANKING_SYSTEM_PROMPT), HumanMessage(content=user_prompt)]
-            )
+    [SystemMessage(content=RANKING_SYSTEM_PROMPT), HumanMessage(content=user_prompt)],
+    config={"callbacks": [], "tags": ["internal-scoring"]},
+)
             raw_content = llm_response.content if isinstance(llm_response.content, str) else str(llm_response.content)
 
             await self._heartbeat(state, config, "Đang tổng hợp kết quả xếp hạng...", 90)

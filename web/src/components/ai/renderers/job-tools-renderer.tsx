@@ -55,6 +55,63 @@ export function CreateJobResultCard({ data }: { data: any }) {
 }
 
 /**
+ * Hiển thị kết quả rank_candidates dưới dạng danh sách thẻ trực quan (thứ
+ * hạng, tên, điểm số, lý do) thay vì để rơi về JSON thô mặc định — trước đây
+ * tool này chưa có renderer riêng nên kết quả (và cả câu LLM tự lặp lại)
+ * hiển thị thô trong chat.
+ */
+function RankCandidatesResultCard({ data }: { data: any }) {
+    if (data?.error) {
+        return (
+            <div className="my-3 rounded-xl border bg-destructive/10 p-4 text-sm text-destructive">
+                Không thể xếp hạng ứng viên: {data.error}
+            </div>
+        );
+    }
+
+    const candidates = data?.ranked_candidates || [];
+    if (candidates.length === 0) {
+        return (
+            <div className="my-3 rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+                Không tìm thấy ứng viên nào để xếp hạng cho tin "{data?.job_title || ""}".
+            </div>
+        );
+    }
+
+    return (
+        <div className="my-3 overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="border-b bg-muted/40 px-4 py-2.5">
+                <p className="text-xs font-semibold text-muted-foreground">
+                    Xếp hạng ứng viên — {data?.job_title || ""}
+                </p>
+            </div>
+            <div className="divide-y">
+                {candidates.map((c: any) => (
+                    <div key={c.application_id} className="flex items-start gap-3 px-4 py-3">
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                            {c.rank}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="truncate text-sm font-semibold text-foreground">
+                                    {c.user_name || "Ứng viên"}
+                                </p>
+                                <span className="shrink-0 text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                    {c.score}/100
+                                </span>
+                            </div>
+                            {c.reasoning && (
+                                <p className="mt-1 text-xs text-muted-foreground">{c.reasoning}</p>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/**
  * Preview nội dung draft_email — CHỈ hiển thị, không gửi gì. HTML do chính
  * draft_email.py sinh ra (mọi input người dùng đã được escape ở backend), nên
  * an toàn để render trong iframe sandbox không chạy script, giống cách CV
@@ -216,6 +273,23 @@ export function useJobToolsRenderer() {
                 const data = parseResult(result);
                 if (!data) return <></>;
                 return <CreateJobResultCard data={data} />;
+            }
+            return <></>;
+        },
+    });
+
+    useRenderTool({
+        name: "rank_candidates",
+        parameters: z.object({
+            job_id: z.string(),
+            top_n: z.number().optional(),
+        }),
+        render: ({ status, result }) => {
+            if (status === "inProgress") return <></>;
+            if (status === "complete" && result) {
+                const data = parseResult(result);
+                if (!data) return <></>;
+                return <RankCandidatesResultCard data={data} />;
             }
             return <></>;
         },

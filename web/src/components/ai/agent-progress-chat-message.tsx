@@ -15,6 +15,7 @@ import {
   ToolCallHistoryCard,
   WelcomeBubble,
 } from "@/features/ai-chat/thread-history-renderer";
+import { JobListCard } from "@/components/ai/renderers/job-list-card";
 
 interface AgentProgressState {
   cv_flow?: string;
@@ -131,9 +132,9 @@ function makeRenderSafeMessages(messages: any[]) {
   return messages.map((message, index) => {
     const id = String(
       message.id ??
-        message.tool_call_id ??
-        message.toolCallId ??
-        `message-${index}`,
+      message.tool_call_id ??
+      message.toolCallId ??
+      `message-${index}`,
     );
     const count = seen.get(id) ?? 0;
     seen.set(id, count + 1);
@@ -145,6 +146,44 @@ function makeRenderSafeMessages(messages: any[]) {
       id: `${id}:${message.role ?? "message"}:${count}`,
     };
   });
+}
+
+/**
+ * Parse an toàn nội dung JSON của 1 tool message trong lịch sử. Trả về null
+ * nếu content không phải JSON hợp lệ (không throw), để nơi gọi có thể fallback
+ * an toàn sang ToolCallHistoryCard.
+ */
+function parseHistoryToolContent(content: string): any | null {
+  try {
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Định tuyến 1 tool message trong LỊCH SỬ (không phải live) sang đúng UI Card
+ * tương ứng với tool đó, thay vì luôn hiển thị ToolCallHistoryCard (thẻ gấp
+ * gọn kỹ thuật, chỉ hiện tên tool + JSON thô). Mục tiêu: sau khi tải lại
+ * trang, tool card trông và hoạt động (bấm được) giống hệt lúc đang chat live.
+ *
+ * Mỗi nhánh PHẢI tự kiểm tra dữ liệu parse được có hợp lệ hay không; nếu
+ * không, rơi xuống fallback ToolCallHistoryCard ở cuối hàm để không bao giờ
+ * hiển thị trắng/vỡ giao diện.
+ */
+function renderHistoryToolMessage(message: ThreadHistoryMessage) {
+  if (message.toolName === "search_jobs") {
+    const data = parseHistoryToolContent(message.content);
+    if (data) {
+      return (
+        <div key={message.id} className="px-4">
+          <JobListCard jobs={data.jobs || []} total={data.total || 0} />
+        </div>
+      );
+    }
+  }
+
+  return <ToolCallHistoryCard key={message.id} message={message} />;
 }
 
 /**
@@ -237,7 +276,7 @@ export function createAgentProgressMessageView(
           <div>
             {history.map((m) =>
               m.kind === "tool" ? (
-                <ToolCallHistoryCard key={m.id} message={m} />
+                renderHistoryToolMessage(m)
               ) : (
                 <HistoryBubble key={m.id} message={m} />
               ),

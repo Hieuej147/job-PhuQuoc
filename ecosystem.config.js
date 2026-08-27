@@ -24,7 +24,7 @@ module.exports = {
     {
       name: "frontend",
       script: pnpmScript,
-      args: pnpmArgs("run dev:ui"),
+      args: pnpmArgs("run start"),
       interpreter: "none",
       cwd: path.join(root, "web"),
       env: { NODE_ENV: "development" },

@@ -53,6 +53,7 @@ interface Notification {
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const pathname = usePathname();
   const { user: profile } = useAuth();
@@ -67,6 +68,26 @@ export default function Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (profile?.role !== "EMPLOYER") {
+      setCompanyLogo(null);
+      return;
+    }
+    fetch(apiUrl("/api/v1/companies/my"), { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        const company = payload?.data?.data || payload?.data;
+        setCompanyLogo(company?.logo || null);
+      })
+      .catch(() => setCompanyLogo(null));
+  }, [profile?.role]);
 
   useEffect(() => {
     if (!notificationsOpen || !profile) return;
@@ -122,7 +143,7 @@ export default function Header() {
       { icon: FileText, label: "Quản lý ứng viên", href: "/employer/applications" },
     ]
     : [
-      { icon: LayoutDashboard, label: "Dashboard", href: "/candidate/dashboard" },
+      { icon: LayoutDashboard, label: "Bảng điều khiển", href: "/candidate/dashboard" },
       { icon: UserIcon, label: "Hồ sơ cá nhân", href: "/candidate/profile" },
       { icon: FileText, label: "CV của tôi", href: "/candidate/resumes" },
       { icon: Briefcase, label: "Đơn ứng tuyển", href: "/candidate/applications" },
@@ -280,7 +301,10 @@ export default function Header() {
                   <DropdownMenuTrigger asChild>
                     <button className="ml-2 rounded-full outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={profile?.image || undefined} alt={profile?.name || "Avatar"} />
+                        <AvatarImage
+                          src={(role === "EMPLOYER" ? companyLogo : null) || profile?.image || undefined}
+                          alt={profile?.name || "Avatar"}
+                        />
                         <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
                           {initials}
                         </AvatarFallback>

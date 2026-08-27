@@ -81,11 +81,11 @@ export default function EmployerDashboard() {
 
   const quotaItems = summary?.quota
     ? [
-        { resource: "employerJobs", label: "Tin tuyển dụng", ...summary.quota.jobs },
-        { resource: "employerActiveJobs", label: "Tin đang chạy", ...summary.quota.activeJobs },
-        { resource: "employerDurationDaysMax", label: "Ngày đăng tối đa", ...summary.quota.durationDaysMax },
-        { resource: "employerBoostLevelMax", label: "Mức nổi bật tối đa", ...summary.quota.boostLevelMax },
-      ]
+      { resource: "employerJobs", label: "Tin tuyển dụng", ...summary.quota.jobs },
+      { resource: "employerActiveJobs", label: "Tin đang chạy", ...summary.quota.activeJobs },
+      { resource: "employerDurationDaysMax", label: "Ngày đăng tối đa", ...summary.quota.durationDaysMax },
+      { resource: "employerBoostLevelMax", label: "Mức nổi bật tối đa", ...summary.quota.boostLevelMax },
+    ]
     : [];
 
   if (loading) {
@@ -115,10 +115,12 @@ export default function EmployerDashboard() {
   }
 
   return (
-    <Tabs defaultValue="overview" className="space-y-6">
-      <DashboardHeader companyName={company?.name} />
+    <Tabs defaultValue="overview" className="flex h-[calc(100vh-96px)] flex-col overflow-hidden -mb-8">
+      <div className="shrink-0">
+        <DashboardHeader companyName={company?.name} />
+      </div>
 
-      <TabsContent value="overview" className="space-y-6">
+      <TabsContent value="overview" className="flex-1 overflow-y-auto space-y-6 data-[state=inactive]:hidden">
         <DashboardStatCards stats={stats} jobs={jobs} />
 
         {quotaItems.length > 0 && (
@@ -138,10 +140,10 @@ export default function EmployerDashboard() {
         </div>
       </TabsContent>
 
-      <TabsContent value="ai">
+      <TabsContent value="ai" className="flex flex-col flex-1 overflow-hidden data-[state=inactive]:hidden">
         <EmployerDashboardAiTab
-          title="Hiring Co-worker"
-          initialMessage="Xin chào! Tôi là Hiring Co-worker. Tôi có thể tóm tắt pipeline, ưu tiên hồ sơ cần xử lý, gợi ý job cần tối ưu và soạn email nháp cho ứng viên."
+          title="Recruiter Co-worker"
+          initialMessage="Xin chào! Tôi là Recruiter Co-worker. Tôi có thể tóm tắt pipeline, ưu tiên hồ sơ cần xử lý, gợi ý job cần tối ưu và soạn email nháp cho ứng viên."
           contextDescription="Employer dashboard context: jobs, applicants, notifications, and pipeline stats."
           contextValue={{ jobs, applicants, notifications, stats }}
         />

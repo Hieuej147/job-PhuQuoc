@@ -34,7 +34,7 @@ export function CandidateSidebar() {
           setProfile(p);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [user]);
 
   const { completionPct } = computeProfileCompletion(profile || u);
@@ -44,7 +44,7 @@ export function CandidateSidebar() {
     {
       label: "Tổng quan",
       items: [
-        { icon: "dashboard", label: "Dashboard", href: "/candidate/dashboard" },
+        { icon: "dashboard", label: "Bảng điều khiển", href: "/candidate/dashboard" },
         { icon: "manage_accounts", label: "Hồ sơ cá nhân", href: "/candidate/profile" },
       ],
     },
@@ -60,7 +60,7 @@ export function CandidateSidebar() {
     {
       label: "Hồ sơ",
       items: [
-        { icon: "description", label: "Tạo CV online", href: "/candidate/resumes" },
+        { icon: "description", label: "Tạo CV trực tuyến", href: "/candidate/resumes" },
       ],
     },
     {
@@ -91,7 +91,7 @@ export function CandidateSidebar() {
           </AvatarFallback>
         </Avatar>
         <p className="font-bold text-[#001e30] dark:text-[#E0F2FE] text-sm">{userName}</p>
-        <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Candidate • Phú Quốc</p>
+        <p className="text-xs text-[#3f484c] dark:text-[#94A3B8] mt-0.5">Ứng viên • Phú Quốc</p>
         <div className="w-full mt-3">
           <div className="flex justify-between text-xs mb-1">
             <span className="text-[#3f484c] dark:text-[#94A3B8]">Hồ sơ hoàn thiện</span>

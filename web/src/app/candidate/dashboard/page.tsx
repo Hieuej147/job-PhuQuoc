@@ -100,9 +100,12 @@ export default function CandidateDashboard() {
     : [];
 
   return (
-    <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <Tabs
+      value={activeTab}
+      onValueChange={handleTabChange}
+      className="flex h-[calc(100vh-96px)] flex-col overflow-hidden -mb-8"
+    >
+      <div className="shrink-0 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-[#E0F2FE]">Xin chào{profile?.name ? `, ${String(profile.name)}` : ""} 👋</h1>
           <p className="text-sm text-gray-500 dark:text-[#94A3B8] mt-1">
@@ -118,7 +121,7 @@ export default function CandidateDashboard() {
         </TabsList>
       </div>
 
-      <TabsContent value="overview" className="space-y-6">
+      <TabsContent value="overview" className="flex-1 overflow-y-auto space-y-6 data-[state=inactive]:hidden">
         {/* Stats */}
         <StatsCards
           applicationsCount={summary?.applications.total || applications.length}
@@ -261,7 +264,7 @@ export default function CandidateDashboard() {
         </div>
       </TabsContent>
 
-      <TabsContent value="ai">
+      <TabsContent value="ai" className="flex flex-col flex-1 overflow-hidden data-[state=inactive]:hidden">
         <CandidateDashboardAiTab
           title="Career Co-worker"
           initialMessage={`Xin chào! Mình là Career Co-worker — có thể xem nhanh hồ sơ, CV, đơn ứng tuyển của bạn để gợi ý bước tiếp theo.

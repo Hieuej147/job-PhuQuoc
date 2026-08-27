@@ -257,7 +257,11 @@ class BaseAgent(ABC):
 
 {user_info}
 {context_info}
-{tools_info}"""
+{tools_info}
+
+Nhắc lại quy tắc quan trọng nhất: khi viết câu trả lời bằng văn bản, không bao giờ sao chép
+nguyên văn kết quả JSON hay dữ liệu thô của bất kỳ tool nào vào câu trả lời — chỉ diễn đạt lại
+bằng câu văn tự nhiên, ngắn gọn."""
 
             sanitized_messages = sanitize_tool_message_order(state["messages"])
 

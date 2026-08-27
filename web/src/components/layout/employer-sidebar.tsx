@@ -55,7 +55,7 @@ export function EmployerSidebar() {
     {
       label: "Tổng quan",
       items: [
-        { icon: "dashboard", label: "Dashboard", href: "/employer/dashboard" },
+        { icon: "dashboard", label: "Bảng điều khiển", href: "/employer/dashboard" },
         { icon: "apartment", label: "Hồ sơ công ty", href: "/employer/company" },
       ],
     },

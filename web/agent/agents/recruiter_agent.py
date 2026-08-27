@@ -66,23 +66,39 @@ class RecruiterAgent(BaseAgent):
                 jobs_response = await self.api_client.get(
                     "/jobs/my", params={"status": "ACTIVE", "limit": 50}
                 )
+                print("DEBUG jobs_response type:", type(jobs_response))
+                print("DEBUG jobs_response:", jobs_response)
                 jobs_data = (
                     jobs_response.get("data", jobs_response)
                     if isinstance(jobs_response, dict)
                     else jobs_response
                 )
                 items = jobs_data.get("items", []) if isinstance(jobs_data, dict) else []
-                fetched_ids = [j.get("id") for j in items if isinstance(j, dict) and j.get("id")]
-                if fetched_ids:
-                    active_job_ids = fetched_ids
-            except Exception:
+                print("DEBUG items count:", len(items))
+                fetched_jobs = [
+                    {"id": j.get("id"), "title": j.get("title", "Chưa rõ tiêu đề")}
+                    for j in items
+                    if isinstance(j, dict) and j.get("id")
+                ]
+                print("DEBUG fetched_jobs count:", len(fetched_jobs))
+                if fetched_jobs:
+                    active_job_ids = fetched_jobs
+            except Exception as e:
+                print("DEBUG jobs fetch exception:", repr(e))
                 pass  # Giữ nguyên active_job_ids cũ (rỗng) nếu lỗi
+
+        if active_job_ids and isinstance(active_job_ids[0], dict):
+            active_jobs_text = "\n".join(
+                f"- {job['title']} (job_id: {job['id']})" for job in active_job_ids
+            )
+        else:
+            active_jobs_text = "Chưa có tin tuyển dụng nào đang hoạt động."
 
         return RECRUITER_SYSTEM_PROMPT.format(
             user_id=self.context.user_id,
             user_name=self.context.user_name,
             company_name=company_name,
-            active_job_ids=", ".join(active_job_ids),
+            active_job_ids=active_jobs_text,
         )
 
     def _get_state_class(self) -> type:

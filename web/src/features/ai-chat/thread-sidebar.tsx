@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, PanelLeftClose, PanelLeft } from "lucide-react";
 import type { ChatThread } from "./api";
 
 interface ThreadSidebarProps {
@@ -27,6 +27,7 @@ export function ThreadSidebar({
 }: ThreadSidebarProps) {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState("");
+    const [collapsed, setCollapsed] = useState(false);
 
     const startEdit = (id: string, currentTitle: string) => {
         setEditingId(id);
@@ -40,22 +41,50 @@ export function ThreadSidebar({
         setEditingId(null);
     };
 
-    return (
-        <div className="flex h-full w-64 flex-col border-r bg-muted/30">
-            <div className="p-3">
+    if (collapsed) {
+        return (
+            <div className="flex h-full w-14 flex-col items-center border-r bg-muted/30 py-3">
+                <button
+                    onClick={() => setCollapsed(false)}
+                    className="mb-3 rounded-lg p-2 hover:bg-accent"
+                    title="Mở rộng lịch sử chat"
+                >
+                    <PanelLeft size={18} />
+                </button>
                 <button
                     onClick={onNewThread}
                     disabled={isCreatingThread}
-                    className="flex w-full items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-lg p-2 hover:bg-accent disabled:opacity-60"
+                    title="Cuộc trò chuyện mới"
+                >
+                    <Plus size={18} />
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex h-full w-64 flex-col border-r bg-muted/30">
+            <div className="flex items-center gap-1 p-3">
+                <button
+                    onClick={onNewThread}
+                    disabled={isCreatingThread}
+                    className="flex flex-1 items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     <Plus size={16} />
                     Cuộc trò chuyện mới
+                </button>
+                <button
+                    onClick={() => setCollapsed(true)}
+                    className="shrink-0 rounded-lg p-2 hover:bg-accent"
+                    title="Thu gọn"
+                >
+                    <PanelLeftClose size={16} />
                 </button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-2 pb-2">
                 {isLoading && <p className="px-2 text-sm text-muted-foreground">Đang tải...</p>}
-
                 {threads.map((thread) => (
                     <div
                         key={thread.id}
